@@ -1,0 +1,54 @@
+# ---------- Environment / secrets ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---------- Node / Frontend (Vite + React) ----------
+node_modules/
+Frontend/node_modules/
+Frontend/dist/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.vite/
+
+# ---------- Python / Backend (FastAPI) ----------
+venv/
+Backend/venv/
+env/
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---------- Editors / IDE ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---------- OS junk ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Logs ----------
+*.log
+logs/
+
+# ---------- Large / generated assets not meant for the repo ----------
+Inspection.pdf
+/index.html
+/inspection_demo.html
+/*.txt

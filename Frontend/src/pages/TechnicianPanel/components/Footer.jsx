@@ -1,0 +1,14 @@
+export default function Footer() {
+  return (
+    <div className="tp-footer">
+      <div>
+        <span className="tp-brand-inline">AutoMart</span> © {new Date().getFullYear()}. All rights reserved.
+      </div>
+      <div className="tp-footer-links">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Help</a>
+      </div>
+    </div>
+  )
+}
