@@ -11,11 +11,13 @@ export default function Hero({ name = "Admin", desc = "Here's what's happening w
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
-    setNow(new Date())
+    const timer = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(timer)
   }, [])
 
   const dateLabel = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
   const dayLabel = now.toLocaleDateString("en-US", { weekday: "long" })
+  const timeLabel = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
 
   return (
     <section className="tp-hero">
@@ -34,6 +36,7 @@ export default function Hero({ name = "Admin", desc = "Here's what's happening w
         <div>
           <div className="tp-d1">{dateLabel}</div>
           <div className="tp-d2">{dayLabel}</div>
+          <div className="tp-d3">{timeLabel}</div>
         </div>
       </div>
     </section>
