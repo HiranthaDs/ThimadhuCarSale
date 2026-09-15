@@ -10,12 +10,13 @@ function fileToDataUrl(file) {
   })
 }
 
-function Field({ field, value, onChange }) {
+function Field({ field, value, onChange, reasonValue, onReasonChange }) {
   const { key, label, type, options } = field
 
   if (type === "status") {
+    const isFail = value === "Fail"
     return (
-      <label className="tp-form-group">
+      <label className={`tp-form-group${isFail ? " tp-form-group-full" : ""}`}>
         <span>{label}</span>
         <select value={value} onChange={(e) => onChange(key, e.target.value)}>
           <option value="">Select…</option>
@@ -23,6 +24,17 @@ function Field({ field, value, onChange }) {
             <option key={opt} value={opt}>{opt}</option>
           ))}
         </select>
+        {isFail && (
+          <div className="tp-fail-reason">
+            <span>Reason for failing</span>
+            <textarea
+              rows={2}
+              placeholder="Describe why this failed…"
+              value={reasonValue || ""}
+              onChange={(e) => onReasonChange(`${key}Reason`, e.target.value)}
+            />
+          </div>
+        )}
       </label>
     )
   }
@@ -149,7 +161,14 @@ export default function InspectionForm({ onClose, onSubmit }) {
             <div className="tp-form-section-title">{section.title}</div>
             <div className="tp-form-grid">
               {section.fields.map((field) => (
-                <Field key={field.key} field={field} value={data[field.key]} onChange={update} />
+                <Field
+                  key={field.key}
+                  field={field}
+                  value={data[field.key]}
+                  onChange={update}
+                  reasonValue={data[`${field.key}Reason`]}
+                  onReasonChange={update}
+                />
               ))}
             </div>
           </div>

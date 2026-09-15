@@ -1,3 +1,4 @@
+import { Fragment } from "react"
 import { SECTIONS } from "./inspectionSchema"
 import { BrandMark } from "../Icons"
 
@@ -62,12 +63,20 @@ export default function InspectionReport({ data, vehicleTitle, onClose, onPrint 
             <table className="ir-table">
               <tbody>
                 {section.fields.map((field) => (
-                  <tr key={field.key}>
-                    <th>{field.label}</th>
-                    <td>
-                      <FieldValue field={field} value={data[field.key]} />
-                    </td>
-                  </tr>
+                  <Fragment key={field.key}>
+                    <tr>
+                      <th>{field.label}</th>
+                      <td>
+                        <FieldValue field={field} value={data[field.key]} />
+                      </td>
+                    </tr>
+                    {field.type === "status" && data[field.key] === "Fail" && data[`${field.key}Reason`] && (
+                      <tr>
+                        <th>Reason</th>
+                        <td>{data[`${field.key}Reason`]}</td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
