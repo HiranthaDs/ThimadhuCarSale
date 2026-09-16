@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from activity.service import ActivityLogService
 from auth.model import User, UserRole
 from auth.repository import UserRepository
 from auth.schema import LoginRequest, TokenResponse, UserCreateRequest
@@ -42,12 +43,20 @@ class AuthService:
                 detail="An account with this email already exists.",
             )
 
-        return self.repository.create(
+        new_user = self.repository.create(
             email=payload.email,
             full_name=payload.full_name,
             hashed_password=hash_password(payload.password),
             role=payload.role,
         )
+        ActivityLogService(self.db).log(
+            actor=current_user,
+            action="user.create",
+            entity_type="user",
+            entity_id=new_user.id,
+            description=f"Created {new_user.role.value} account for {new_user.full_name} ({new_user.email})",
+        )
+        return new_user
 
     def list_users(self, current_user: User) -> list[User]:
         if current_user.role != UserRole.owner:
@@ -68,7 +77,15 @@ class AuthService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found.")
         if target.role == UserRole.owner:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot modify the owner account.")
-        return self.repository.set_active(target, is_active)
+        updated = self.repository.set_active(target, is_active)
+        ActivityLogService(self.db).log(
+            actor=current_user,
+            action="user.activate" if is_active else "user.deactivate",
+            entity_type="user",
+            entity_id=updated.id,
+            description=f"{'Activated' if is_active else 'Deactivated'} account for {updated.full_name} ({updated.email})",
+        )
+        return updated
 
     def bootstrap_owner(self, *, email: str, password: str, full_name: str) -> None:
         """Ensures exactly one owner account exists, created on first startup."""

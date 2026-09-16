@@ -12,9 +12,10 @@ import {
 
 const navByRole = {
   owner: [
-    { label: "Dashboard", icon: DashboardIcon, active: true },
-    { label: "Users", icon: UsersIcon, chevron: true },
-    { label: "Activity Log", icon: ReportsIcon },
+    { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
+    { label: "Client Profiles", icon: ClipboardIcon, view: "clients" },
+    { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist" },
+    { label: "Activity Log", icon: ReportsIcon, view: "activity" },
     { label: "Settings", icon: SettingsIcon },
   ],
   technician: [
@@ -31,7 +32,7 @@ const navByRole = {
   ],
 }
 
-export default function Sidebar({ role = "technician", username, onLogout }) {
+export default function Sidebar({ role = "technician", username, onLogout, activeView, onNavigate }) {
   const navItems = navByRole[role] ?? navByRole.technician
 
   return (
@@ -49,13 +50,24 @@ export default function Sidebar({ role = "technician", username, onLogout }) {
       </div>
 
       <nav className="tp-nav">
-        {navItems.map(({ label, icon: Icon, active, chevron }) => (
-          <a key={label} className={`tp-nav-item${active ? " tp-nav-item-active" : ""}`} href="#">
-            <Icon />
-            {label}
-            {chevron && <ChevronIcon className="tp-chev" />}
-          </a>
-        ))}
+        {navItems.map(({ label, icon: Icon, view, chevron }) => {
+          const isActive = view ? view === activeView : label === "Dashboard" && !activeView
+          return (
+            <a
+              key={label}
+              className={`tp-nav-item${isActive ? " tp-nav-item-active" : ""}`}
+              href="#"
+              onClick={(e) => {
+                e.preventDefault()
+                if (view && onNavigate) onNavigate(view)
+              }}
+            >
+              <Icon />
+              {label}
+              {chevron && <ChevronIcon className="tp-chev" />}
+            </a>
+          )
+        })}
       </nav>
 
       <div className="tp-sidebar-user">

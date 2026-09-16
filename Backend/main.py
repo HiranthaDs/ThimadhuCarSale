@@ -3,13 +3,19 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from activity.router import router as activity_router
 from auth.router import router as auth_router
 from auth.service import AuthService
+from blacklist.router import router as blacklist_router
+from clients.router import router as clients_router
 from core.config import get_settings
 from core.database import Base, SessionLocal, engine
 
 # Import models so they are registered on Base before create_all runs.
 from auth import model  # noqa: F401
+from activity import model as activity_model  # noqa: F401
+from blacklist import model as blacklist_model  # noqa: F401
+from clients import model as client_model  # noqa: F401
 
 settings = get_settings()
 
@@ -42,6 +48,9 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(clients_router)
+app.include_router(blacklist_router)
+app.include_router(activity_router)
 
 
 @app.get("/health")
