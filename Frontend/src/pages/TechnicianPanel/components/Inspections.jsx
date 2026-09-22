@@ -43,41 +43,43 @@ export default function Inspections({ token, onEdit }) {
       )}
 
       {!loading && !error && reports.length > 0 && (
-        <ul className="tp-inspections-list">
+        <ul className="tp-reports-list">
           {reports.map((report) => (
-            <li key={report.id} className="tp-inspections-item">
-              <div className="tp-inspections-item-main">
-                <span className="tp-inspections-name">
-                  {report.registration_number || report.vehicle_title || "Untitled Report"}
-                </span>
-                <span className="tp-inspections-meta">
-                  {report.vehicle_title}
-                  {report.buyer_name ? ` — ${report.buyer_name}` : ""}
-                </span>
-              </div>
-              <div className="tp-inspections-item-side">
-                <ReportStatusBadge status={report.status} />
-                <span className="tp-inspections-date">
-                  {new Date(report.created_at).toLocaleString("en-US", {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-                <a className="tp-inspections-link" href={report.url} target="_blank" rel="noreferrer">
-                  View PDF
-                </a>
-                {report.status !== "checked" && (
-                  <button
-                    type="button"
-                    className="tp-reports-btn"
-                    onClick={() => onEdit?.(report)}
-                  >
-                    Edit
-                  </button>
-                )}
+            <li key={report.id} className="tp-reports-item">
+              <div className="tp-reports-item-top">
+                <div className="tp-inspections-item-main">
+                  <span className="tp-inspections-name">
+                    {report.registration_number || report.vehicle_title || "Untitled Report"}
+                  </span>
+                  <span className="tp-inspections-meta">
+                    {report.vehicle_title}
+                    {report.buyer_name ? ` — ${report.buyer_name}` : ""}
+                  </span>
+                </div>
+                <div className="tp-reports-item-side">
+                  {report.status !== "checked" && (
+                    <button
+                      type="button"
+                      className="tp-reports-btn"
+                      onClick={() => onEdit?.(report)}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  <ReportStatusBadge status={report.status} />
+                  <span className="tp-inspections-date">
+                    {new Date(report.created_at).toLocaleString("en-US", {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <a className="tp-inspections-link" href={report.url} target="_blank" rel="noreferrer">
+                    View PDF
+                  </a>
+                </div>
               </div>
             </li>
           ))}
