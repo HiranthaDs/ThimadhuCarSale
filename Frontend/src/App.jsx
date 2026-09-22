@@ -7,7 +7,8 @@ import StaffPanel from "./pages/StaffPanel"
 const panels = {
   owner: OwnerPanel,
   technician: TechnicianPanel,
-  staff: StaffPanel,
+  co: StaffPanel,
+  accountant: StaffPanel,
 }
 
 const SESSION_KEY = "thimadhu_session"
@@ -42,6 +43,7 @@ function App() {
 
   return (
     <ActivePanel
+      role={session.role}
       username={session.fullName || session.username}
       token={session.token}
       onLogout={handleLogout}

@@ -26,3 +26,11 @@ export function setUserActive(token, userId, active) {
     token,
   })
 }
+
+export function changePassword(token, { currentPassword, newPassword }) {
+  return apiRequest("/auth/change-password", {
+    method: "PATCH",
+    token,
+    body: { current_password: currentPassword, new_password: newPassword },
+  })
+}

@@ -9,26 +9,38 @@ import {
   ChevronIcon,
   LogoutIcon,
 } from "../Icons"
+import logo from "../../../assets/logo.png"
 
 const navByRole = {
   owner: [
     { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
     { label: "Client Profiles", icon: ClipboardIcon, view: "clients" },
+    { label: "Profile Approvals", icon: CheckBadgeIcon, view: "approvals" },
+    { label: "Inspection Reports", icon: ReportsIcon, view: "reports" },
+    { label: "Inspection Report 2", icon: ReportsIcon, view: "reports2" },
     { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist" },
     { label: "Activity Log", icon: ReportsIcon, view: "activity" },
-    { label: "Settings", icon: SettingsIcon },
+    { label: "Settings", icon: SettingsIcon, view: "settings" },
   ],
   technician: [
-    { label: "Dashboard", icon: DashboardIcon, active: true },
-    { label: "Inspections", icon: ClipboardIcon, chevron: true },
+    { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
+    { label: "Inspections", icon: ClipboardIcon, view: "inspections" },
+    { label: "Inspection Report 2", icon: ReportsIcon, view: "reports2" },
+    { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist" },
     { label: "Equipment", icon: InventoryIcon },
-    { label: "Settings", icon: SettingsIcon },
+    { label: "Settings", icon: SettingsIcon, view: "settings" },
   ],
-  staff: [
-    { label: "Dashboard", icon: DashboardIcon, active: true },
-    { label: "Pending Reviews", icon: CheckBadgeIcon, chevron: true },
-    { label: "Approved Reports", icon: ReportsIcon },
-    { label: "Settings", icon: SettingsIcon },
+  co: [
+    { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
+    { label: "Client Profiles", icon: ClipboardIcon, view: "clients" },
+    { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist" },
+    { label: "Settings", icon: SettingsIcon, view: "settings" },
+  ],
+  accountant: [
+    { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
+    { label: "Client Profiles", icon: ClipboardIcon, view: "clients" },
+    { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist" },
+    { label: "Settings", icon: SettingsIcon, view: "settings" },
   ],
 }
 
@@ -39,13 +51,11 @@ export default function Sidebar({ role = "technician", username, onLogout, activ
     <aside className="tp-sidebar">
       <div className="tp-brand">
         <div className="tp-brand-icon">
-          <CarIconWithTail />
+          <img src={logo} alt="Thimadhu Auto Trading" />
         </div>
         <div className="tp-brand-text">
-          <div className="tp-name">
-            Auto<span>Mart</span>
-          </div>
-          <div className="tp-tag">Drive Your Future</div>
+          <div className="tp-name">Thimadhu</div>
+          <div className="tp-tag">Auto Trading</div>
         </div>
       </div>
 
@@ -80,16 +90,5 @@ export default function Sidebar({ role = "technician", username, onLogout, activ
         </button>
       </div>
     </aside>
-  )
-}
-
-function CarIconWithTail() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2" />
-      <circle cx="7" cy="17" r="2" />
-      <circle cx="17" cy="17" r="2" />
-      <path d="M9 17h6" />
-    </svg>
   )
 }

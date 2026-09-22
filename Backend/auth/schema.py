@@ -12,7 +12,7 @@ class LoginRequest(BaseModel):
 
 
 class UserCreateRequest(BaseModel):
-    """Used by an owner to open an account for a staff or technician member."""
+    """Used by an owner to open an account for a co, accountant, or technician member."""
 
     email: EmailStr
     full_name: str = Field(min_length=1, max_length=255)
@@ -33,6 +33,11 @@ class UserOut(BaseModel):
     role: UserRole
     is_active: bool
     created_at: datetime
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class TokenResponse(BaseModel):

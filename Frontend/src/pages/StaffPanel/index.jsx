@@ -1,14 +1,29 @@
+import { useState } from "react"
 import Sidebar from "../TechnicianPanel/components/Sidebar"
 import Hero from "../TechnicianPanel/components/Hero"
+import Settings from "../TechnicianPanel/components/Settings"
+import ClientProfiles from "../OwnerPanel/ClientProfiles"
+import VehicleBlacklist from "../OwnerPanel/VehicleBlacklist"
 import "../TechnicianPanel/TechnicianPanel.css"
+import "../OwnerPanel/ClientProfiles/ClientProfiles.css"
 
-export default function StaffPanel({ username, onLogout }) {
+export default function StaffPanel({ role, username, token, onLogout }) {
+  const [view, setView] = useState("dashboard")
+
   return (
     <div className="tp-app">
-      <Sidebar role="staff" username={username} onLogout={onLogout} />
+      <Sidebar role={role} username={username} onLogout={onLogout} activeView={view} onNavigate={setView} />
 
       <main className="tp-main">
-        <Hero name={username || "Staff"} desc="Here's what needs your review today." />
+        <Hero name={username || "User"} desc="Here's what needs your attention today." />
+
+        {view === "clients" ? (
+          <ClientProfiles token={token} role={role} />
+        ) : view === "blacklist" ? (
+          <VehicleBlacklist token={token} />
+        ) : view === "settings" ? (
+          <Settings token={token} />
+        ) : null}
       </main>
     </div>
   )

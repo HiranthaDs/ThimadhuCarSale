@@ -1,6 +1,6 @@
 .lg-screen {
-  --lg-red: #e8342c;
-  --lg-red-dark: #c92a23;
+  --lg-red: #1a56db;
+  --lg-red-dark: #123f9e;
   --lg-navy: #141c2e;
   --lg-text-1: #1a1f2b;
   --lg-text-2: #6b7280;
@@ -42,7 +42,7 @@
   z-index: 2;
   width: 60%;
   height: 55%;
-  background: radial-gradient(ellipse at 30% 70%, rgba(232, 52, 44, 0.45), transparent 68%);
+  background: radial-gradient(ellipse at 30% 70%, rgba(26, 86, 219, 0.45), transparent 68%);
   filter: blur(10px);
   pointer-events: none;
 }
@@ -60,7 +60,7 @@
 }
 
 .lg-brand { display: flex; align-items: center; gap: 12px; }
-.lg-brand-icon { width: 40px; height: 40px; color: var(--lg-red); flex-shrink: 0; }
+.lg-brand-icon { width: 40px; height: 40px; color: var(--lg-red); flex-shrink: 0; object-fit: cover; border-radius: 8px; }
 .lg-brand-text { line-height: 1.15; }
 .lg-brand-name { font-weight: 800; font-size: 22px; color: #fff; letter-spacing: 0.2px; }
 .lg-brand-name span { color: var(--lg-red); }
@@ -130,21 +130,21 @@
   flex-direction: column;
 }
 .lg-card-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; }
-.lg-card-brand-icon { width: 34px; height: 34px; color: var(--lg-red); flex-shrink: 0; }
-.lg-card-brand-text .lg-brand-name { font-size: 18px; }
+.lg-card-brand-icon { width: 34px; height: 34px; color: var(--lg-red); flex-shrink: 0; object-fit: cover; border-radius: 8px; }
+.lg-card-brand-text .lg-brand-name { font-size: 18px; color: var(--lg-red); }
 
 .lg-welcome-title { font-size: 24px; font-weight: 800; margin: 0 0 6px; color: var(--lg-text-1); }
 .lg-welcome-sub { font-size: 13.5px; color: var(--lg-text-2); margin-bottom: 24px; }
 
 .lg-field-label { font-size: 13px; font-weight: 600; color: var(--lg-text-1); margin-bottom: 10px; display: block; }
 
-.lg-role-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 22px; }
+.lg-role-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 22px; }
 .lg-role-btn {
   display: flex; flex-direction: column; align-items: center; gap: 7px;
-  padding: 12px 6px; border-radius: 11px;
+  padding: 12px 4px; border-radius: 11px;
   border: 1.5px solid var(--lg-border);
   background: #fff; color: var(--lg-text-2);
-  font-size: 12px; font-weight: 600;
+  font-size: 11px; font-weight: 600;
 }
 .lg-role-btn svg { width: 16px; height: 16px; }
 .lg-role-btn-active { background: var(--lg-navy); border-color: var(--lg-navy); color: #fff; }
@@ -187,10 +187,10 @@
 
 .lg-login-btn {
   width: 100%; border: none; border-radius: 12px;
-  background: linear-gradient(180deg, #ea3f36, var(--lg-red-dark));
+  background: linear-gradient(180deg, #3b74e6, var(--lg-red-dark));
   color: #fff; font-weight: 700; font-size: 14.5px;
   padding: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;
-  box-shadow: 0 10px 20px -6px rgba(232, 52, 44, 0.55);
+  box-shadow: 0 10px 20px -6px rgba(26, 86, 219, 0.55);
 }
 .lg-login-btn svg { width: 16px; height: 16px; }
 
@@ -204,4 +204,5 @@
   .lg-hero-title { font-size: 36px; }
   .lg-signage { display: none; }
   .lg-features { gap: 24px; }
+  .lg-role-group { grid-template-columns: repeat(2, 1fr); }
 }

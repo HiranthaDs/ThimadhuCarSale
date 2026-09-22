@@ -1,6 +1,8 @@
-import { Fragment } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
+import html2pdf from "html2pdf.js"
 import { SECTIONS } from "./inspectionSchema"
 import { BrandMark } from "../Icons"
+import { replaceReportPdf, uploadReportPdf } from "../../../api/reports"
 
 function FieldValue({ field, value }) {
   if (field.type === "photo") {
@@ -24,7 +26,13 @@ function FieldValue({ field, value }) {
   return <span>{value}</span>
 }
 
-export default function InspectionReport({ data, vehicleTitle, onClose, onPrint }) {
+export default function InspectionReport({ data, vehicleTitle, token, reportId, onClose, onPrint, onSaved }) {
+  const pageRef = useRef(null)
+  const autoSaveStarted = useRef(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadedUrl, setUploadedUrl] = useState(null)
+  const [uploadError, setUploadError] = useState(null)
+
   const today = new Date().toLocaleString("en-US", {
     year: "numeric",
     month: "2-digit",
@@ -32,6 +40,46 @@ export default function InspectionReport({ data, vehicleTitle, onClose, onPrint 
     hour: "2-digit",
     minute: "2-digit",
   })
+
+  async function handleSaveToCloud() {
+    if (!pageRef.current) return
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const blob = await html2pdf()
+        .set({
+          margin: 10,
+          filename: "inspection-report.pdf",
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(pageRef.current)
+        .outputPdf("blob")
+
+      const registrationNumber = data.registrationNumber || ""
+      const fileName = `${registrationNumber || vehicleTitle || "inspection-report"}.pdf`
+      const file = new File([blob], fileName, { type: "application/pdf" })
+      const buyerName = [data.buyerFirstName, data.buyerLastName].filter(Boolean).join(" ")
+      const meta = { registrationNumber, vehicleTitle, buyerName, formData: data }
+      const result = reportId
+        ? await replaceReportPdf(token, reportId, file, meta)
+        : await uploadReportPdf(token, file, meta)
+      setUploadedUrl(result.url)
+      onSaved?.(result)
+    } catch (err) {
+      setUploadError(err.message || "Failed to upload PDF.")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (autoSaveStarted.current) return
+    autoSaveStarted.current = true
+    handleSaveToCloud()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="ir-overlay">
@@ -42,9 +90,26 @@ export default function InspectionReport({ data, vehicleTitle, onClose, onPrint 
         <button type="button" className="tp-form-btn tp-form-btn-primary" onClick={onPrint}>
           Print / Save as PDF
         </button>
+
+        {uploading && <span className="ir-cloud-status">Saving to cloud…</span>}
+
+        {!uploading && uploadedUrl && (
+          <a className="ir-cloud-link" href={uploadedUrl} target="_blank" rel="noreferrer">
+            ✓ Saved — View PDF
+          </a>
+        )}
+
+        {!uploading && uploadError && (
+          <>
+            <span className="ir-cloud-error">{uploadError}</span>
+            <button type="button" className="tp-form-btn tp-form-btn-secondary" onClick={handleSaveToCloud}>
+              Retry Save
+            </button>
+          </>
+        )}
       </div>
 
-      <div className="ir-page">
+      <div className="ir-page" ref={pageRef}>
         <header className="ir-header">
           <BrandMark iconSize={46} />
           <div className="ir-header-meta">

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from activity.service import ActivityLogService
 from auth.model import User, UserRole
 from auth.repository import UserRepository
-from auth.schema import LoginRequest, TokenResponse, UserCreateRequest
+from auth.schema import ChangePasswordRequest, LoginRequest, TokenResponse, UserCreateRequest
 from core.security import create_access_token, hash_password, verify_password
 
 
@@ -33,7 +33,7 @@ class AuthService:
         if current_user.role != UserRole.owner:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the owner can create staff or technician accounts.",
+                detail="Only the owner can create accounts.",
             )
         payload.ensure_creatable_role()
 
@@ -84,6 +84,22 @@ class AuthService:
             entity_type="user",
             entity_id=updated.id,
             description=f"{'Activated' if is_active else 'Deactivated'} account for {updated.full_name} ({updated.email})",
+        )
+        return updated
+
+    def change_password(self, payload: ChangePasswordRequest, current_user: User) -> User:
+        if not verify_password(payload.current_password, current_user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect.",
+            )
+        updated = self.repository.set_password(current_user, hash_password(payload.new_password))
+        ActivityLogService(self.db).log(
+            actor=current_user,
+            action="user.change_password",
+            entity_type="user",
+            entity_id=updated.id,
+            description=f"{updated.full_name} ({updated.email}) changed their password",
         )
         return updated
 

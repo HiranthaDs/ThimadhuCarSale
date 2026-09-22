@@ -47,6 +47,13 @@ class ClientProfileRepository:
         stmt = stmt.order_by(ClientProfile.created_at.desc())
         return list(self.db.scalars(stmt))
 
+    def update(self, profile: ClientProfile, **fields) -> ClientProfile:
+        for key, value in fields.items():
+            setattr(profile, key, value)
+        self.db.commit()
+        self.db.refresh(profile)
+        return profile
+
     def delete(self, profile: ClientProfile) -> None:
         self.db.delete(profile)
         self.db.commit()

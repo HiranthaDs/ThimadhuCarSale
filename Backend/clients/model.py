@@ -27,12 +27,23 @@ class Department(str, enum.Enum):
     purchasing = "purchasing"
 
 
+class ClientProfileStatus(str, enum.Enum):
+    pending_accountant = "pending_accountant"
+    pending_owner = "pending_owner"
+    approved = "approved"
+
+
 class ClientProfile(Base):
     __tablename__ = "client_profiles"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    status: Mapped[ClientProfileStatus] = mapped_column(
+        Enum(ClientProfileStatus, name="client_profile_status"),
+        nullable=False,
+        default=ClientProfileStatus.pending_accountant,
+    )
 
     # ---- Local client details ----
     has_local_client: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

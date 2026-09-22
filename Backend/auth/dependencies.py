@@ -36,3 +36,15 @@ def require_owner(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != UserRole.owner:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Owner access required.")
     return current_user
+
+
+def require_roles(*roles: UserRole):
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in roles:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have access to this resource.")
+        return current_user
+
+    return dependency
+
+
+require_owner_co_accountant = require_roles(UserRole.owner, UserRole.co, UserRole.accountant)

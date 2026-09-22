@@ -11,7 +11,8 @@ from core.database import Base
 
 class UserRole(str, enum.Enum):
     owner = "owner"
-    staff = "staff"
+    co = "co"
+    accountant = "accountant"
     technician = "technician"
 
 

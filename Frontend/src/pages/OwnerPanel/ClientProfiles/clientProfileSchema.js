@@ -56,6 +56,61 @@ export const TABS = [
   { key: "payment", label: "Payment Details" },
 ]
 
+export function mapProfileToForm(profile) {
+  const toInputValue = (v) => (v === null || v === undefined ? "" : v)
+  const toDateInput = (v) => (v ? String(v).slice(0, 10) : "")
+
+  return {
+    ...initialFormState,
+    ...profile,
+    local_client_name: toInputValue(profile.local_client_name),
+    local_client_phone: toInputValue(profile.local_client_phone),
+    local_client_document_type: profile.local_client_document_type || "none",
+    local_client_document_image: toInputValue(profile.local_client_document_image),
+
+    foreign_client_name: toInputValue(profile.foreign_client_name),
+    foreign_client_country: toInputValue(profile.foreign_client_country),
+    foreign_client_phone: toInputValue(profile.foreign_client_phone),
+    foreign_client_document_type: profile.foreign_client_document_type || "none",
+    foreign_client_document_image: toInputValue(profile.foreign_client_document_image),
+
+    cr_document_image: toInputValue(profile.cr_document_image),
+    revenue_license_image: toInputValue(profile.revenue_license_image),
+    vehicle_type: toInputValue(profile.vehicle_type),
+    chassis_number: toInputValue(profile.chassis_number),
+    vehicle_number: toInputValue(profile.vehicle_number),
+
+    previous_owner_nic: toInputValue(profile.previous_owner_nic),
+    previous_owner_selfie_image: toInputValue(profile.previous_owner_selfie_image),
+    in_writing_letter_image: toInputValue(profile.in_writing_letter_image),
+    registration_type: profile.registration_type || "registered",
+    previous_owner_phone: toInputValue(profile.previous_owner_phone),
+    scan_report_1_image: toInputValue(profile.scan_report_1_image),
+    scan_report_2_image: toInputValue(profile.scan_report_2_image),
+    garage_bill_image: toInputValue(profile.garage_bill_image),
+    modification_image: toInputValue(profile.modification_image),
+    other_notes: toInputValue(profile.other_notes),
+    third_person_involved: Boolean(profile.third_person_involved),
+    third_person_image: toInputValue(profile.third_person_image),
+    handover_selfie_image: toInputValue(profile.handover_selfie_image),
+
+    department: profile.department || "marketing",
+    department_person_name: toInputValue(profile.department_person_name),
+
+    leasing_company: toInputValue(profile.leasing_company),
+    file_signed_date: toDateInput(profile.file_signed_date),
+    payment_date: toDateInput(profile.payment_date),
+    bank_officer_name: toInputValue(profile.bank_officer_name),
+    do_date: toDateInput(profile.do_date),
+    customer_advanced_date: toDateInput(profile.customer_advanced_date),
+    vehicle_handover_date: toDateInput(profile.vehicle_handover_date),
+    purchasing_date: toDateInput(profile.purchasing_date),
+    selling_price: toInputValue(profile.selling_price),
+    loan_amount: toInputValue(profile.loan_amount),
+    customer_down_payment: toInputValue(profile.customer_down_payment),
+  }
+}
+
 export function validateClientTypes() {
   return ""
 }

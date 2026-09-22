@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from auth.dependencies import get_current_user, require_owner
 from auth.model import User
-from auth.schema import LoginRequest, TokenResponse, UserCreateRequest, UserOut
+from auth.schema import ChangePasswordRequest, LoginRequest, TokenResponse, UserCreateRequest, UserOut
 from auth.service import AuthService
 from core.database import get_db
 
@@ -22,13 +22,22 @@ def me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+@router.patch("/change-password", response_model=UserOut)
+def change_password(
+    payload: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return AuthService(db).change_password(payload, current_user)
+
+
 @router.post("/users", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def create_user(
     payload: UserCreateRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_owner),
 ):
-    """Owner-only: open an account (staff or technician) with an email + password."""
+    """Owner-only: open an account (co, accountant, or technician) with an email + password."""
     return AuthService(db).create_staff_or_technician(payload, current_user)
 
 

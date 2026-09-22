@@ -1,3 +1,5 @@
+import logo from "../../assets/logo.png"
+
 const base = {
   viewBox: "0 0 24 24",
   fill: "none",
@@ -31,9 +33,12 @@ export function BrandCarIcon(props) {
 export function BrandMark({ iconSize = 40, className = "" }) {
   return (
     <div className={`tp-brandmark ${className}`}>
-      <div className="tp-brandmark-icon" style={{ width: iconSize, height: iconSize }}>
-        <BrandCarIcon />
-      </div>
+      <img
+        className="tp-brandmark-icon"
+        src={logo}
+        alt="Thimadhu Auto Trading"
+        style={{ width: iconSize, height: iconSize, objectFit: "contain" }}
+      />
       <div className="tp-brandmark-text">
         <div className="tp-brandmark-name">Thimadhu</div>
         <div className="tp-brandmark-tag">Vehicle Inspection Report</div>

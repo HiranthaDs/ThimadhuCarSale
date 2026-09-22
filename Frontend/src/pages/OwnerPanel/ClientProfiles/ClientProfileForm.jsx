@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import { createClientProfile } from "../../../api/clients"
-import { TABS, buildSubmitPayload, initialFormState, validateClientTypes } from "./clientProfileSchema"
+import { createClientProfile, listAllScanReports, updateClientProfile } from "../../../api/clients"
+import { TABS, buildSubmitPayload, initialFormState, mapProfileToForm, validateClientTypes } from "./clientProfileSchema"
 import { COUNTRIES } from "./countries"
 
 function fileToDataUrl(file) {
@@ -160,6 +160,108 @@ function ImageField({ label, value, onChange, full }) {
   )
 }
 
+let scanReportsCache = null
+function fetchAllScanReports(token) {
+  if (!scanReportsCache) {
+    scanReportsCache = listAllScanReports(token).catch((err) => {
+      scanReportsCache = null
+      throw err
+    })
+  }
+  return scanReportsCache
+}
+
+function ScanReportField({ token, label, value, valueName, onChange, vehicleNumber, readOnly }) {
+  const [query, setQuery] = useState("")
+  const [all, setAll] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [open, setOpen] = useState(false)
+  const boxRef = useRef(null)
+
+  useEffect(() => {
+    function onClickOutside(e) {
+      if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener("mousedown", onClickOutside)
+    return () => document.removeEventListener("mousedown", onClickOutside)
+  }, [])
+
+  async function ensureLoaded() {
+    if (all || loading) return
+    setLoading(true)
+    setError("")
+    try {
+      const found = await fetchAllScanReports(token)
+      setAll(found)
+    } catch (err) {
+      setError(err.message || "Could not load PDFs from Cloudinary.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const term = query.trim().toLowerCase()
+  const matches = term && all ? all.filter((r) => r.filename.toLowerCase().startsWith(term)) : []
+
+  function handlePick(resource) {
+    onChange(resource.secure_url, resource.filename)
+    setQuery("")
+    setOpen(false)
+  }
+
+  return (
+    <div className="tp-form-group" ref={boxRef}>
+      <span>{label}</span>
+      {!readOnly && (
+        <div className="cp-scan-report-search-box">
+          <input
+            type="text"
+            className="cp-scan-report-search"
+            placeholder="Type a letter to see matching PDFs…"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setOpen(true)
+            }}
+            onFocus={() => {
+              ensureLoaded()
+              setOpen(true)
+            }}
+          />
+          {loading && <div className="cp-scan-report-hint">Loading PDFs…</div>}
+          {open && term && (
+            <div className="cp-scan-report-results">
+              {matches.length > 0 ? (
+                matches.map((r) => (
+                  <button
+                    type="button"
+                    key={r.public_id}
+                    className="cp-scan-report-result"
+                    onClick={() => handlePick(r)}
+                  >
+                    {r.format && !r.filename.toLowerCase().endsWith(`.${r.format}`) ? `${r.filename}.${r.format}` : r.filename}
+                  </button>
+                ))
+              ) : (
+                !loading && <div className="cp-scan-report-hint">No PDF starting with "{query.trim()}".</div>
+              )}
+            </div>
+          )}
+          {error && <div className="tp-form-error">{error}</div>}
+        </div>
+      )}
+      {value && (
+        <div className="cp-scan-report-row">
+          <a href={value} target="_blank" rel="noopener noreferrer" className="tp-form-btn tp-form-btn-secondary">
+            View{valueName ? `: ${valueName}` : ""}
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const DOCUMENT_OPTIONS = [
   { value: "nic", label: "NIC" },
   { value: "passport", label: "Passport" },
@@ -167,9 +269,10 @@ const DOCUMENT_OPTIONS = [
   { value: "none", label: "No document" },
 ]
 
-export default function ClientProfileForm({ token, onClose, onCreated }) {
+export default function ClientProfileForm({ token, profile, readOnly = false, onClose, onCreated, onUpdated }) {
+  const isEdit = Boolean(profile)
   const [activeTab, setActiveTab] = useState("client_details")
-  const [form, setForm] = useState(initialFormState)
+  const [form, setForm] = useState(() => (isEdit ? mapProfileToForm(profile) : initialFormState))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
 
@@ -190,10 +293,15 @@ export default function ClientProfileForm({ token, onClose, onCreated }) {
 
     setSubmitting(true)
     try {
-      const created = await createClientProfile(token, buildSubmitPayload(form))
-      onCreated?.(created)
+      if (isEdit) {
+        const updated = await updateClientProfile(token, profile.id, buildSubmitPayload(form))
+        onUpdated?.(updated)
+      } else {
+        const created = await createClientProfile(token, buildSubmitPayload(form))
+        onCreated?.(created)
+      }
     } catch (err) {
-      setError(err.message || "Could not create client profile.")
+      setError(err.message || `Could not ${isEdit ? "update" : "create"} client profile.`)
     } finally {
       setSubmitting(false)
     }
@@ -202,7 +310,9 @@ export default function ClientProfileForm({ token, onClose, onCreated }) {
   return (
     <div className="tp-card cp-form-card">
       <div className="tp-card-head">
-        <div className="tp-card-title">Create Client Profile</div>
+        <div className="tp-card-title">
+          {readOnly ? "View Client Profile" : isEdit ? "Edit Client Profile" : "Create Client Profile"}
+        </div>
         <button type="button" className="tp-form-close" onClick={onClose} aria-label="Close">
           ×
         </button>
@@ -222,6 +332,7 @@ export default function ClientProfileForm({ token, onClose, onCreated }) {
       </div>
 
       <form onSubmit={handleSubmit} className="tp-inspection-form">
+        <fieldset disabled={readOnly} className="cp-fieldset">
         {activeTab === "client_details" && (
           <div className="tp-form-section">
             <label className="cp-radio-option cp-client-toggle">
@@ -357,8 +468,22 @@ export default function ClientProfileForm({ token, onClose, onCreated }) {
               />
             </div>
             <div className="tp-form-row">
-              <ImageField label="Scan Report 1" value={form.scan_report_1_image} onChange={(v) => set("scan_report_1_image", v)} />
-              <ImageField label="Scan Report 2" value={form.scan_report_2_image} onChange={(v) => set("scan_report_2_image", v)} />
+              <ScanReportField
+                token={token}
+                label="Scan Report 1"
+                value={form.scan_report_1_image}
+                onChange={(v) => set("scan_report_1_image", v)}
+                vehicleNumber={form.vehicle_number}
+                readOnly={readOnly}
+              />
+              <ScanReportField
+                token={token}
+                label="Scan Report 2"
+                value={form.scan_report_2_image}
+                onChange={(v) => set("scan_report_2_image", v)}
+                vehicleNumber={form.vehicle_number}
+                readOnly={readOnly}
+              />
             </div>
             <div className="tp-form-row">
               <ImageField label="Garage Bill" value={form.garage_bill_image} onChange={(v) => set("garage_bill_image", v)} />
@@ -454,16 +579,19 @@ export default function ClientProfileForm({ token, onClose, onCreated }) {
             </div>
           </div>
         )}
+        </fieldset>
 
         {error && <div className="tp-form-error">{error}</div>}
 
         <div className="tp-form-actions">
           <button type="button" className="tp-form-btn tp-form-btn-secondary" onClick={onClose}>
-            Cancel
+            {readOnly ? "Close" : "Cancel"}
           </button>
-          <button type="submit" className="tp-form-btn tp-form-btn-primary" disabled={submitting}>
-            {submitting ? "Saving…" : "Save Client Profile"}
-          </button>
+          {!readOnly && (
+            <button type="submit" className="tp-form-btn tp-form-btn-primary" disabled={submitting}>
+              {submitting ? "Saving…" : isEdit ? "Save Changes" : "Save Client Profile"}
+            </button>
+          )}
         </div>
       </form>
     </div>

@@ -1,13 +1,17 @@
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from activity.router import router as activity_router
 from auth.router import router as auth_router
 from auth.service import AuthService
 from blacklist.router import router as blacklist_router
 from clients.router import router as clients_router
+from reports.router import router as reports_router
 from core.config import get_settings
 from core.database import Base, SessionLocal, engine
 
@@ -16,6 +20,7 @@ from auth import model  # noqa: F401
 from activity import model as activity_model  # noqa: F401
 from blacklist import model as blacklist_model  # noqa: F401
 from clients import model as client_model  # noqa: F401
+from reports import model as report_model  # noqa: F401
 
 settings = get_settings()
 
@@ -51,6 +56,11 @@ app.include_router(auth_router)
 app.include_router(clients_router)
 app.include_router(blacklist_router)
 app.include_router(activity_router)
+app.include_router(reports_router)
+
+uploads_dir = Path(__file__).resolve().parent / "uploads"
+uploads_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 
 @app.get("/health")

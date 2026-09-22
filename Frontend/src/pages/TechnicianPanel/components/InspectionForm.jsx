@@ -134,8 +134,8 @@ function Field({ field, value, onChange, reasonValue, onReasonChange }) {
   )
 }
 
-export default function InspectionForm({ onClose, onSubmit }) {
-  const [data, setData] = useState(buildInitialData)
+export default function InspectionForm({ onClose, onSubmit, initialData }) {
+  const [data, setData] = useState(() => (initialData ? { ...buildInitialData(), ...initialData } : buildInitialData()))
 
   function update(key, value) {
     setData((prev) => ({ ...prev, [key]: value }))
@@ -149,7 +149,7 @@ export default function InspectionForm({ onClose, onSubmit }) {
   return (
     <div className="tp-card tp-inspection-form">
       <div className="tp-card-head">
-        <div className="tp-card-title">New Inspection Report</div>
+        <div className="tp-card-title">{initialData ? "Edit Inspection Report" : "New Inspection Report"}</div>
         <button type="button" className="tp-form-close" onClick={onClose} aria-label="Close">
           ✕
         </button>

@@ -5,6 +5,9 @@ import { createUser, listUsers, setUserActive } from "../../api/auth"
 import ClientProfiles from "./ClientProfiles"
 import VehicleBlacklist from "./VehicleBlacklist"
 import ActivityLog from "./ActivityLog"
+import InspectionReports from "./InspectionReports"
+import InspectionReports2 from "./InspectionReports/InspectionReports2"
+import Settings from "../TechnicianPanel/components/Settings"
 import "../TechnicianPanel/TechnicianPanel.css"
 import "./ClientProfiles/ClientProfiles.css"
 
@@ -80,11 +83,25 @@ export default function OwnerPanel({ username, token, onLogout }) {
         <Hero name={username || "Owner"} desc="Here's an overview of your dealership today." />
 
         {view === "clients" ? (
-          <ClientProfiles token={token} />
+          <ClientProfiles token={token} role="owner" />
+        ) : view === "approvals" ? (
+          <ClientProfiles
+            token={token}
+            role="owner"
+            statusFilter="pending_owner"
+            title="Profile Approvals"
+            emptyLabel="No client profiles are waiting for your approval."
+          />
+        ) : view === "reports" ? (
+          <InspectionReports token={token} />
+        ) : view === "reports2" ? (
+          <InspectionReports2 token={token} />
         ) : view === "blacklist" ? (
           <VehicleBlacklist token={token} />
         ) : view === "activity" ? (
           <ActivityLog token={token} />
+        ) : view === "settings" ? (
+          <Settings token={token} />
         ) : (
           <>
         {!showCreateForm && (
@@ -97,14 +114,14 @@ export default function OwnerPanel({ username, token, onLogout }) {
               setShowCreateForm(true)
             }}
           >
-            + Create Staff / Technician Account
+            + Create Account
           </button>
         )}
 
         {showCreateForm && (
           <div className="tp-card" style={{ maxWidth: 640, marginBottom: 20 }}>
             <div className="tp-card-head">
-              <div className="tp-card-title">Create Staff / Technician Account</div>
+              <div className="tp-card-title">Create Account</div>
               <button
                 type="button"
                 className="tp-form-close"
@@ -130,7 +147,8 @@ export default function OwnerPanel({ username, token, onLogout }) {
                   <span>Role</span>
                   <select value={form.role} onChange={(e) => updateForm("role", e.target.value)}>
                     <option value="technician">Technician</option>
-                    <option value="staff">Staff</option>
+                    <option value="co">CO</option>
+                    <option value="accountant">Accountant</option>
                   </select>
                 </label>
                 <label className="tp-form-group">

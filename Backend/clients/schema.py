@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from clients.model import ClientDocumentType, Department, RegistrationType
+from clients.model import ClientDocumentType, ClientProfileStatus, Department, RegistrationType
 
 
 def _na_if_blank(value: str | None) -> str:
@@ -90,11 +90,16 @@ class ClientProfileCreate(BaseModel):
         return self
 
 
+class ClientProfileUpdate(ClientProfileCreate):
+    pass
+
+
 class ClientProfileOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
     created_at: datetime
+    status: ClientProfileStatus
 
     has_local_client: bool
     local_client_name: str | None
@@ -145,11 +150,25 @@ class ClientProfileOut(BaseModel):
     customer_down_payment: float | None
 
 
+class ScanReportLookup(BaseModel):
+    scan_report_1_url: str | None
+    scan_report_2_url: str | None
+
+
+class ScanReportSearchResult(BaseModel):
+    public_id: str
+    filename: str
+    secure_url: str
+    format: str | None = None
+    resource_type: str | None = None
+
+
 class ClientProfileSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
     created_at: datetime
+    status: ClientProfileStatus
     has_local_client: bool
     local_client_name: str | None
     local_client_phone: str | None

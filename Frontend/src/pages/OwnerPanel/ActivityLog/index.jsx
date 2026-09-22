@@ -3,7 +3,8 @@ import { listActivityLogs } from "../../../api/activity"
 
 const ROLE_LABELS = {
   owner: "Owner",
-  staff: "Staff",
+  co: "CO",
+  accountant: "Accountant",
   technician: "Technician",
 }
 

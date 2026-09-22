@@ -1,6 +1,5 @@
 import { useState } from "react"
 import {
-  CarIcon,
   InventoryFeatureIcon,
   CustomersFeatureIcon,
   WrenchIcon,
@@ -14,11 +13,13 @@ import {
   ShieldIcon,
 } from "./icons"
 import { login } from "../../api/auth"
+import logo from "../../assets/logo.png"
 import "./Login.css"
 
 const roles = [
   { key: "owner", label: "Owner", icon: UsersIcon },
-  { key: "staff", label: "Staff", icon: StaffIcon },
+  { key: "co", label: "CO", icon: StaffIcon },
+  { key: "accountant", label: "Accountant", icon: ShieldIcon },
   { key: "technician", label: "Technician", icon: WrenchIcon },
 ]
 
@@ -58,12 +59,10 @@ export default function Login({ onLogin }) {
 
       <div className="lg-hero-content">
         <div className="lg-brand">
-          <CarIcon className="lg-brand-icon" />
+          <img src={logo} alt="Thimadhu Auto Trading" className="lg-brand-icon" />
           <div className="lg-brand-text">
-            <div className="lg-brand-name">
-              Auto<span>Mart</span>
-            </div>
-            <div className="lg-brand-tag">Drive Your Success</div>
+            <div className="lg-brand-name">Thimadhu</div>
+            <div className="lg-brand-tag">Auto Trading</div>
           </div>
         </div>
 
@@ -123,12 +122,10 @@ export default function Login({ onLogin }) {
 
         <form className="lg-card" onSubmit={handleSubmit}>
           <div className="lg-card-brand">
-            <CarIcon className="lg-card-brand-icon" />
+            <img src={logo} alt="Thimadhu Auto Trading" className="lg-card-brand-icon" />
             <div className="lg-card-brand-text">
-              <div className="lg-brand-name">
-                Auto<span>Mart</span>
-              </div>
-              <div className="lg-brand-tag">Drive Your Success</div>
+              <div className="lg-brand-name">Thimadhu</div>
+              <div className="lg-brand-tag">Auto Trading</div>
             </div>
           </div>
 
