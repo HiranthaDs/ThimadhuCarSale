@@ -20,9 +20,13 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:5173"
 
-    cloudinary_cloud_name: str = ""
-    cloudinary_api_key: str = ""
-    cloudinary_api_secret: str = ""
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_reports_bucket: str = ""
+    r2_reports_public_url: str = ""
+    r2_blacklist_bucket: str = ""
+    r2_blacklist_public_url: str = ""
 
     # "development" (default) leaves /docs, /redoc and /openapi.json open, which
     # is convenient while building. Set APP_ENV=production in the deployed .env

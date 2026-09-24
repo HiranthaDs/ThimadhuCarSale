@@ -196,7 +196,7 @@ function ScanReportField({ token, label, value, valueName, onChange, vehicleNumb
       const found = await fetchAllScanReports(token)
       setAll(found)
     } catch (err) {
-      setError(err.message || "Could not load PDFs from Cloudinary.")
+      setError(err.message || "Could not load PDFs.")
     } finally {
       setLoading(false)
     }

@@ -14,7 +14,7 @@ from clients.schema import (
     ScanReportSearchResult,
 )
 from clients.service import ClientProfileService
-from core.cloudinary_client import find_scan_reports, list_pdf_reports
+from core.r2_client import find_scan_reports, list_report_pdfs
 from core.database import get_db
 
 router = APIRouter(prefix="/clients", tags=["clients"])
@@ -50,7 +50,7 @@ def lookup_scan_reports(
 def list_all_scan_reports(
     current_user: User = Depends(require_owner_co_accountant),
 ):
-    return list_pdf_reports()
+    return list_report_pdfs()
 
 
 @router.get("/{profile_id}", response_model=ClientProfileOut)

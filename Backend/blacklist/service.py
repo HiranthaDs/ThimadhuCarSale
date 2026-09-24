@@ -1,3 +1,5 @@
+import base64
+import re
 import uuid
 
 from fastapi import HTTPException, status
@@ -7,6 +9,27 @@ from activity.service import ActivityLogService
 from auth.model import User
 from blacklist.repository import VehicleBlacklistRepository
 from blacklist.schema import VehicleBlacklistCreate, VehicleBlacklistUpdate
+from core.r2_client import delete_blacklist_image, upload_blacklist_image
+
+_DATA_URL_RE = re.compile(r"^data:(image/[a-zA-Z0-9.+-]+);base64,(.+)$", re.DOTALL)
+
+
+def _store_images(images: list[str]) -> list[str]:
+    """Upload any base64 photos to R2, returning their public URLs.
+
+    Images already sent back as an https URL (kept from a previous save) are
+    left untouched.
+    """
+    stored = []
+    for image in images:
+        match = _DATA_URL_RE.match(image)
+        if not match:
+            stored.append(image)
+            continue
+        content_type, b64_data = match.groups()
+        content = base64.b64decode(b64_data)
+        stored.append(upload_blacklist_image(content, content_type))
+    return stored
 
 
 class VehicleBlacklistService:
@@ -16,7 +39,7 @@ class VehicleBlacklistService:
 
     def create(self, payload: VehicleBlacklistCreate, current_user: User):
         data = payload.model_dump()
-        images = data.pop("images")
+        images = _store_images(data.pop("images"))
         entry = self.repository.create(images=images, created_by=current_user.id, **data)
         ActivityLogService(self.db).log(
             actor=current_user,
@@ -38,9 +61,12 @@ class VehicleBlacklistService:
 
     def update(self, entry_id: uuid.UUID, payload: VehicleBlacklistUpdate, current_user: User):
         entry = self.get(entry_id)
+        old_images = {img.image for img in entry.images}
         data = payload.model_dump()
-        images = data.pop("images")
+        images = _store_images(data.pop("images"))
         entry = self.repository.update(entry, images=images, **data)
+        for removed_url in old_images - set(images):
+            delete_blacklist_image(removed_url)
         ActivityLogService(self.db).log(
             actor=current_user,
             action="blacklist.update",
@@ -53,7 +79,10 @@ class VehicleBlacklistService:
     def delete(self, entry_id: uuid.UUID, current_user: User):
         entry = self.get(entry_id)
         vehicle_label = entry.vehicle_number or entry.chassis_number
+        image_urls = [img.image for img in entry.images]
         self.repository.delete(entry)
+        for url in image_urls:
+            delete_blacklist_image(url)
         ActivityLogService(self.db).log(
             actor=current_user,
             action="blacklist.delete",

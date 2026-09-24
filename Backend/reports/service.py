@@ -5,7 +5,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from core.cloudinary_client import delete_pdf, upload_pdf
+from core.r2_client import delete_report_pdf, upload_report_pdf
 from reports.model import STATUS_CHECKED, STATUS_PENDING
 from reports.repository import ReportRepository
 
@@ -14,17 +14,9 @@ def _safe_filename(name: str | None, fallback: str) -> str:
     name = (name or "").strip()
     if not name:
         name = fallback
-    # Strip characters that aren't safe in a Cloudinary public_id.
+    # Strip characters that aren't safe in an R2 object key.
     name = re.sub(r'[\\/:*?"<>|]+', "-", name)
     return name
-
-
-def _public_id_from_url(url: str | None) -> str | None:
-    if not url:
-        return None
-    # e.g. ".../inspection_reports/CBA-1785.pdf" -> "CBA-1785"
-    filename = url.rsplit("/", 1)[-1]
-    return filename[:-4] if filename.lower().endswith(".pdf") else filename
 
 
 SCAN2_SUFFIX = "-Scan2"
@@ -59,7 +51,7 @@ class ReportService:
         form_data: dict[str, Any] | None = None,
     ):
         public_id = _safe_filename(registration_number, fallback=f"report-{uuid.uuid4()}")
-        url = upload_pdf(content, public_id)
+        url = upload_report_pdf(content, public_id)
 
         report = self.repository.create(
             created_by=created_by,
@@ -91,13 +83,13 @@ class ReportService:
         if is_scan2(report.registration_number):
             registration_number = scan2_name(registration_number or report.registration_number)
 
-        old_public_id = _public_id_from_url(report.url)
+        old_url = report.url
 
         public_id = _safe_filename(registration_number, fallback=f"report-{uuid.uuid4()}")
-        url = upload_pdf(content, public_id)
+        url = upload_report_pdf(content, public_id)
 
-        if old_public_id and old_public_id != public_id:
-            delete_pdf(old_public_id)
+        if old_url and old_url != url:
+            delete_report_pdf(old_url)
 
         return self.repository.update(
             report,
@@ -130,7 +122,7 @@ class ReportService:
 
         public_id = _safe_filename(scan2_registration, fallback=f"report-{uuid.uuid4()}")
         content = urllib.request.urlopen(report.url, timeout=30).read() if report.url else b""
-        url = upload_pdf(content, public_id)
+        url = upload_report_pdf(content, public_id)
 
         form_data = {**(report.form_data or {}), "scanNumber": 2}
 
@@ -165,7 +157,5 @@ class ReportService:
         return self.repository.set_status(report, status)
 
     def delete(self, report):
-        public_id = _public_id_from_url(report.url)
-        if public_id:
-            delete_pdf(public_id)
+        delete_report_pdf(report.url)
         self.repository.delete(report)
