@@ -50,7 +50,7 @@ export default function TechnicianPanel({ username, token, onLogout }) {
       <Sidebar role="technician" username={username} onLogout={onLogout} activeView={view} onNavigate={setView} />
 
       <main className="tp-main">
-        <Hero name={username || "Technician"} desc="Here's what's happening with your inspections today." />
+        <Hero name={username || "Technician"} desc="Here's what's happening with your inspections today." token={token} />
 
         {view === "dashboard" && (
           <>
@@ -86,7 +86,7 @@ export default function TechnicianPanel({ username, token, onLogout }) {
 
         {view === "reports2" && <InspectionReports2 token={token} />}
 
-        {view === "blacklist" && <VehicleBlacklist token={token} />}
+        {view === "blacklist" && <VehicleBlacklist token={token} role="technician" />}
 
         {view === "settings" && <Settings token={token} />}
       </main>

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { SECTIONS, STATUS_OPTIONS, buildInitialData } from "./inspectionSchema"
+import { MAX_PHOTOS_PER_FIELD, SECTIONS, STATUS_OPTIONS, buildInitialData, toPhotoList, withDefaults } from "./inspectionSchema"
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -8,6 +8,93 @@ function fileToDataUrl(file) {
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
+}
+
+// Phone photos are several MB each; with up to 60 per field the report would
+// get far too big, so each image is scaled down to 1600px JPEG before it is kept.
+const MAX_IMAGE_SIDE = 1600
+
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(img.width, img.height))
+      const canvas = document.createElement("canvas")
+      canvas.width = Math.round(img.width * scale)
+      canvas.height = Math.round(img.height * scale)
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height)
+      URL.revokeObjectURL(url)
+      resolve(canvas.toDataURL("image/jpeg", 0.85))
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(fileToDataUrl(file))
+    }
+    img.src = url
+  })
+}
+
+function MultiPhotoField({ field, value, onChange }) {
+  const { key, label } = field
+  const photos = toPhotoList(value)
+  const remaining = MAX_PHOTOS_PER_FIELD - photos.length
+  const [adding, setAdding] = useState(false)
+  const [notice, setNotice] = useState("")
+
+  async function handleFiles(e) {
+    const picked = Array.from(e.target.files || [])
+    e.target.value = ""
+    if (picked.length === 0) return
+    const accepted = picked.slice(0, Math.max(remaining, 0))
+    setNotice(
+      accepted.length < picked.length
+        ? `Only ${MAX_PHOTOS_PER_FIELD} photos are allowed per field — ${picked.length - accepted.length} were not added.`
+        : "",
+    )
+    if (accepted.length === 0) return
+    setAdding(true)
+    try {
+      const urls = await Promise.all(accepted.map(compressImage))
+      onChange(key, [...photos, ...urls])
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  return (
+    <div className="tp-form-group tp-form-group-full">
+      <span>
+        {label}{" "}
+        <small className="tp-photo-count">
+          ({photos.length}/{MAX_PHOTOS_PER_FIELD})
+        </small>
+      </span>
+      <input type="file" accept="image/*" multiple disabled={remaining <= 0 || adding} onChange={handleFiles} />
+      {adding && <small className="tp-muted">Adding photos…</small>}
+      {notice && <small className="tp-photo-notice">{notice}</small>}
+      {photos.length > 0 && (
+        <div className="tp-form-photo-strip">
+          {photos.map((src, i) => (
+            <div key={i} className="tp-photo-thumb">
+              <img src={src} alt="" />
+              <button
+                type="button"
+                className="tp-photo-remove"
+                aria-label="Remove photo"
+                onClick={() => {
+                  setNotice("")
+                  onChange(key, photos.filter((_, idx) => idx !== i))
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function Field({ field, value, onChange, reasonValue, onReasonChange }) {
@@ -75,7 +162,7 @@ function Field({ field, value, onChange, reasonValue, onReasonChange }) {
     )
   }
 
-  if (type === "photo") {
+  if (type === "file") {
     return (
       <label className="tp-form-group">
         <span>{label}</span>
@@ -98,28 +185,7 @@ function Field({ field, value, onChange, reasonValue, onReasonChange }) {
   }
 
   if (type === "multiphoto") {
-    return (
-      <label className="tp-form-group tp-form-group-full">
-        <span>{label}</span>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={async (e) => {
-            const files = Array.from(e.target.files || [])
-            const urls = await Promise.all(files.map(fileToDataUrl))
-            onChange(key, urls)
-          }}
-        />
-        {Array.isArray(value) && value.length > 0 && (
-          <div className="tp-form-photo-strip">
-            {value.map((src, i) => (
-              <img key={i} src={src} alt="" />
-            ))}
-          </div>
-        )}
-      </label>
-    )
+    return <MultiPhotoField field={field} value={value} onChange={onChange} />
   }
 
   return (
@@ -135,7 +201,7 @@ function Field({ field, value, onChange, reasonValue, onReasonChange }) {
 }
 
 export default function InspectionForm({ onClose, onSubmit, initialData }) {
-  const [data, setData] = useState(() => (initialData ? { ...buildInitialData(), ...initialData } : buildInitialData()))
+  const [data, setData] = useState(() => withDefaults(initialData))
 
   function update(key, value) {
     setData((prev) => ({ ...prev, [key]: value }))
@@ -149,7 +215,8 @@ export default function InspectionForm({ onClose, onSubmit, initialData }) {
   return (
     <div className="tp-card tp-inspection-form">
       <div className="tp-card-head">
-        <div className="tp-card-title">{initialData ? "Edit Inspection Report" : "New Inspection Report"}</div>
+        <div className="tp-card-title">{initialData ? "Edit Inspection Report" : "New Inspection Report"}
+          {data.scanNumber === 2 ? " — Scan 2" : ""}</div>
         <button type="button" className="tp-form-close" onClick={onClose} aria-label="Close">
           ✕
         </button>
@@ -175,7 +242,7 @@ export default function InspectionForm({ onClose, onSubmit, initialData }) {
         ))}
 
         <div className="tp-form-actions">
-          <button type="button" className="tp-form-btn tp-form-btn-secondary" onClick={() => setData(buildInitialData())}>
+          <button type="button" className="tp-form-btn tp-form-btn-secondary" onClick={() => setData({ ...buildInitialData(), scanNumber: data.scanNumber })}>
             Reset
           </button>
           <button type="submit" className="tp-form-btn tp-form-btn-primary">

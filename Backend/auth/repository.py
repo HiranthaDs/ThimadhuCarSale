@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -45,6 +46,22 @@ class UserRepository:
 
     def set_password(self, user: User, hashed_password: str) -> User:
         user.hashed_password = hashed_password
+        self.db.commit()
+        self.db.refresh(user)
+        return user
+
+    def register_failed_login(self, user: User, *, max_attempts: int, lockout_minutes: int) -> User:
+        user.failed_login_attempts += 1
+        if user.failed_login_attempts >= max_attempts:
+            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=lockout_minutes)
+            user.failed_login_attempts = 0
+        self.db.commit()
+        self.db.refresh(user)
+        return user
+
+    def clear_login_lockout(self, user: User) -> User:
+        user.failed_login_attempts = 0
+        user.locked_until = None
         self.db.commit()
         self.db.refresh(user)
         return user

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Login from "./pages/Login"
 import TechnicianPanel from "./pages/TechnicianPanel"
 import OwnerPanel from "./pages/OwnerPanel"
@@ -11,7 +11,7 @@ const panels = {
   accountant: StaffPanel,
 }
 
-const SESSION_KEY = "thimadhu_session"
+const SESSION_KEY = "thimadu_session"
 
 function loadSession() {
   try {
@@ -34,6 +34,15 @@ function App() {
     localStorage.removeItem(SESSION_KEY)
     setSession(null)
   }
+
+  // Any API call that comes back 401 (expired token, deactivated account,
+  // tampered/garbage token) forces a return to the login screen instead of
+  // leaving the app running against a session the server no longer honors.
+  useEffect(() => {
+    window.addEventListener("thimadu:unauthorized", handleLogout)
+    return () => window.removeEventListener("thimadu:unauthorized", handleLogout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!session) {
     return <Login onLogin={handleLogin} />

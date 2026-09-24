@@ -1,5 +1,6 @@
-// Schema describing every section/field of the Thimadhu Vehicle Inspection Report.
-// Field types: text, number, date, textarea, status (Pass/Fail/N/A), yesno, select, photo, multiphoto
+// Schema describing every section/field of the Thimadu Vehicle Inspection Report.
+// Field types: text, number, date, textarea, status (Pass/Fail/N/A), yesno, select,
+// multiphoto (up to MAX_PHOTOS_PER_FIELD images), file (a single image/PDF attachment)
 const STATUS_OPTS = ["Pass", "Fail", "N/A"]
 
 export const SECTIONS = [
@@ -22,7 +23,7 @@ export const SECTIONS = [
       { key: "fuelType", label: "Fuel Type", type: "select", options: ["Petrol", "Diesel", "Hybrid", "Electric"] },
       { key: "color", label: "Color", type: "text" },
       { key: "mileage", label: "Mileage", type: "number" },
-      { key: "vehiclePhoto", label: "Vehicle Photo", type: "photo" },
+      { key: "vehiclePhoto", label: "Vehicle Photo", type: "multiphoto" },
       { key: "vin", label: "Vehicle Identification Number (VIN)", type: "text" },
       { key: "engineNumber", label: "Engine Number", type: "text" },
       { key: "engineCapacity", label: "Engine Capacity", type: "text" },
@@ -39,23 +40,23 @@ export const SECTIONS = [
     title: "Vehicle Documents",
     fields: [
       { key: "vehicleBook", label: "Vehicle Book", type: "status" },
-      { key: "vehicleBookPhoto", label: "Vehicle Book Photo", type: "photo" },
+      { key: "vehicleBookPhoto", label: "Vehicle Book Photo", type: "multiphoto" },
       { key: "vehicleBookSignature", label: "Vehicle Book Commissioners True Signature", type: "status" },
       { key: "vehicleRevenueLicense", label: "Vehicle Revenue License", type: "text" },
       { key: "vehicleInsurance", label: "Vehicle Insurance", type: "text" },
       { key: "owners", label: "Owners", type: "number" },
       { key: "numberOfSeats", label: "Number of Seats", type: "number" },
       { key: "numberOfDoors", label: "Number of Doors", type: "number" },
-      { key: "vehicleFrontView", label: "Vehicle Front View", type: "photo" },
+      { key: "vehicleFrontView", label: "Vehicle Front View", type: "multiphoto" },
       { key: "vehicleSideViews", label: "Vehicle Side Views", type: "multiphoto" },
-      { key: "vehicleRearView", label: "Vehicle Rear View", type: "photo" },
+      { key: "vehicleRearView", label: "Vehicle Rear View", type: "multiphoto" },
     ],
   },
   {
     title: "Vehicle History",
     fields: [
       { key: "vinMatch", label: "Vehicle Identification Number (VIN) Match", type: "status" },
-      { key: "vinMatchPhoto", label: "VIN Match Photo", type: "photo" },
+      { key: "vinMatchPhoto", label: "VIN Match Photo", type: "multiphoto" },
       { key: "scheduledMaintenance", label: "Scheduled Maintenance Performed", type: "text" },
       { key: "vehicleEmissionTest", label: "Vehicle Emission Test", type: "text" },
     ],
@@ -91,17 +92,17 @@ export const SECTIONS = [
       { key: "tailgateInspection", label: "Tailgate Inspection/Alignment", type: "status" },
       { key: "roofInspection", label: "Roof Inspection", type: "status" },
       { key: "hasPaintGauge", label: "Inspector has a gauge for measuring paint thickness?", type: "yesno" },
-      { key: "hoodPaintThickness", label: "Hood Paint Thickness", type: "photo" },
-      { key: "roofPaintThickness", label: "Roof Paint Thickness", type: "photo" },
-      { key: "leftFrontFenderPaint", label: "Left Front Fender Paint Thickness", type: "photo" },
-      { key: "leftFrontDoorPaint", label: "Left Front Door Paint Thickness", type: "photo" },
-      { key: "leftRearDoorPaint", label: "Left Rear Door Paint Thickness", type: "photo" },
-      { key: "leftBackFenderPaint", label: "Left Back Fender Paint Thickness", type: "photo" },
-      { key: "trunkDoorPaint", label: "Trunk Door Paint Thickness", type: "photo" },
-      { key: "rightFrontFenderPaint", label: "Right Front Fender Paint Thickness", type: "photo" },
-      { key: "rightFrontDoorPaint", label: "Right Front Door Paint Thickness", type: "photo" },
-      { key: "rightRearDoorPaint", label: "Right Rear Door Paint Thickness", type: "photo" },
-      { key: "rightRearFenderPaint", label: "Right Rear Fender Paint Thickness", type: "photo" },
+      { key: "hoodPaintThickness", label: "Hood Paint Thickness", type: "multiphoto" },
+      { key: "roofPaintThickness", label: "Roof Paint Thickness", type: "multiphoto" },
+      { key: "leftFrontFenderPaint", label: "Left Front Fender Paint Thickness", type: "multiphoto" },
+      { key: "leftFrontDoorPaint", label: "Left Front Door Paint Thickness", type: "multiphoto" },
+      { key: "leftRearDoorPaint", label: "Left Rear Door Paint Thickness", type: "multiphoto" },
+      { key: "leftBackFenderPaint", label: "Left Back Fender Paint Thickness", type: "multiphoto" },
+      { key: "trunkDoorPaint", label: "Trunk Door Paint Thickness", type: "multiphoto" },
+      { key: "rightFrontFenderPaint", label: "Right Front Fender Paint Thickness", type: "multiphoto" },
+      { key: "rightFrontDoorPaint", label: "Right Front Door Paint Thickness", type: "multiphoto" },
+      { key: "rightRearDoorPaint", label: "Right Rear Door Paint Thickness", type: "multiphoto" },
+      { key: "rightRearFenderPaint", label: "Right Rear Fender Paint Thickness", type: "multiphoto" },
       { key: "hoodReleaseMechanism", label: "Hood Release Mechanisms Operate Properly", type: "status" },
       { key: "hoodHinges", label: "Hood Hinges Operate Properly", type: "status" },
       { key: "hoodPropRod", label: "Hood Prop Rod/Gas Struts Operate Properly", type: "status" },
@@ -112,7 +113,7 @@ export const SECTIONS = [
       { key: "roofRackInspection", label: "Roof Rack Inspection", type: "status" },
       { key: "sideGlassInspection", label: "Side Glass Inspection", type: "status" },
       { key: "rearWindowGlassInspection", label: "Rear Window/Tailgate Glass Inspection", type: "status" },
-      { key: "rearWindowGlassPhoto", label: "Rear Window/Tailgate Glass Photo", type: "photo" },
+      { key: "rearWindowGlassPhoto", label: "Rear Window/Tailgate Glass Photo", type: "multiphoto" },
       { key: "frontWiperCondition", label: "Front Wiper Blade Condition", type: "status" },
       { key: "rearWiperCondition", label: "Rear Wiper Blade Condition", type: "status" },
       { key: "outsideFoldingMirror", label: "Outside Folding Mirror Inspection", type: "status" },
@@ -122,7 +123,7 @@ export const SECTIONS = [
     title: "Vehicle Interior",
     fields: [
       { key: "dashboardPanel", label: "Dashboard Panel", type: "status" },
-      { key: "dashboardPhoto", label: "Dashboard & Steering Wheel Photo", type: "photo" },
+      { key: "dashboardPhoto", label: "Dashboard & Steering Wheel Photo", type: "multiphoto" },
       { key: "airConditioning", label: "Air Conditioning System", type: "status" },
       { key: "acVent", label: "AC Vent", type: "status" },
       { key: "centerConsoleArea", label: "Center Console Area", type: "status" },
@@ -160,7 +161,7 @@ export const SECTIONS = [
       { key: "doorHandlesRelease", label: "Door Handles and Release Mechanisms", type: "status" },
       { key: "pushButtonStart", label: "Push-Button Start System", type: "status" },
       { key: "windowControls", label: "Window Controls", type: "status" },
-      { key: "windowControlsPhoto", label: "Window Controls Photo", type: "photo" },
+      { key: "windowControlsPhoto", label: "Window Controls Photo", type: "multiphoto" },
       { key: "remoteDecklidRelease", label: "Remote Decklid Release", type: "status" },
       { key: "fuelFillerDoorRelease", label: "Fuel Filler Door Release", type: "status" },
       { key: "luggageCompartmentCarpet", label: "Luggage Compartment Carpet", type: "status" },
@@ -168,9 +169,9 @@ export const SECTIONS = [
       { key: "luggageTrimCargoNet", label: "Luggage Compartment Trim and Cargo Net", type: "status" },
       { key: "luggageAreaLight", label: "Luggage Compartment Area Light", type: "status" },
       { key: "vehicleJackToolKit", label: "Vehicle Jack and Tool Kit", type: "status" },
-      { key: "vehicleJackPhoto", label: "Vehicle Jack and Tool Kit Photo", type: "photo" },
+      { key: "vehicleJackPhoto", label: "Vehicle Jack and Tool Kit Photo", type: "multiphoto" },
       { key: "spareTireInspection", label: "Spare Tire Size/Type and Sidewall Inspection", type: "status" },
-      { key: "spareTirePhoto", label: "Spare Tire Photo", type: "photo" },
+      { key: "spareTirePhoto", label: "Spare Tire Photo", type: "multiphoto" },
       { key: "spareTireTreadDepth", label: "Spare Tire Tread Depth/Air Pressure Inspection", type: "status" },
       { key: "tireInflatorKit", label: "Tire Inflator Kit", type: "status" },
       { key: "emergencyTrunkRelease", label: "Emergency Trunk-Lid Release", type: "status" },
@@ -196,7 +197,7 @@ export const SECTIONS = [
       { key: "diagnosticSelfTest", label: "Perform Self Test For All Continuous Memory Diagnostic Trouble Code", type: "status" },
       { key: "diagnosticDate", label: "Diagnostic Date/Time", type: "text" },
       { key: "scanPhotos", label: "Vehicle Scanning Photos", type: "multiphoto" },
-      { key: "scanReportFile", label: "Scan Report PDF", type: "photo" },
+      { key: "scanReportFile", label: "Scan Report PDF", type: "file" },
       { key: "errorCodesReasons", label: "Error Codes & Reasons", type: "text" },
     ],
   },
@@ -204,7 +205,7 @@ export const SECTIONS = [
     title: "Hybrid & Electric",
     fields: [
       { key: "hybridBattery", label: "Hybrid Battery", type: "status" },
-      { key: "hybridBatteryReportFile", label: "Hybrid Battery Live Data Report PDF", type: "photo" },
+      { key: "hybridBatteryReportFile", label: "Hybrid Battery Live Data Report PDF", type: "file" },
       { key: "stateOfCharge", label: "State of Charge/ Usable Capacity", type: "status" },
       { key: "stateOfChargeValue", label: "Value (%)", type: "text" },
       { key: "hybridInfoDisplay", label: "Hybrid Entertainment and Information Display", type: "status" },
@@ -215,16 +216,16 @@ export const SECTIONS = [
     title: "Underhood",
     fields: [
       { key: "engineCondition", label: "Engine Condition", type: "status" },
-      { key: "engineBayPhoto", label: "Engine Bay Photo", type: "photo" },
+      { key: "engineBayPhoto", label: "Engine Bay Photo", type: "multiphoto" },
       { key: "engineCombustionLeakTest", label: "Engine Combustion Leak Test", type: "status" },
       { key: "engineOilCondition", label: "Engine Oil Condition", type: "status" },
-      { key: "engineOilPhoto", label: "Engine Oil Dipstick Photo", type: "photo" },
+      { key: "engineOilPhoto", label: "Engine Oil Dipstick Photo", type: "multiphoto" },
       { key: "engineSludgeCoolant", label: "Engine Sludge, Water or Engine Coolant in Oil", type: "status" },
       { key: "exhaustSmoke", label: "Exhaust Smoke", type: "status" },
       { key: "chassisLube", label: "Chassis Lube", type: "status" },
       { key: "coolant", label: "Coolant", type: "status" },
       { key: "brakeFluidCondition", label: "Brake Fluid Condition", type: "status" },
-      { key: "brakeFluidPhoto", label: "Brake Fluid Tester Photo", type: "photo" },
+      { key: "brakeFluidPhoto", label: "Brake Fluid Tester Photo", type: "multiphoto" },
       { key: "airFilter", label: "Air Filter", type: "status" },
       { key: "cabinFilter", label: "Cabin Filter", type: "text" },
       { key: "autoTransmissionFluid", label: "Automatic Transmission Fluid", type: "status" },
@@ -245,7 +246,7 @@ export const SECTIONS = [
       { key: "starterMotorOperation", label: "Starter Motor Operation", type: "status" },
       { key: "ignitionSystem", label: "Ignition System", type: "status" },
       { key: "batteryCondition", label: "12V Battery Condition", type: "status" },
-      { key: "batteryPhoto", label: "12V Battery Photo", type: "photo" },
+      { key: "batteryPhoto", label: "12V Battery Photo", type: "multiphoto" },
       { key: "batteryTerminals", label: "Battery Terminals", type: "status" },
       { key: "alternatorOutput", label: "Alternator Output", type: "status" },
     ],
@@ -274,7 +275,7 @@ export const SECTIONS = [
       { key: "wheels", label: "Wheels", type: "status" },
       { key: "alloyWheelCovers", label: "Alloy Wheel, Covers and Center Caps", type: "status" },
       { key: "rackPinionLinkage", label: "Rack-and-Pinion, Linkage and Boots", type: "status" },
-      { key: "rackPinionPhoto", label: "Rack-and-Pinion Photo", type: "photo" },
+      { key: "rackPinionPhoto", label: "Rack-and-Pinion Photo", type: "multiphoto" },
       { key: "controlArmsBushings", label: "Control Arms, Bushings and Ball Joints", type: "status" },
       { key: "tieRodsIdlerArm", label: "Tie Rods and Idler Arm", type: "status" },
       { key: "swayBarsLinks", label: "Sway Bars, Links and Bushings", type: "status" },
@@ -332,6 +333,25 @@ export const SECTIONS = [
 ]
 
 export const STATUS_OPTIONS = STATUS_OPTS
+
+export const MAX_PHOTOS_PER_FIELD = 60
+
+// Older reports stored some photo fields as a single data URL string.
+export function toPhotoList(value) {
+  if (Array.isArray(value)) return value
+  return value ? [value] : []
+}
+
+// Merge saved form data over a blank form, upgrading old single-photo values to lists.
+export function withDefaults(saved) {
+  const data = { ...buildInitialData(), ...(saved || {}) }
+  SECTIONS.forEach((section) => {
+    section.fields.forEach((field) => {
+      if (field.type === "multiphoto") data[field.key] = toPhotoList(data[field.key])
+    })
+  })
+  return data
+}
 
 export function buildInitialData() {
   const data = {}

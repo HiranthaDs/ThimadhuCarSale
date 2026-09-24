@@ -24,9 +24,28 @@ class Settings(BaseSettings):
     cloudinary_api_key: str = ""
     cloudinary_api_secret: str = ""
 
+    # "development" (default) leaves /docs, /redoc and /openapi.json open, which
+    # is convenient while building. Set APP_ENV=production in the deployed .env
+    # once the API is live, to close off that map of every endpoint and schema.
+    app_env: str = "development"
+
+    # Failed-login lockout: this many wrong passwords in a row locks the
+    # account out for the given number of minutes.
+    login_max_attempts: int = 5
+    login_lockout_minutes: int = 15
+
+    # Hard cap on request bodies (mainly inspection-report photo uploads), to
+    # stop a single request from exhausting server memory. 30MB comfortably
+    # covers a report with dozens of compressed photos.
+    max_request_body_bytes: int = 30 * 1024 * 1024
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.strip().lower() == "production"
 
 
 @lru_cache

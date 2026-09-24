@@ -1,0 +1,91 @@
+.vb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(16, 20, 30, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 16px;
+  overflow-y: auto;
+}
+
+.vb-form-card { max-width: 780px; width: 100%; margin-bottom: 0; }
+.vb-viewer { max-width: 900px; width: 100%; margin-bottom: 0; }
+
+.vb-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 0 0 16px;
+}
+.vb-details dt { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #8a8f9c; }
+.vb-details dd { margin: 4px 0 0; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+.vb-details-full { grid-column: 1 / -1; }
+
+.vb-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #111318;
+  border-radius: 10px;
+  height: min(60vh, 520px);
+  overflow: hidden;
+}
+.vb-stage a { display: flex; max-width: 100%; max-height: 100%; }
+.vb-stage img { max-width: 100%; max-height: min(60vh, 520px); object-fit: contain; cursor: zoom-in; }
+
+.vb-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.85);
+  color: #111;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vb-nav:hover { background: #fff; }
+.vb-nav-prev { left: 12px; }
+.vb-nav-next { right: 12px; }
+
+.vb-counter {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.vb-thumbs { display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px; }
+.vb-thumb {
+  flex: none;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  opacity: 0.6;
+}
+.vb-thumb img { display: block; width: 68px; height: 68px; object-fit: cover; border-radius: 6px; }
+.vb-thumb:hover { opacity: 1; }
+.vb-thumb-active { border-color: #2563eb; opacity: 1; }
+
+.vb-table-thumbs img { cursor: pointer; }
+
+@media (max-width: 640px) {
+  .vb-details { grid-template-columns: 1fr; }
+  .vb-nav { width: 34px; height: 34px; font-size: 22px; }
+}

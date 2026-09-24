@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useRef, useState } from "react"
 import html2pdf from "html2pdf.js"
-import { SECTIONS } from "./inspectionSchema"
-import { BrandMark } from "../Icons"
+import { SECTIONS, toPhotoList } from "./inspectionSchema"
+import reportLogo from "../../../assets/logo-light.png"
 import { replaceReportPdf, uploadReportPdf } from "../../../api/reports"
 
 function FieldValue({ field, value }) {
-  if (field.type === "photo") {
+  if (field.type === "file") {
     if (!value) return <span className="ir-empty">—</span>
     if (typeof value === "string" && value.startsWith("data:application/pdf")) {
       return <a href={value} target="_blank" rel="noreferrer">Click to Download</a>
@@ -13,10 +13,11 @@ function FieldValue({ field, value }) {
     return <img className="ir-photo" src={value} alt={field.label} />
   }
   if (field.type === "multiphoto") {
-    if (!Array.isArray(value) || value.length === 0) return <span className="ir-empty">—</span>
+    const photos = toPhotoList(value)
+    if (photos.length === 0) return <span className="ir-empty">—</span>
     return (
       <div className="ir-photo-grid">
-        {value.map((src, i) => (
+        {photos.map((src, i) => (
           <img key={i} className="ir-photo" src={src} alt={`${field.label} ${i + 1}`} />
         ))}
       </div>
@@ -111,15 +112,16 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
 
       <div className="ir-page" ref={pageRef}>
         <header className="ir-header">
-          <BrandMark iconSize={46} />
+          <img className="ir-logo" src={reportLogo} alt="Thimadu Auto Trading" />
           <div className="ir-header-meta">
             <div>Date Submitted: {today}</div>
-            <div>Thimadhu Automobile Private Limited</div>
+            <div>Thimadu Automobile Private Limited</div>
           </div>
         </header>
 
         <h1 className="ir-title">
-          Thimadhu Vehicle Inspection Report{vehicleTitle ? ` — ${vehicleTitle}` : ""}
+          Thimadu Vehicle Inspection Report{data.scanNumber === 2 ? " (Scan 2)" : ""}
+          {vehicleTitle ? ` — ${vehicleTitle}` : ""}
         </h1>
 
         {SECTIONS.map((section) => (
@@ -151,11 +153,11 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
         <section className="ir-section">
           <h2 className="ir-section-title">Legal</h2>
           <p className="ir-legal">
-            The above report is offered on behalf of Thimadhu Automobile Private Limited, following a detailed
+            The above report is offered on behalf of Thimadu Automobile Private Limited, following a detailed
             visual inspection of the structural integrity of the vehicle. The visual inspection is carried out
             without dissembling or dismantling any parts of the vehicle. Information such as verification of the
             registration, police, insurance, maintenance records of the respective vehicle or other private and
-            public records, information and data have not been assessed by Thimadhu. The information and
+            public records, information and data have not been assessed by Thimadu. The information and
             recommendations provided by us do not amount to approval or acceptance of the concerning matter. The
             validity of this certificate is only at the time, date, mileage and place of inspection as stated
             above.
@@ -165,7 +167,7 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
 
         <footer className="ir-footer">
           <span>Buy used vehicles with confidence.</span>
-          <span>Thimadhu Vehicle Inspection Report</span>
+          <span>Thimadu Vehicle Inspection Report{data.scanNumber === 2 ? " — Scan 2" : ""}</span>
         </footer>
       </div>
     </div>

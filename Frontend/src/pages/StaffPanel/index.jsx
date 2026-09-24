@@ -15,12 +15,12 @@ export default function StaffPanel({ role, username, token, onLogout }) {
       <Sidebar role={role} username={username} onLogout={onLogout} activeView={view} onNavigate={setView} />
 
       <main className="tp-main">
-        <Hero name={username || "User"} desc="Here's what needs your attention today." />
+        <Hero name={username || "User"} desc="Here's what needs your attention today." token={token} />
 
         {view === "clients" ? (
           <ClientProfiles token={token} role={role} />
         ) : view === "blacklist" ? (
-          <VehicleBlacklist token={token} />
+          <VehicleBlacklist token={token} role={role} />
         ) : view === "settings" ? (
           <Settings token={token} />
         ) : null}

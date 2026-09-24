@@ -9,7 +9,7 @@
   --lg-panel-bg: #eef1f6;
 
   position: relative;
-  min-height: 100vh;
+  height: 100vh;
   overflow: hidden;
   background: var(--lg-panel-bg);
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -110,10 +110,11 @@
   clip-path: polygon(17% 0, 100% 0, 100% 100%, 0 100%);
   display: flex; flex-direction: column;
   align-items: center;
-  padding: 0 6% 40px;
-  overflow-y: auto;
+  justify-content: center;
+  padding: 0 6%;
+  overflow: hidden;
 }
-.lg-panel-top { width: 100%; display: flex; justify-content: flex-end; padding: 40px 2% 0 0; }
+.lg-panel-top { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: flex-end; padding: 26px 8% 0 0; }
 .lg-eyebrow-mission { font-size: 13px; color: var(--lg-text-2); font-style: italic; font-weight: 500; text-align: right; }
 .lg-eyebrow-mission b { color: var(--lg-text-1); font-weight: 600; font-style: italic; }
 .lg-mission-bar { height: 3px; width: 34px; background: var(--lg-red); margin: 8px 0 0 auto; border-radius: 2px; }
@@ -122,23 +123,22 @@
   background: #fff;
   border-radius: 22px;
   box-shadow: 0 24px 60px -12px rgba(20, 28, 46, 0.18), 0 4px 16px rgba(20, 28, 46, 0.06);
-  padding: 38px 40px 34px;
+  padding: 28px 36px 24px;
   width: 100%;
   max-width: 440px;
-  margin-top: 34px;
   display: flex;
   flex-direction: column;
 }
-.lg-card-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; }
+.lg-card-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
 .lg-card-brand-icon { width: 34px; height: 34px; color: var(--lg-red); flex-shrink: 0; object-fit: cover; border-radius: 8px; }
 .lg-card-brand-text .lg-brand-name { font-size: 18px; color: var(--lg-red); }
 
-.lg-welcome-title { font-size: 24px; font-weight: 800; margin: 0 0 6px; color: var(--lg-text-1); }
-.lg-welcome-sub { font-size: 13.5px; color: var(--lg-text-2); margin-bottom: 24px; }
+.lg-welcome-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; color: var(--lg-text-1); }
+.lg-welcome-sub { font-size: 13.5px; color: var(--lg-text-2); margin-bottom: 16px; }
 
-.lg-field-label { font-size: 13px; font-weight: 600; color: var(--lg-text-1); margin-bottom: 10px; display: block; }
+.lg-field-label { font-size: 13px; font-weight: 600; color: var(--lg-text-1); margin-bottom: 8px; display: block; }
 
-.lg-role-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 22px; }
+.lg-role-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
 .lg-role-btn {
   display: flex; flex-direction: column; align-items: center; gap: 7px;
   padding: 12px 4px; border-radius: 11px;
@@ -149,7 +149,7 @@
 .lg-role-btn svg { width: 16px; height: 16px; }
 .lg-role-btn-active { background: var(--lg-navy); border-color: var(--lg-navy); color: #fff; }
 
-.lg-input-group { margin-bottom: 18px; }
+.lg-input-group { margin-bottom: 14px; }
 .lg-input-wrap {
   position: relative; display: flex; align-items: center;
   border: 1.5px solid var(--lg-border); border-radius: 11px;
@@ -167,7 +167,7 @@
 .lg-eye-btn { background: none; border: none; padding: 6px; color: var(--lg-text-3); display: flex; }
 .lg-eye-btn svg { width: 17px; height: 17px; }
 
-.lg-row-between { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 22px; }
+.lg-row-between { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 16px; }
 .lg-remember { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--lg-text-2); }
 .lg-remember input { width: 15px; height: 15px; accent-color: var(--lg-red); }
 .lg-forgot { font-size: 12.5px; color: var(--lg-red); font-weight: 600; }
@@ -194,13 +194,21 @@
 }
 .lg-login-btn svg { width: 16px; height: 16px; }
 
-.lg-divider { border: none; border-top: 1px solid var(--lg-border); margin: 22px 0 16px; width: 100%; }
+.lg-divider { border: none; border-top: 1px solid var(--lg-border); margin: 16px 0 14px; width: 100%; }
 .lg-secure { display: flex; align-items: center; justify-content: center; gap: 7px; color: var(--lg-text-3); font-size: 12px; font-weight: 500; }
 .lg-secure svg { width: 14px; height: 14px; }
 
 @media (max-width: 980px) {
-  .lg-hero-content { width: 100%; padding: 32px 6% 36px; position: relative; }
-  .lg-panel-wrap { position: relative; width: 100%; clip-path: none; padding: 36px 6%; }
+  /* The hero and the form stack instead of overlapping here, so the page is
+     taller than one screen by design — that scroll is real and needed,
+     unlike the desktop layout, so it's allowed through on this breakpoint. */
+  .lg-screen { height: auto; min-height: 100vh; overflow: visible; }
+  .lg-hero-content { width: 100%; min-height: 100vh; padding: 32px 6% 36px; position: relative; }
+  .lg-panel-wrap {
+    position: relative; width: 100%; clip-path: none; padding: 36px 6%;
+    justify-content: flex-start; overflow: visible;
+  }
+  .lg-panel-top { position: static; padding: 0 0 20px; }
   .lg-hero-title { font-size: 36px; }
   .lg-signage { display: none; }
   .lg-features { gap: 24px; }

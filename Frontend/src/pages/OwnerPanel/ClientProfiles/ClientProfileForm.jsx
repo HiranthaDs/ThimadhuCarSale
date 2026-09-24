@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { createClientProfile, listAllScanReports, updateClientProfile } from "../../../api/clients"
 import { TABS, buildSubmitPayload, initialFormState, mapProfileToForm, validateClientTypes } from "./clientProfileSchema"
 import { COUNTRIES } from "./countries"
+import { isSafeMediaUrl } from "../../../utils/safeUrl"
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -251,7 +252,7 @@ function ScanReportField({ token, label, value, valueName, onChange, vehicleNumb
           {error && <div className="tp-form-error">{error}</div>}
         </div>
       )}
-      {value && (
+      {value && isSafeMediaUrl(value) && (
         <div className="cp-scan-report-row">
           <a href={value} target="_blank" rel="noopener noreferrer" className="tp-form-btn tp-form-btn-secondary">
             View{valueName ? `: ${valueName}` : ""}

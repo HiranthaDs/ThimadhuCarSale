@@ -59,9 +59,9 @@ export default function Login({ onLogin }) {
 
       <div className="lg-hero-content">
         <div className="lg-brand">
-          <img src={logo} alt="Thimadhu Auto Trading" className="lg-brand-icon" />
+          <img src={logo} alt="Thimadu Auto Trading" className="lg-brand-icon" />
           <div className="lg-brand-text">
-            <div className="lg-brand-name">Thimadhu</div>
+            <div className="lg-brand-name">Thimadu</div>
             <div className="lg-brand-tag">Auto Trading</div>
           </div>
         </div>
@@ -122,9 +122,9 @@ export default function Login({ onLogin }) {
 
         <form className="lg-card" onSubmit={handleSubmit}>
           <div className="lg-card-brand">
-            <img src={logo} alt="Thimadhu Auto Trading" className="lg-card-brand-icon" />
+            <img src={logo} alt="Thimadu Auto Trading" className="lg-card-brand-icon" />
             <div className="lg-card-brand-text">
-              <div className="lg-brand-name">Thimadhu</div>
+              <div className="lg-brand-name">Thimadu</div>
               <div className="lg-brand-tag">Auto Trading</div>
             </div>
           </div>

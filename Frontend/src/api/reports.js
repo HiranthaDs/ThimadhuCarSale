@@ -2,7 +2,15 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
 
 async function parseResponse(response, fallbackMessage) {
   const isJson = response.headers.get("content-type")?.includes("application/json")
-  const data = isJson ? await response.json() : null
+  const text = response.status === 204 ? "" : await response.text()
+  let data = null
+  if (text && isJson) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = null
+    }
+  }
 
   if (!response.ok) {
     const message = data?.detail || `${fallbackMessage} (${response.status})`
@@ -18,7 +26,12 @@ function buildReportFormData(file, meta = {}) {
   if (meta.registrationNumber) formData.append("registration_number", meta.registrationNumber)
   if (meta.vehicleTitle) formData.append("vehicle_title", meta.vehicleTitle)
   if (meta.buyerName) formData.append("buyer_name", meta.buyerName)
-  if (meta.formData) formData.append("form_data", JSON.stringify(meta.formData))
+  // Sent as a file part: plain text fields are capped at 1MB by the server, and
+  // the form data carries every inspection photo.
+  if (meta.formData) {
+    const json = new Blob([JSON.stringify(meta.formData)], { type: "application/json" })
+    formData.append("form_data", json, "form_data.json")
+  }
   return formData
 }
 
@@ -81,6 +94,19 @@ export async function updateReport(token, reportId, meta = {}) {
     throw new Error("Could not reach the server. Is the backend running?")
   }
   return parseResponse(response, "Failed to update report")
+}
+
+export async function createScan2Report(token, reportId) {
+  let response
+  try {
+    response = await fetch(`${BASE_URL}/reports/${reportId}/scan2`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+  } catch {
+    throw new Error("Could not reach the server. Is the backend running?")
+  }
+  return parseResponse(response, "Failed to create Scan 2 copy")
 }
 
 export async function updateReportStatus(token, reportId, status) {

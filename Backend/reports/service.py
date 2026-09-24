@@ -1,25 +1,45 @@
 import re
-import shutil
+import urllib.request
 import uuid
-from pathlib import Path
 from typing import Any
 
 from sqlalchemy.orm import Session
 
+from core.cloudinary_client import delete_pdf, upload_pdf
 from reports.model import STATUS_CHECKED, STATUS_PENDING
 from reports.repository import ReportRepository
-
-UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads" / "inspection_reports"
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _safe_filename(name: str | None, fallback: str) -> str:
     name = (name or "").strip()
     if not name:
         name = fallback
-    # Strip characters that aren't safe in a filesystem path.
+    # Strip characters that aren't safe in a Cloudinary public_id.
     name = re.sub(r'[\\/:*?"<>|]+', "-", name)
     return name
+
+
+def _public_id_from_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    # e.g. ".../inspection_reports/CBA-1785.pdf" -> "CBA-1785"
+    filename = url.rsplit("/", 1)[-1]
+    return filename[:-4] if filename.lower().endswith(".pdf") else filename
+
+
+SCAN2_SUFFIX = "-Scan2"
+
+
+def is_scan2(registration_number: str | None) -> bool:
+    return (registration_number or "").strip().lower().endswith(SCAN2_SUFFIX.lower())
+
+
+def scan2_name(registration_number: str) -> str:
+    """"CBE-1245" -> "CBE-1245-Scan2" (idempotent)."""
+    base = registration_number.strip()
+    if is_scan2(base):
+        base = base[: -len(SCAN2_SUFFIX)]
+    return f"{base}{SCAN2_SUFFIX}"
 
 
 class ReportService:
@@ -38,15 +58,8 @@ class ReportService:
         technician_name: str | None = None,
         form_data: dict[str, Any] | None = None,
     ):
-        stem = _safe_filename(registration_number, fallback=f"report-{uuid.uuid4()}")
-        filename = f"{stem}.pdf"
-        path = UPLOAD_DIR / filename
-        if path.exists():
-            filename = f"{stem}-{uuid.uuid4().hex[:8]}.pdf"
-            path = UPLOAD_DIR / filename
-        path.write_bytes(content)
-
-        url = f"/uploads/inspection_reports/{filename}"
+        public_id = _safe_filename(registration_number, fallback=f"report-{uuid.uuid4()}")
+        url = upload_pdf(content, public_id)
 
         report = self.repository.create(
             created_by=created_by,
@@ -73,22 +86,18 @@ class ReportService:
         if report.status == STATUS_CHECKED:
             raise PermissionError("This report has already been checked and can no longer be edited.")
 
-        old_filename = report.url.rsplit("/", 1)[-1] if report.url else None
+        # A Scan 2 report keeps its "-Scan2" name even though the form itself
+        # carries the plain vehicle registration number.
+        if is_scan2(report.registration_number):
+            registration_number = scan2_name(registration_number or report.registration_number)
 
-        stem = _safe_filename(registration_number, fallback=f"report-{uuid.uuid4()}")
-        filename = f"{stem}.pdf"
-        path = UPLOAD_DIR / filename
-        if path.exists() and filename != old_filename:
-            filename = f"{stem}-{uuid.uuid4().hex[:8]}.pdf"
-            path = UPLOAD_DIR / filename
-        path.write_bytes(content)
+        old_public_id = _public_id_from_url(report.url)
 
-        if old_filename and old_filename != filename:
-            old_path = UPLOAD_DIR / old_filename
-            if old_path.exists():
-                old_path.unlink()
+        public_id = _safe_filename(registration_number, fallback=f"report-{uuid.uuid4()}")
+        url = upload_pdf(content, public_id)
 
-        url = f"/uploads/inspection_reports/{filename}"
+        if old_public_id and old_public_id != public_id:
+            delete_pdf(old_public_id)
 
         return self.repository.update(
             report,
@@ -101,33 +110,38 @@ class ReportService:
             status=STATUS_PENDING,
         )
 
-    def copy_report(self, report, *, created_by: uuid.UUID | None, technician_name: str | None = None):
-        """Duplicate a report into a brand-new, editable record.
+    def create_scan2(self, report, *, created_by: uuid.UUID | None, technician_name: str | None = None):
+        """Create "<REG>-Scan2" as an editable copy of an approved report.
 
         The original row and its PDF file are left completely untouched -
-        a new file and a new DB row are created so an approved/checked
-        report can never be mutated by further edits.
+        the Scan 1 report still has to be sent to the client as-is.
         """
-        old_filename = report.url.rsplit("/", 1)[-1] if report.url else None
-        stem = _safe_filename(report.registration_number, fallback=f"report-{uuid.uuid4()}")
-        filename = f"{stem}-copy-{uuid.uuid4().hex[:8]}.pdf"
-        new_path = UPLOAD_DIR / filename
+        if is_scan2(report.registration_number):
+            raise ValueError("This report is already a Scan 2 report.")
+        if not (report.registration_number or "").strip():
+            raise ValueError("The report has no registration number, so a Scan 2 copy cannot be named.")
+        if report.status != STATUS_CHECKED:
+            raise ValueError("A Scan 2 copy can only be created after the owner has approved the report.")
 
-        if old_filename:
-            old_path = UPLOAD_DIR / old_filename
-            if old_path.exists():
-                shutil.copyfile(old_path, new_path)
+        scan2_registration = scan2_name(report.registration_number)
+        existing = self.repository.find_by_registration(scan2_registration)
+        if existing:
+            raise FileExistsError(f"{existing.registration_number} already exists.")
 
-        url = f"/uploads/inspection_reports/{filename}"
+        public_id = _safe_filename(scan2_registration, fallback=f"report-{uuid.uuid4()}")
+        content = urllib.request.urlopen(report.url, timeout=30).read() if report.url else b""
+        url = upload_pdf(content, public_id)
+
+        form_data = {**(report.form_data or {}), "scanNumber": 2}
 
         return self.repository.create(
             created_by=created_by,
-            registration_number=report.registration_number,
+            registration_number=scan2_registration,
             vehicle_title=report.vehicle_title,
             buyer_name=report.buyer_name,
             technician_name=technician_name or report.technician_name,
             url=url,
-            form_data=report.form_data,
+            form_data=form_data,
             status=STATUS_PENDING,
         )
 
@@ -151,9 +165,7 @@ class ReportService:
         return self.repository.set_status(report, status)
 
     def delete(self, report):
-        if report.url:
-            filename = report.url.rsplit("/", 1)[-1]
-            path = UPLOAD_DIR / filename
-            if path.exists():
-                path.unlink()
+        public_id = _public_id_from_url(report.url)
+        if public_id:
+            delete_pdf(public_id)
         self.repository.delete(report)

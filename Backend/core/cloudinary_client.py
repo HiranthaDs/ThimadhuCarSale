@@ -1,5 +1,6 @@
 import cloudinary
 import cloudinary.api
+import cloudinary.uploader
 from cloudinary.exceptions import NotFound
 
 from core.config import get_settings
@@ -14,6 +15,26 @@ cloudinary.config(
 )
 
 SCAN_REPORT_FOLDER = "scan_reports"
+INSPECTION_REPORT_FOLDER = "inspection_reports"
+
+
+def upload_pdf(content: bytes, public_id: str) -> str:
+    """Upload a PDF's bytes to Cloudinary and return its secure_url.
+
+    `resource_type="raw"` is required for non-image files like PDFs.
+    """
+    result = cloudinary.uploader.upload(
+        content,
+        public_id=f"{INSPECTION_REPORT_FOLDER}/{public_id}",
+        resource_type="raw",
+        overwrite=True,
+        format="pdf",
+    )
+    return result["secure_url"]
+
+
+def delete_pdf(public_id: str) -> None:
+    cloudinary.uploader.destroy(f"{INSPECTION_REPORT_FOLDER}/{public_id}", resource_type="raw")
 
 
 def _find_secure_url(public_id: str) -> str | None:

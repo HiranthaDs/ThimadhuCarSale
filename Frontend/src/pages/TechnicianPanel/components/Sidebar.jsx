@@ -51,10 +51,10 @@ export default function Sidebar({ role = "technician", username, onLogout, activ
     <aside className="tp-sidebar">
       <div className="tp-brand">
         <div className="tp-brand-icon">
-          <img src={logo} alt="Thimadhu Auto Trading" />
+          <img src={logo} alt="Thimadu Auto Trading" />
         </div>
         <div className="tp-brand-text">
-          <div className="tp-name">Thimadhu</div>
+          <div className="tp-name">Thimadu</div>
           <div className="tp-tag">Auto Trading</div>
         </div>
       </div>

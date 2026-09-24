@@ -1,3 +1,6 @@
+import math
+from datetime import datetime, timezone
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -5,6 +8,7 @@ from activity.service import ActivityLogService
 from auth.model import User, UserRole
 from auth.repository import UserRepository
 from auth.schema import ChangePasswordRequest, LoginRequest, TokenResponse, UserCreateRequest
+from core.config import get_settings
 from core.security import create_access_token, hash_password, verify_password
 
 
@@ -14,17 +18,45 @@ class AuthService:
         self.repository = UserRepository(db)
 
     def login(self, payload: LoginRequest) -> TokenResponse:
+        settings = get_settings()
         user = self.repository.get_by_email(payload.email)
+
+        if user and user.locked_until:
+            now = datetime.now(timezone.utc)
+            if user.locked_until > now:
+                minutes_left = math.ceil((user.locked_until - now).total_seconds() / 60)
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"Too many failed attempts. Try again in {minutes_left} minute(s).",
+                )
+            # The lockout has expired on its own — clear it before checking the password.
+            self.repository.clear_login_lockout(user)
+
         if not user or not verify_password(payload.password, user.hashed_password):
+            if user:
+                self.repository.register_failed_login(
+                    user,
+                    max_attempts=settings.login_max_attempts,
+                    lockout_minutes=settings.login_lockout_minutes,
+                )
+            ActivityLogService(self.db).log_anonymous(
+                action="auth.login_failed",
+                entity_type="user",
+                description=f"Failed login attempt for {payload.email}",
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password.",
             )
+
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="This account has been deactivated. Contact the owner.",
             )
+
+        if user.failed_login_attempts:
+            self.repository.clear_login_lockout(user)
 
         token = create_access_token(subject=str(user.id), extra_claims={"role": user.role.value})
         return TokenResponse(access_token=token, user=user)

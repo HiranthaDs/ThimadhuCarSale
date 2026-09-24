@@ -39,6 +39,15 @@ class VehicleBlacklistRepository:
         stmt = stmt.order_by(VehicleBlacklist.created_at.desc())
         return list(self.db.scalars(stmt))
 
+    def update(self, entry: VehicleBlacklist, *, images: list[str], **fields) -> VehicleBlacklist:
+        for key, value in fields.items():
+            setattr(entry, key, value)
+        existing = {img.image: img for img in entry.images}
+        entry.images = [existing.pop(img, None) or VehicleBlacklistImage(image=img) for img in images]
+        self.db.commit()
+        self.db.refresh(entry)
+        return entry
+
     def delete(self, entry: VehicleBlacklist) -> None:
         self.db.delete(entry)
         self.db.commit()

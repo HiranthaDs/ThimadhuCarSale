@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { approveClientProfile, deleteClientProfile, getClientProfile, listClientProfiles } from "../../../api/clients"
 import ClientProfileForm from "./ClientProfileForm"
+import { confirmDialog } from "../../../components/ConfirmDialog"
 
 const STATUS_LABELS = {
   pending_accountant: "Awaiting Accountant",
@@ -24,16 +25,19 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
   const [openMode, setOpenMode] = useState("view")
   const [openLoadError, setOpenLoadError] = useState("")
   const [actionError, setActionError] = useState("")
+  // id + action ("delete" / "approve") of the row whose request is in flight.
+  const [busy, setBusy] = useState(null)
 
-  async function refresh(q) {
-    setLoading(true)
+  // `silent` refreshes keep the table on screen instead of flashing "Loading…".
+  async function refresh(q, { silent = false } = {}) {
+    if (!silent) setLoading(true)
     setError("")
     try {
       setProfiles(await listClientProfiles(token, q))
     } catch (err) {
       setError(err.message || "Could not load client profiles.")
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
@@ -46,12 +50,12 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
 
   function handleCreated() {
     setShowForm(false)
-    refresh(search)
+    refresh(search, { silent: true })
   }
 
   function handleUpdated() {
     setOpenProfile(null)
-    refresh(search)
+    refresh(search, { silent: true })
   }
 
   async function openProfileIn(id, mode) {
@@ -66,22 +70,38 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
 
   async function handleApprove(id) {
     setActionError("")
+    setBusy({ id, action: "approve" })
     try {
-      await approveClientProfile(token, id)
-      refresh(search)
+      const updated = await approveClientProfile(token, id)
+      if (updated?.id) {
+        setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)))
+      } else {
+        await refresh(search, { silent: true })
+      }
     } catch (err) {
       setActionError(err.message || "Could not approve client profile.")
+    } finally {
+      setBusy(null)
     }
   }
 
   async function handleDelete(id) {
-    if (!window.confirm("Delete this client profile? This cannot be undone.")) return
+    const confirmed = await confirmDialog({
+      title: "Delete client profile?",
+      message: "This cannot be undone.",
+      confirmLabel: "Delete",
+      danger: true,
+    })
+    if (!confirmed) return
     setActionError("")
+    setBusy({ id, action: "delete" })
     try {
       await deleteClientProfile(token, id)
-      refresh(search)
+      setProfiles((prev) => prev.filter((p) => p.id !== id))
     } catch (err) {
       setActionError(err.message || "Could not delete client profile.")
+    } finally {
+      setBusy(null)
     }
   }
 
@@ -215,18 +235,34 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
                           <button
                             type="button"
                             className="tp-reports-btn tp-reports-btn-checked"
+                            disabled={busy?.id === p.id}
                             onClick={() => handleApprove(p.id)}
                           >
-                            Approve
+                            {busy?.id === p.id && busy.action === "approve" ? (
+                              <>
+                                <span className="tp-btn-spinner" aria-hidden="true" />
+                                Approving…
+                              </>
+                            ) : (
+                              "Approve"
+                            )}
                           </button>
                         )}
                         {role === "owner" && (
                           <button
                             type="button"
                             className="tp-reports-btn tp-reports-btn-danger"
+                            disabled={busy?.id === p.id}
                             onClick={() => handleDelete(p.id)}
                           >
-                            Delete
+                            {busy?.id === p.id && busy.action === "delete" ? (
+                              <>
+                                <span className="tp-btn-spinner" aria-hidden="true" />
+                                Deleting…
+                              </>
+                            ) : (
+                              "Delete"
+                            )}
                           </button>
                         )}
                       </div>

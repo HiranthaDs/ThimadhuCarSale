@@ -29,5 +29,17 @@ class ActivityLogService:
             description=description,
         )
 
+    def log_anonymous(self, *, action: str, entity_type: str, description: str):
+        """For security events with no authenticated actor, e.g. a failed login."""
+        return self.repository.create(
+            actor_id=None,
+            actor_name="Unknown",
+            actor_role="anonymous",
+            action=action,
+            entity_type=entity_type,
+            entity_id=None,
+            description=description,
+        )
+
     def list_all(self, limit: int = 200):
         return self.repository.list_all(limit)

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from activity.service import ActivityLogService
 from auth.model import User
 from blacklist.repository import VehicleBlacklistRepository
-from blacklist.schema import VehicleBlacklistCreate
+from blacklist.schema import VehicleBlacklistCreate, VehicleBlacklistUpdate
 
 
 class VehicleBlacklistService:
@@ -34,6 +34,20 @@ class VehicleBlacklistService:
         entry = self.repository.get_by_id(entry_id)
         if not entry:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Blacklist entry not found.")
+        return entry
+
+    def update(self, entry_id: uuid.UUID, payload: VehicleBlacklistUpdate, current_user: User):
+        entry = self.get(entry_id)
+        data = payload.model_dump()
+        images = data.pop("images")
+        entry = self.repository.update(entry, images=images, **data)
+        ActivityLogService(self.db).log(
+            actor=current_user,
+            action="blacklist.update",
+            entity_type="vehicle_blacklist",
+            entity_id=entry.id,
+            description=f"Updated blacklisted vehicle {entry.vehicle_number or entry.chassis_number}",
+        )
         return entry
 
     def delete(self, entry_id: uuid.UUID, current_user: User):

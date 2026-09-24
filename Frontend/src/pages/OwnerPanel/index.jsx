@@ -80,7 +80,7 @@ export default function OwnerPanel({ username, token, onLogout }) {
       <Sidebar role="owner" username={username} onLogout={onLogout} activeView={view} onNavigate={setView} />
 
       <main className="tp-main">
-        <Hero name={username || "Owner"} desc="Here's an overview of your dealership today." />
+        <Hero name={username || "Owner"} desc="Here's an overview of your dealership today." token={token} />
 
         {view === "clients" ? (
           <ClientProfiles token={token} role="owner" />
@@ -97,7 +97,7 @@ export default function OwnerPanel({ username, token, onLogout }) {
         ) : view === "reports2" ? (
           <InspectionReports2 token={token} />
         ) : view === "blacklist" ? (
-          <VehicleBlacklist token={token} />
+          <VehicleBlacklist token={token} role="owner" />
         ) : view === "activity" ? (
           <ActivityLog token={token} />
         ) : view === "settings" ? (

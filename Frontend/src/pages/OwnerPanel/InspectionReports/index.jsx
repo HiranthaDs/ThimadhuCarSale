@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { deleteReport, listReports, updateReport, updateReportStatus } from "../../../api/reports"
 import { ReportStatusBadge, ReportStatusFilter } from "../../TechnicianPanel/components/reportStatus"
+import { confirmDialog } from "../../../components/ConfirmDialog"
 
 export default function InspectionReports({ token }) {
   const [reports, setReports] = useState([])
@@ -13,6 +14,7 @@ export default function InspectionReports({ token }) {
   const [editForm, setEditForm] = useState({ registrationNumber: "", vehicleTitle: "", buyerName: "" })
   const [savingEdit, setSavingEdit] = useState(false)
   const [busyId, setBusyId] = useState(null)
+  const [busyAction, setBusyAction] = useState(null)
 
   function loadReports() {
     setLoading(true)
@@ -32,6 +34,7 @@ export default function InspectionReports({ token }) {
   async function handleStatusChange(report, status) {
     setActionError("")
     setBusyId(report.id)
+    setBusyAction(status)
     try {
       const updated = await updateReportStatus(token, report.id, status)
       setReports((prev) => prev.map((r) => (r.id === report.id ? updated : r)))
@@ -43,9 +46,16 @@ export default function InspectionReports({ token }) {
   }
 
   async function handleDelete(report) {
-    if (!window.confirm("Delete this inspection report? This cannot be undone.")) return
+    const confirmed = await confirmDialog({
+      title: "Delete inspection report?",
+      message: "This cannot be undone.",
+      confirmLabel: "Delete",
+      danger: true,
+    })
+    if (!confirmed) return
     setActionError("")
     setBusyId(report.id)
+    setBusyAction("delete")
     try {
       await deleteReport(token, report.id)
       setReports((prev) => prev.filter((r) => r.id !== report.id))
@@ -153,7 +163,14 @@ export default function InspectionReports({ token }) {
                   disabled={busyId === report.id || report.status === "checked"}
                   onClick={() => handleStatusChange(report, "checked")}
                 >
-                  Mark Checked
+                  {busyId === report.id && busyAction === "checked" ? (
+                    <>
+                      <span className="tp-btn-spinner" aria-hidden="true" />
+                      Saving…
+                    </>
+                  ) : (
+                    "Mark Checked"
+                  )}
                 </button>
                 <button
                   type="button"
@@ -161,7 +178,14 @@ export default function InspectionReports({ token }) {
                   disabled={busyId === report.id || report.status === "needs_modifications"}
                   onClick={() => handleStatusChange(report, "needs_modifications")}
                 >
-                  Needs Modifications
+                  {busyId === report.id && busyAction === "needs_modifications" ? (
+                    <>
+                      <span className="tp-btn-spinner" aria-hidden="true" />
+                      Saving…
+                    </>
+                  ) : (
+                    "Needs Modifications"
+                  )}
                 </button>
                 <button
                   type="button"
@@ -169,7 +193,14 @@ export default function InspectionReports({ token }) {
                   disabled={busyId === report.id}
                   onClick={() => handleDelete(report)}
                 >
-                  Delete
+                  {busyId === report.id && busyAction === "delete" ? (
+                    <>
+                      <span className="tp-btn-spinner" aria-hidden="true" />
+                      Deleting…
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
                 </button>
               </div>
 

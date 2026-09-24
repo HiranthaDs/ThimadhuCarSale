@@ -204,22 +204,40 @@
 .tp-hero-greet { font-size: 12px; color: #c7cbd6; font-weight: 400; }
 .tp-hero-name { font-size: 20px; font-weight: 800; margin: 2px 0 4px; }
 .tp-hero-desc { font-size: 11.5px; color: #9aa1b4; }
+.tp-hero-date-wrap { position: relative; z-index: 2; justify-self: end; flex-shrink: 0; }
 .tp-hero-date {
-  position: relative; z-index: 2;
   display: flex; align-items: center; gap: 8px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 6px 10px; border-radius: 8px;
   backdrop-filter: blur(4px);
-  flex-shrink: 0;
-  justify-self: end;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.tp-hero-date:hover { border-color: rgba(255, 255, 255, 0.28); }
+
+/* Siren effect: a reminder is due today or tomorrow. */
+.tp-hero-date-urgent {
+  animation: tp-siren 1s infinite;
+}
+.tp-hero-date-urgent svg { animation: tp-siren-icon 1s infinite; }
+@keyframes tp-siren {
+  0%, 49% { box-shadow: 0 0 0 2px #ef4444, 0 0 14px 3px rgba(239, 68, 68, 0.75); border-color: #ef4444; }
+  50%, 100% { box-shadow: 0 0 0 2px #3b82f6, 0 0 14px 3px rgba(59, 130, 246, 0.75); border-color: #3b82f6; }
+}
+@keyframes tp-siren-icon {
+  0%, 49% { color: #ef4444; }
+  50%, 100% { color: #3b82f6; }
 }
 
 @media (max-width: 700px) {
   .tp-hero { grid-template-columns: 1fr; text-align: center; }
-  .tp-hero-brand, .tp-hero-center, .tp-hero-date { justify-self: center; }
+  .tp-hero-brand, .tp-hero-center, .tp-hero-date-wrap { justify-self: center; }
 }
-.tp-hero-date svg { width: 16px; height: 16px; color: var(--tp-red); }
+.tp-hero-date svg { width: 16px; height: 16px; color: var(--tp-red); flex-shrink: 0; }
 .tp-d1 { font-size: 12.5px; font-weight: 600; }
 .tp-d2 { font-size: 10.5px; color: #9aa1b4; }
 .tp-d3 { font-size: 11px; font-weight: 700; color: var(--tp-red); letter-spacing: 0.5px; font-variant-numeric: tabular-nums; margin-top: 1px; }
@@ -562,6 +580,7 @@
   padding-bottom: 16px;
   margin-bottom: 16px;
 }
+.ir-logo { height: 90px; width: auto; object-fit: contain; }
 .ir-header-meta { text-align: right; font-size: 12px; color: var(--tp-text-2); line-height: 1.6; }
 .ir-title { font-size: 19px; color: var(--tp-navy); margin: 0 0 20px; }
 
@@ -783,4 +802,163 @@
 .tp-reports-edit-actions { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 2px; }
 @media (max-width: 700px) {
   .tp-reports-edit-form { grid-template-columns: 1fr; }
+}
+
+/* Inline spinner for buttons whose request is in flight. */
+.tp-reports-btn { display: inline-flex; align-items: center; gap: 6px; }
+.tp-reports-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.tp-btn-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: tp-btn-spin 0.7s linear infinite;
+}
+@keyframes tp-btn-spin { to { transform: rotate(360deg); } }
+
+/* Multi-photo fields in the inspection form */
+.tp-photo-count { font-weight: 500; color: var(--tp-text-2); }
+.tp-photo-notice { color: #b3261e; font-size: 12px; }
+.tp-photo-thumb { position: relative; }
+.tp-photo-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: #dc2626;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Reminder calendar side panel (Hero) — slides in from the right edge of the
+   screen next to the calendar button, and collapses back on close. */
+.rc-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: var(--tp-text-1);
+  border-radius: 14px;
+  box-shadow: 0 24px 55px -20px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--tp-border);
+  overflow: hidden;
+  width: min(380px, 92vw);
+  max-height: calc(100vh - 32px);
+  transform: translateX(calc(100% + 24px));
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease;
+}
+.rc-panel-visible { transform: translateX(0); opacity: 1; pointer-events: auto; }
+
+.rc-panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--tp-border); flex-shrink: 0;
+}
+.rc-panel-title { font-weight: 800; font-size: 14px; }
+
+.rc-grid-pane { padding: 14px; border-bottom: 1px solid var(--tp-border); flex-shrink: 0; }
+.rc-detail-pane { flex: 1; padding: 14px; overflow-y: auto; }
+
+.rc-month-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.rc-month-label { font-size: 13.5px; font-weight: 700; }
+.rc-nav-btn {
+  width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--tp-border);
+  background: #fff; cursor: pointer; font-size: 15px; line-height: 1;
+}
+.rc-nav-btn:hover { background: #f4f5f8; }
+
+.rc-weekdays, .rc-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.rc-weekdays { margin-bottom: 4px; }
+.rc-weekdays span { font-size: 10.5px; font-weight: 700; color: #8a8f9c; text-align: center; }
+
+.rc-day {
+  position: relative;
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rc-day:hover { background: #f4f5f8; }
+.rc-day-blank { cursor: default; }
+.rc-day-blank:hover { background: none; }
+.rc-day-today { font-weight: 800; color: var(--tp-red); border-color: #f5c2bd; }
+.rc-day-selected { background: #eef2ff; border-color: #a5b4fc; }
+.rc-day-urgent { background: #fef2f2; }
+.rc-day-dot {
+  position: absolute;
+  bottom: 3px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+.rc-day-urgent .rc-day-dot { background: #ef4444; }
+
+.rc-detail-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-weight: 700; font-size: 13px; }
+.rc-empty { font-size: 12.5px; }
+.rc-add-btn { width: 100%; margin-top: 8px; }
+
+.rc-reminder-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.rc-reminder-item { border: 1px solid var(--tp-border); border-radius: 8px; padding: 10px; }
+.rc-reminder-item-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.rc-reminder-title { font-weight: 700; font-size: 12.5px; }
+.rc-urgent-tag {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+  color: #dc2626; background: #fdecea; border-radius: 999px; padding: 2px 8px; flex-shrink: 0;
+}
+.rc-ack-tag {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+  color: var(--tp-green); background: var(--tp-green-bg); border-radius: 999px; padding: 2px 8px; flex-shrink: 0;
+}
+.rc-reminder-remark { font-size: 12px; color: var(--tp-text-2); white-space: pre-wrap; margin: 0 0 8px; line-height: 1.5; }
+
+/* The green "OK" button that stops the siren glow for one reminder. */
+.rc-ack-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 7px 10px;
+  border: 1px solid #bfe8cf;
+  border-radius: 8px;
+  background: var(--tp-green-bg);
+  color: var(--tp-green);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rc-ack-btn:hover { background: #d9f3e4; }
+.rc-ack-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.rc-reminder-actions { display: flex; gap: 8px; }
+
+.rc-form { display: flex; flex-direction: column; gap: 12px; }
+.rc-field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; }
+.rc-field input, .rc-field textarea {
+  font: inherit; font-weight: 400; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--tp-border); resize: vertical;
+}
+.rc-word-count { font-weight: 500; color: #b3261e; }
+.rc-word-count-ok { color: var(--tp-green); }
+.rc-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+@media (max-width: 640px) {
+  .rc-panel { top: 10px; right: 10px; bottom: 10px; }
 }

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { createBlacklistEntry } from "../../../api/blacklist"
+import { createBlacklistEntry, updateBlacklistEntry } from "../../../api/blacklist"
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -12,8 +12,20 @@ function fileToDataUrl(file) {
 
 const initialForm = { vehicle_number: "", chassis_number: "", remarks: "", images: [] }
 
-export default function VehicleBlacklistForm({ token, onClose, onCreated }) {
-  const [form, setForm] = useState(initialForm)
+function formFromEntry(entry) {
+  if (!entry) return initialForm
+  return {
+    vehicle_number: entry.vehicle_number || "",
+    chassis_number: entry.chassis_number || "",
+    remarks: entry.remarks || "",
+    images: entry.images.map((img) => img.image),
+  }
+}
+
+// Pass `entry` to edit an existing blacklist entry; omit it to add a new one.
+export default function VehicleBlacklistForm({ token, entry, onClose, onCreated, onUpdated }) {
+  const isEdit = Boolean(entry)
+  const [form, setForm] = useState(() => formFromEntry(entry))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
 
@@ -32,19 +44,22 @@ export default function VehicleBlacklistForm({ token, onClose, onCreated }) {
         remarks: form.remarks || null,
         images: form.images,
       }
-      const created = await createBlacklistEntry(token, payload)
-      onCreated?.(created)
+      if (isEdit) {
+        onUpdated?.(await updateBlacklistEntry(token, entry.id, payload))
+      } else {
+        onCreated?.(await createBlacklistEntry(token, payload))
+      }
     } catch (err) {
-      setError(err.message || "Could not add blacklist entry.")
+      setError(err.message || (isEdit ? "Could not update blacklist entry." : "Could not add blacklist entry."))
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="tp-card" style={{ maxWidth: 780, marginBottom: 20 }}>
+    <div className="tp-card vb-form-card">
       <div className="tp-card-head">
-        <div className="tp-card-title">Add Blacklisted Vehicle</div>
+        <div className="tp-card-title">{isEdit ? "Edit Blacklisted Vehicle" : "Add Blacklisted Vehicle"}</div>
         <button type="button" className="tp-form-close" onClick={onClose} aria-label="Close">
           ×
         </button>
@@ -79,7 +94,8 @@ export default function VehicleBlacklistForm({ token, onClose, onCreated }) {
             onChange={async (e) => {
               const files = Array.from(e.target.files || [])
               const urls = await Promise.all(files.map(fileToDataUrl))
-              set("images", [...form.images, ...urls])
+              setForm((prev) => ({ ...prev, images: [...prev.images, ...urls] }))
+              e.target.value = ""
             }}
           />
           {form.images.length > 0 && (
@@ -112,7 +128,7 @@ export default function VehicleBlacklistForm({ token, onClose, onCreated }) {
             Cancel
           </button>
           <button type="submit" className="tp-form-btn tp-form-btn-primary" disabled={submitting}>
-            {submitting ? "Saving…" : "Add to Blacklist"}
+            {submitting ? "Saving…" : isEdit ? "Save Changes" : "Add to Blacklist"}
           </button>
         </div>
       </form>

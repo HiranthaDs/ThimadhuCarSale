@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from reports.model import InspectionReport
@@ -34,6 +34,12 @@ class ReportRepository:
             stmt = stmt.where(InspectionReport.status == status)
         stmt = stmt.order_by(InspectionReport.created_at.desc())
         return list(self.db.scalars(stmt))
+
+    def find_by_registration(self, registration_number: str) -> InspectionReport | None:
+        stmt = select(InspectionReport).where(
+            func.lower(InspectionReport.registration_number) == registration_number.lower()
+        )
+        return self.db.scalars(stmt).first()
 
     def get(self, report_id: uuid.UUID) -> InspectionReport | None:
         return self.db.get(InspectionReport, report_id)

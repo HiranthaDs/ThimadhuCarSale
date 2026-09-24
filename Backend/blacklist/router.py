@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from auth.dependencies import require_owner, require_roles
 from auth.model import User, UserRole
-from blacklist.schema import VehicleBlacklistCreate, VehicleBlacklistOut
+from blacklist.schema import VehicleBlacklistCreate, VehicleBlacklistOut, VehicleBlacklistUpdate
 from blacklist.service import VehicleBlacklistService
 from core.database import get_db
 
@@ -37,6 +37,16 @@ def get_blacklist_entry(
     entry_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_blacklist_access)
 ):
     return VehicleBlacklistService(db).get(entry_id)
+
+
+@router.put("/{entry_id}", response_model=VehicleBlacklistOut)
+def update_blacklist_entry(
+    entry_id: uuid.UUID,
+    payload: VehicleBlacklistUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_blacklist_access),
+):
+    return VehicleBlacklistService(db).update(entry_id, payload, current_user)
 
 
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -15,7 +15,7 @@ body {
   margin: 0;
   padding: 0;
   scrollbar-gutter: stable;
-  overflow-y: scroll;
+  overflow-y: auto;
 }
 
 #root {

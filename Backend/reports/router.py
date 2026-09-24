@@ -42,14 +42,14 @@ async def upload_report_pdf(
     registration_number: str | None = Form(default=None),
     vehicle_title: str | None = Form(default=None),
     buyer_name: str | None = Form(default=None),
-    form_data: str | None = Form(default=None),
+    form_data: UploadFile | None = File(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are accepted.")
 
-    parsed_form_data = _parse_form_data(form_data)
+    parsed_form_data = await _parse_form_data(form_data)
 
     content = await file.read()
     report = ReportService(db).upload_pdf(
@@ -64,11 +64,13 @@ async def upload_report_pdf(
     return _to_out(report, request)
 
 
-def _parse_form_data(form_data: str | None):
-    if not form_data:
+async def _parse_form_data(form_data: UploadFile | None):
+    # Arrives as a JSON file part rather than a text field: Starlette caps text
+    # fields at 1MB, and the form data holds every inspection photo.
+    if form_data is None:
         return None
     try:
-        return json.loads(form_data)
+        return json.loads(await form_data.read())
     except (TypeError, ValueError):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid form_data payload.")
 
@@ -81,7 +83,7 @@ async def replace_report_pdf(
     registration_number: str | None = Form(default=None),
     vehicle_title: str | None = Form(default=None),
     buyer_name: str | None = Form(default=None),
-    form_data: str | None = Form(default=None),
+    form_data: UploadFile | None = File(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -90,7 +92,7 @@ async def replace_report_pdf(
 
     service = ReportService(db)
     report = _get_report_or_404(service, report_id)
-    parsed_form_data = _parse_form_data(form_data)
+    parsed_form_data = await _parse_form_data(form_data)
 
     content = await file.read()
     try:
@@ -150,8 +152,8 @@ def update_report(
     return _to_out(report, request)
 
 
-@router.post("/{report_id}/copy", response_model=InspectionReportOut, status_code=status.HTTP_201_CREATED)
-def copy_report(
+@router.post("/{report_id}/scan2", response_model=InspectionReportOut, status_code=status.HTTP_201_CREATED)
+def create_scan2_report(
     report_id: uuid.UUID,
     request: Request,
     db: Session = Depends(get_db),
@@ -159,7 +161,12 @@ def copy_report(
 ):
     service = ReportService(db)
     report = _get_report_or_404(service, report_id)
-    copy = service.copy_report(report, created_by=current_user.id, technician_name=current_user.full_name)
+    try:
+        copy = service.create_scan2(report, created_by=current_user.id, technician_name=current_user.full_name)
+    except FileExistsError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     return _to_out(copy, request)
 
 

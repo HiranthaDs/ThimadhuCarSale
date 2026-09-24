@@ -12,3 +12,7 @@ export function listBlacklistEntries(token, q) {
 export function deleteBlacklistEntry(token, id) {
   return apiRequest(`/blacklist/${id}`, { method: "DELETE", token })
 }
+
+export function updateBlacklistEntry(token, id, payload) {
+  return apiRequest(`/blacklist/${id}`, { method: "PUT", token, body: payload })
+}

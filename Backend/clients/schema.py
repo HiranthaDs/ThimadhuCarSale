@@ -1,9 +1,25 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from clients.model import ClientDocumentType, ClientProfileStatus, Department, RegistrationType
+from core.security import is_safe_media_url
+
+IMAGE_FIELDS = (
+    "local_client_document_image",
+    "foreign_client_document_image",
+    "cr_document_image",
+    "revenue_license_image",
+    "previous_owner_selfie_image",
+    "in_writing_letter_image",
+    "scan_report_1_image",
+    "scan_report_2_image",
+    "garage_bill_image",
+    "modification_image",
+    "third_person_image",
+    "handover_selfie_image",
+)
 
 
 def _na_if_blank(value: str | None) -> str:
@@ -64,6 +80,13 @@ class ClientProfileCreate(BaseModel):
     selling_price: float | None = None
     loan_amount: float | None = None
     customer_down_payment: float | None = None
+
+    @field_validator(*IMAGE_FIELDS)
+    @classmethod
+    def images_are_safe(cls, value: str | None) -> str | None:
+        if value and not is_safe_media_url(value):
+            raise ValueError("Images must be an uploaded photo or an https link.")
+        return value
 
     @model_validator(mode="after")
     def fill_blank_fields_with_na(self):
