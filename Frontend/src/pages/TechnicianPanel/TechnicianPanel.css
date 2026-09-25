@@ -268,6 +268,9 @@
   border-radius: var(--tp-radius-lg); padding: 20px;
   box-shadow: var(--tp-shadow);
 }
+@media (max-width: 700px) {
+  .tp-card:has(.tp-table) { overflow-x: auto; }
+}
 .tp-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .tp-card-head-full { width: 100%; }
 .tp-card-title { font-size: 15.5px; font-weight: 700; }
@@ -293,7 +296,7 @@
 
 /* Bottom row */
 .tp-bottom-row { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; }
-.tp-table { width: 100%; border-collapse: collapse; }
+.tp-table { width: 100%; min-width: 560px; border-collapse: collapse; }
 .tp-table th {
   text-align: left; font-size: 11.5px; color: var(--tp-text-3);
   font-weight: 600; padding: 0 8px 12px; border-bottom: 1px solid var(--tp-border);
@@ -363,11 +366,73 @@
   .tp-right-panel { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; padding: 0 24px 30px; }
   .tp-right-panel > .tp-card { flex: 1; min-width: 280px; }
 }
+.tp-hero-menu-btn {
+  display: none;
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 86, 219, 0.7);
+  background: rgba(26, 86, 219, 0.18);
+  box-shadow: 0 0 10px 2px rgba(26, 86, 219, 0.5);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+.tp-hero-menu-btn:focus, .tp-hero-menu-btn:focus-visible, .tp-hero-menu-btn:active {
+  outline: none;
+  box-shadow: 0 0 10px 2px rgba(26, 86, 219, 0.5);
+}
+.tp-hero-menu-btn-hidden { visibility: hidden; pointer-events: none; }
+.tp-hero-menu-btn span { display: block; width: 18px; height: 2px; background: var(--tp-red); border-radius: 2px; box-shadow: 0 0 4px rgba(26, 86, 219, 0.9); }
+
+.tp-sidebar-close {
+  display: none;
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: #aab0c0;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+}
+.tp-sidebar-close:hover { color: #fff; }
+
+.tp-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 24, 0.5);
+  z-index: 55;
+}
+
 @media (max-width: 900px) {
   .tp-app { grid-template-columns: 1fr; }
-  .tp-sidebar { display: none; }
+  .tp-main { grid-column: 1; padding: 20px 16px 40px; }
+  .tp-hero-menu-btn { display: flex; }
+  .tp-hero-brand { padding-left: 44px; }
+  .tp-sidebar-close { display: block; }
+  .tp-sidebar-backdrop { display: block; }
+  .tp-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.35);
+  }
+  .tp-sidebar-open { transform: translateX(0); }
   .tp-stats { grid-template-columns: 1fr 1fr; }
   .tp-charts-row, .tp-bottom-row { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .tp-stats { grid-template-columns: 1fr; }
+  .tp-main { padding: 16px 12px 32px; }
 }
 
 /* ---------- Inspection Report ---------- */
@@ -389,12 +454,12 @@
 .tp-inspection-btn:hover { background: var(--tp-red-dark); transform: translateY(-1px); }
 
 .tp-inspection-form {
-  max-width: 980px;
+  width: 100%;
 }
 
 .tp-form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 15px;
 }
 .tp-form-group-full { grid-column: 1 / -1; }
@@ -437,6 +502,52 @@
 .tp-fail-reason textarea:focus { border-color: var(--tp-red); box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.12); }
 .tp-form-photo-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .tp-form-photo-strip img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid var(--tp-border); }
+
+.tp-signature-tabs { display: flex; gap: 8px; margin-bottom: 8px; }
+.tp-signature-tab {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.4;
+  border: 1px solid var(--tp-border);
+  background: #fff;
+  color: var(--tp-text-2);
+  cursor: pointer;
+  outline: none;
+  -webkit-text-fill-color: currentColor;
+}
+.tp-signature-tab:hover { background: #f4f5f8; color: var(--tp-text-1); }
+.tp-signature-tab-active,
+.tp-signature-tab-active:hover {
+  background: var(--tp-red);
+  border-color: var(--tp-red);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+
+.tp-signature-pad { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.tp-signature-canvas {
+  width: 100%;
+  max-width: 500px;
+  height: 160px;
+  border: 1px dashed var(--tp-border);
+  border-radius: 8px;
+  background: #fff;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.tp-signature-preview { margin-top: 8px; }
+.tp-signature-preview img {
+  max-width: 220px;
+  max-height: 90px;
+  object-fit: contain;
+  border: 1px solid var(--tp-border);
+  border-radius: 6px;
+  background: #fff;
+}
 
 .tp-form-error {
   background: #fdecea; color: #b3261e; border: 1px solid #f5c2bd;
@@ -502,6 +613,22 @@
 .tp-form-group select:focus {
   border-color: var(--tp-red);
   box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+}
+
+.tp-form-group input[type="date"] {
+  background: var(--tp-card-bg);
+  color: var(--tp-text-1);
+  accent-color: var(--tp-red);
+  cursor: pointer;
+}
+.tp-form-group input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  filter: invert(28%) sepia(80%) saturate(3000%) hue-rotate(215deg) brightness(90%);
+}
+.tp-form-group input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  background: var(--tp-green-bg, #eef1fb);
 }
 .tp-checkbox-row {
   display: flex;
@@ -574,7 +701,7 @@
 }
 .ir-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   border-bottom: 2px solid var(--tp-border);
   padding-bottom: 16px;
@@ -594,6 +721,11 @@
   margin-bottom: 10px;
 }
 .ir-table { width: 100%; border-collapse: collapse; }
+/* Unscoped (not @media print) so html2pdf's own pagination — used for the
+   PDF saved to R2, which never triggers an actual print — also respects it;
+   without this a row's label/value can be split across two pages. */
+.ir-section { break-inside: avoid; page-break-inside: avoid; }
+.ir-table tr { break-inside: avoid; page-break-inside: avoid; }
 .ir-table th {
   width: 34%;
   text-align: left;
@@ -614,6 +746,7 @@
 .ir-empty { color: var(--tp-text-3); }
 .ir-photo { max-width: 180px; max-height: 140px; object-fit: cover; border-radius: 6px; display: block; }
 .ir-photo-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.ir-signature { max-width: 160px; max-height: 70px; object-fit: contain; display: block; }
 .ir-legal { font-size: 11.5px; color: var(--tp-text-2); line-height: 1.6; }
 .ir-footer {
   display: flex;
@@ -696,6 +829,7 @@
 .tp-inspections-meta { font-size: 12.5px; color: var(--tp-text-2); }
 .tp-inspections-item-side { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
 .tp-inspections-date { font-size: 12px; color: var(--tp-text-3); white-space: nowrap; }
+.tp-inspections-date-link { display: inline-flex; align-items: center; gap: 14px; }
 .tp-inspections-link {
   font-size: 13px;
   font-weight: 600;
@@ -703,6 +837,24 @@
   text-decoration: none;
 }
 .tp-inspections-link:hover { text-decoration: underline; }
+.tp-inspections-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--tp-red);
+  background: #fff;
+  color: var(--tp-red);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+.tp-inspections-download svg { width: 14px; height: 14px; flex-shrink: 0; }
+.tp-inspections-download:hover:not(:disabled) { background: var(--tp-red); color: #fff; }
+.tp-inspections-download:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .tp-report-status {
   display: inline-flex;
@@ -717,7 +869,16 @@
 .tp-report-status-checked { background: var(--tp-green-bg); color: var(--tp-green); }
 .tp-report-status-modifications { background: var(--tp-amber-bg); color: var(--tp-amber); }
 
-.tp-status-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.tp-status-filter {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tp-status-filter::-webkit-scrollbar { display: none; }
 .tp-status-filter-btn {
   padding: 7px 14px;
   border-radius: 20px;
@@ -726,6 +887,8 @@
   border: 1px solid var(--tp-border);
   background: #fff;
   color: var(--tp-text-2);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .tp-status-filter-btn:hover { background: #f4f5f8; }
 .tp-status-filter-btn-active,
@@ -736,6 +899,92 @@
   font-weight: 700;
   box-shadow: 0 2px 6px -1px rgba(18, 63, 158, 0.5);
 }
+
+/* ---------- Activity log ---------- */
+.tp-activity-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 20px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--tp-border);
+}
+.tp-activity-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tp-activity-filter-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tp-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.tp-activity-date-input {
+  padding: 9px 12px;
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--tp-card-bg);
+  color: var(--tp-text-1);
+}
+.tp-activity-date-input:focus { outline: none; border-color: var(--tp-red); }
+.tp-activity-date-input { accent-color: var(--tp-red); cursor: pointer; }
+.tp-activity-date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  filter: invert(28%) sepia(80%) saturate(3000%) hue-rotate(215deg) brightness(90%);
+}
+.tp-activity-date-input::-webkit-calendar-picker-indicator:hover { background: #eef1fb; }
+
+.tp-activity-action-filter { display: flex; flex-wrap: wrap; gap: 8px; }
+.tp-activity-action-btn {
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--tp-border);
+  background: #fff;
+  color: var(--tp-text-2);
+  cursor: pointer;
+}
+.tp-activity-action-btn:hover { background: #f4f5f8; }
+.tp-activity-action-btn-active { color: #fff; border-color: transparent; font-weight: 700; }
+.tp-activity-action-btn-active.tp-activity-action-all { background: var(--tp-navy); }
+.tp-activity-action-btn-active.tp-activity-action-create { background: var(--tp-green); }
+.tp-activity-action-btn-active.tp-activity-action-update { background: var(--tp-red); }
+.tp-activity-action-btn-active.tp-activity-action-delete { background: #dc2626; }
+
+.tp-activity-clear-btn {
+  padding: 9px 16px;
+  border-radius: var(--tp-radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--tp-border);
+  background: #fff;
+  color: var(--tp-text-2);
+  cursor: pointer;
+}
+.tp-activity-clear-btn:hover { background: #f4f5f8; color: var(--tp-text-1); }
+
+.tp-activity-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+.tp-activity-badge-create { background: var(--tp-green-bg); color: var(--tp-green); }
+.tp-activity-badge-update { background: #e8f0fe; color: var(--tp-red); }
+.tp-activity-badge-delete { background: #fdecea; color: #dc2626; }
+.tp-activity-badge-other { background: #f1f1f1; color: var(--tp-text-2); }
 
 /* ---------- Owner Inspection Reports ---------- */
 .tp-reports-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -802,6 +1051,7 @@
 .tp-reports-edit-actions { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 2px; }
 @media (max-width: 700px) {
   .tp-reports-edit-form { grid-template-columns: 1fr; }
+  .tp-reports-item-side { width: 100%; justify-content: space-between; gap: 10px; }
 }
 
 /* Inline spinner for buttons whose request is in flight. */

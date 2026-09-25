@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   InventoryFeatureIcon,
   CustomersFeatureIcon,
@@ -14,6 +14,7 @@ import {
 } from "./icons"
 import { login } from "../../api/auth"
 import logo from "../../assets/logo.png"
+import logoLight from "../../assets/logo-light.png"
 import "./Login.css"
 
 const roles = [
@@ -28,6 +29,18 @@ export default function Login({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+
+  useEffect(() => {
+    // #root normally forces a full-viewport min-height for other pages'
+    // full-height layouts; that leaves dead white space below this
+    // shorter login page on mobile, so drop it while this page is mounted.
+    const root = document.getElementById("root")
+    const prev = root?.style.minHeight
+    if (root) root.style.minHeight = "0"
+    return () => {
+      if (root) root.style.minHeight = prev || ""
+    }
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -122,7 +135,7 @@ export default function Login({ onLogin }) {
 
         <form className="lg-card" onSubmit={handleSubmit}>
           <div className="lg-card-brand">
-            <img src={logo} alt="Thimadu Auto Trading" className="lg-card-brand-icon" />
+            <img src={logoLight} alt="Thimadu Auto Trading" className="lg-card-brand-icon" />
             <div className="lg-card-brand-text">
               <div className="lg-brand-name">Thimadu</div>
               <div className="lg-brand-tag">Auto Trading</div>

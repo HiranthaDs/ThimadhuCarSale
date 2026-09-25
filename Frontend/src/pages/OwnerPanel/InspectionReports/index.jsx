@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
-import { deleteReport, listReports, updateReport, updateReportStatus } from "../../../api/reports"
+import { deleteReport, downloadReportPdf, listReports, updateReport, updateReportStatus } from "../../../api/reports"
 import { ReportStatusBadge, ReportStatusFilter } from "../../TechnicianPanel/components/reportStatus"
 import { confirmDialog } from "../../../components/ConfirmDialog"
+import { DownloadIcon } from "../../TechnicianPanel/Icons"
 
 export default function InspectionReports({ token }) {
   const [reports, setReports] = useState([])
@@ -15,6 +16,7 @@ export default function InspectionReports({ token }) {
   const [savingEdit, setSavingEdit] = useState(false)
   const [busyId, setBusyId] = useState(null)
   const [busyAction, setBusyAction] = useState(null)
+  const [downloadingId, setDownloadingId] = useState(null)
 
   function loadReports() {
     setLoading(true)
@@ -94,6 +96,27 @@ export default function InspectionReports({ token }) {
     }
   }
 
+  async function handleDownload(report) {
+    setActionError("")
+    setDownloadingId(report.id)
+    try {
+      const blob = await downloadReportPdf(token, report.id)
+      const fileName = `${report.registration_number || report.vehicle_title || "inspection-report"}.pdf`
+      const objectUrl = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = objectUrl
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(objectUrl)
+    } catch (err) {
+      setActionError(err.message || "Failed to download report.")
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
   return (
     <section className="tp-inspections">
       <div className="tp-inspections-header">
@@ -134,18 +157,31 @@ export default function InspectionReports({ token }) {
 
                 <div className="tp-reports-item-side">
                   <ReportStatusBadge status={report.status} />
-                  <span className="tp-inspections-date">
-                    {new Date(report.created_at).toLocaleString("en-US", {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                  <span className="tp-inspections-date-link">
+                    <span className="tp-inspections-date">
+                      {new Date(report.created_at).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    <a className="tp-inspections-link" href={report.url} target="_blank" rel="noreferrer">
+                      View PDF
+                    </a>
+                    {report.status === "checked" && (
+                      <button
+                        type="button"
+                        className="tp-inspections-download"
+                        disabled={downloadingId === report.id}
+                        onClick={() => handleDownload(report)}
+                      >
+                        <DownloadIcon />
+                        {downloadingId === report.id ? "Downloading…" : "Download"}
+                      </button>
+                    )}
                   </span>
-                  <a className="tp-inspections-link" href={report.url} target="_blank" rel="noreferrer">
-                    View PDF
-                  </a>
                 </div>
               </div>
 

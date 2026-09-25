@@ -1,5 +1,3 @@
-import base64
-import re
 import uuid
 
 from fastapi import HTTPException, status
@@ -9,9 +7,8 @@ from activity.service import ActivityLogService
 from auth.model import User
 from blacklist.repository import VehicleBlacklistRepository
 from blacklist.schema import VehicleBlacklistCreate, VehicleBlacklistUpdate
+from core.media import decode_data_url
 from core.r2_client import delete_blacklist_image, upload_blacklist_image
-
-_DATA_URL_RE = re.compile(r"^data:(image/[a-zA-Z0-9.+-]+);base64,(.+)$", re.DOTALL)
 
 
 def _store_images(images: list[str]) -> list[str]:
@@ -22,12 +19,11 @@ def _store_images(images: list[str]) -> list[str]:
     """
     stored = []
     for image in images:
-        match = _DATA_URL_RE.match(image)
-        if not match:
+        decoded = decode_data_url(image)
+        if not decoded:
             stored.append(image)
             continue
-        content_type, b64_data = match.groups()
-        content = base64.b64decode(b64_data)
+        content_type, content = decoded
         stored.append(upload_blacklist_image(content, content_type))
     return stored
 

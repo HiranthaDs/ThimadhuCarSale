@@ -145,6 +145,24 @@ export async function deleteReport(token, reportId) {
   }
 }
 
+export async function downloadReportPdf(token, reportId) {
+  let response
+  try {
+    response = await fetch(`${BASE_URL}/reports/${reportId}/download`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+  } catch {
+    throw new Error("Could not reach the server. Is the backend running?")
+  }
+  if (!response.ok) {
+    const isJson = response.headers.get("content-type")?.includes("application/json")
+    const data = isJson ? await response.json() : null
+    const message = data?.detail || `Failed to download report (${response.status})`
+    throw new Error(typeof message === "string" ? message : "Failed to download report")
+  }
+  return response.blob()
+}
+
 export async function listReports(token, q, status) {
   const url = new URL(`${BASE_URL}/reports/`)
   if (q) url.searchParams.set("q", q)

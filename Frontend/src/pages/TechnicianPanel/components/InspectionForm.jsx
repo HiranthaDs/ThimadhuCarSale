@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { MAX_PHOTOS_PER_FIELD, SECTIONS, STATUS_OPTIONS, buildInitialData, toPhotoList, withDefaults } from "./inspectionSchema"
 
 function fileToDataUrl(file) {
@@ -97,6 +97,146 @@ function MultiPhotoField({ field, value, onChange }) {
   )
 }
 
+// Signatures only need to be legible at a small print size, so uploads are
+// scaled down hard — a full-resolution photo would print far too large.
+const SIGNATURE_MAX_WIDTH = 500
+const SIGNATURE_MAX_HEIGHT = 200
+
+function compressSignatureImage(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      const scale = Math.min(1, SIGNATURE_MAX_WIDTH / img.width, SIGNATURE_MAX_HEIGHT / img.height)
+      const canvas = document.createElement("canvas")
+      canvas.width = Math.max(1, Math.round(img.width * scale))
+      canvas.height = Math.max(1, Math.round(img.height * scale))
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height)
+      URL.revokeObjectURL(url)
+      resolve(canvas.toDataURL("image/png"))
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(fileToDataUrl(file))
+    }
+    img.src = url
+  })
+}
+
+function SignatureField({ field, value, onChange }) {
+  const { key, label } = field
+  const [mode, setMode] = useState("upload")
+  const canvasRef = useRef(null)
+  const drawingRef = useRef(false)
+
+  function pointerPos(e, canvas) {
+    const rect = canvas.getBoundingClientRect()
+    const point = e.touches ? e.touches[0] : e
+    return {
+      x: ((point.clientX - rect.left) * canvas.width) / rect.width,
+      y: ((point.clientY - rect.top) * canvas.height) / rect.height,
+    }
+  }
+
+  function startDraw(e) {
+    e.preventDefault()
+    const canvas = canvasRef.current
+    const { x, y } = pointerPos(e, canvas)
+    const ctx = canvas.getContext("2d")
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    drawingRef.current = true
+  }
+
+  function moveDraw(e) {
+    if (!drawingRef.current) return
+    e.preventDefault()
+    const canvas = canvasRef.current
+    const { x, y } = pointerPos(e, canvas)
+    const ctx = canvas.getContext("2d")
+    ctx.strokeStyle = "#141c2e"
+    ctx.lineWidth = 2.5
+    ctx.lineCap = "round"
+    ctx.lineJoin = "round"
+    ctx.lineTo(x, y)
+    ctx.stroke()
+  }
+
+  function endDraw() {
+    if (!drawingRef.current) return
+    drawingRef.current = false
+    onChange(key, canvasRef.current.toDataURL("image/png"))
+  }
+
+  function clearCanvas() {
+    const canvas = canvasRef.current
+    canvas?.getContext("2d").clearRect(0, 0, canvas.width, canvas.height)
+    onChange(key, "")
+  }
+
+  return (
+    <div className="tp-form-group tp-form-group-full">
+      <span>{label}</span>
+      <div className="tp-signature-tabs">
+        <button
+          type="button"
+          className={`tp-signature-tab${mode === "upload" ? " tp-signature-tab-active" : ""}`}
+          onClick={() => setMode("upload")}
+        >
+          Upload Image
+        </button>
+        <button
+          type="button"
+          className={`tp-signature-tab${mode === "draw" ? " tp-signature-tab-active" : ""}`}
+          onClick={() => setMode("draw")}
+        >
+          Draw Signature
+        </button>
+      </div>
+
+      {mode === "upload" && (
+        <input
+          type="file"
+          accept="image/*"
+          onChange={async (e) => {
+            const file = e.target.files?.[0]
+            e.target.value = ""
+            if (!file) return
+            onChange(key, await compressSignatureImage(file))
+          }}
+        />
+      )}
+
+      {mode === "draw" && (
+        <div className="tp-signature-pad">
+          <canvas
+            ref={canvasRef}
+            width={SIGNATURE_MAX_WIDTH}
+            height={SIGNATURE_MAX_HEIGHT}
+            className="tp-signature-canvas"
+            onMouseDown={startDraw}
+            onMouseMove={moveDraw}
+            onMouseUp={endDraw}
+            onMouseLeave={endDraw}
+            onTouchStart={startDraw}
+            onTouchMove={moveDraw}
+            onTouchEnd={endDraw}
+          />
+          <button type="button" className="tp-form-btn tp-form-btn-secondary" onClick={clearCanvas}>
+            Clear
+          </button>
+        </div>
+      )}
+
+      {value && (
+        <div className="tp-signature-preview">
+          <img src={value} alt="Signature preview" />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Field({ field, value, onChange, reasonValue, onReasonChange }) {
   const { key, label, type, options } = field
 
@@ -168,7 +308,7 @@ function Field({ field, value, onChange, reasonValue, onReasonChange }) {
         <span>{label}</span>
         <input
           type="file"
-          accept="image/*,.pdf"
+          accept={field.accept || "image/*,.pdf"}
           onChange={async (e) => {
             const file = e.target.files?.[0]
             if (!file) return
@@ -186,6 +326,10 @@ function Field({ field, value, onChange, reasonValue, onReasonChange }) {
 
   if (type === "multiphoto") {
     return <MultiPhotoField field={field} value={value} onChange={onChange} />
+  }
+
+  if (type === "signature") {
+    return <SignatureField field={field} value={value} onChange={onChange} />
   }
 
   return (

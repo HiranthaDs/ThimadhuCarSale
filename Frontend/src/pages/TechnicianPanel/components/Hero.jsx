@@ -13,7 +13,7 @@ function greetingForHour(hour) {
   return "Good Evening,"
 }
 
-export default function Hero({ name = "Admin", desc = "Here's what's happening with your dealership today.", token }) {
+export default function Hero({ name = "Admin", desc = "Here's what's happening with your dealership today.", token, tag, onMenuClick }) {
   const [now, setNow] = useState(() => new Date())
   const [reminders, setReminders] = useState([])
   const [mounted, setMounted] = useState(false) // panel is in the DOM
@@ -83,8 +83,19 @@ export default function Hero({ name = "Admin", desc = "Here's what's happening w
 
   return (
     <section className="tp-hero">
+      <button
+        type="button"
+        className={`tp-hero-menu-btn${mounted ? " tp-hero-menu-btn-hidden" : ""}`}
+        aria-label="Open menu"
+        onClick={onMenuClick}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+
       <div className="tp-hero-brand">
-        <BrandMark iconSize={34} />
+        <BrandMark tag={tag} />
       </div>
 
       <div className="tp-hero-center">

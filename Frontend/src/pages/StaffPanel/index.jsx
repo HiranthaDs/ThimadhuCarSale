@@ -9,13 +9,27 @@ import "../OwnerPanel/ClientProfiles/ClientProfiles.css"
 
 export default function StaffPanel({ role, username, token, onLogout }) {
   const [view, setView] = useState("dashboard")
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
     <div className="tp-app">
-      <Sidebar role={role} username={username} onLogout={onLogout} activeView={view} onNavigate={setView} />
+      <Sidebar
+        role={role}
+        username={username}
+        onLogout={onLogout}
+        activeView={view}
+        onNavigate={setView}
+        mobileOpen={mobileOpen}
+        onMobileOpenChange={setMobileOpen}
+      />
 
       <main className="tp-main">
-        <Hero name={username || "User"} desc="Here's what needs your attention today." token={token} />
+        <Hero
+          name={username || "User"}
+          desc="Here's what needs your attention today."
+          token={token}
+          onMenuClick={() => setMobileOpen(true)}
+        />
 
         {view === "clients" ? (
           <ClientProfiles token={token} role={role} />

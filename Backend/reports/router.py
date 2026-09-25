@@ -1,13 +1,13 @@
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from auth.dependencies import get_current_user, require_owner
 from auth.model import User
 from core.database import get_db
-from reports.model import REPORT_STATUSES
+from reports.model import REPORT_STATUSES, STATUS_PENDING
 from reports.schema import InspectionReportDetail, InspectionReportOut, InspectionReportStatusUpdate, InspectionReportUpdate
 from reports.service import ReportService
 
@@ -135,6 +135,31 @@ def get_report(
     return _to_detail(report, request)
 
 
+@router.get("/{report_id}/download")
+def download_report_pdf(
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Fetching report.url directly from the browser fails silently: the R2
+    # bucket has no CORS policy for the frontend's origin, so fetch()/blob
+    # downloads are blocked. Proxying the bytes through the API (same origin
+    # as the app) with a Content-Disposition header gives a real download.
+    service = ReportService(db)
+    report = _get_report_or_404(service, report_id)
+    content = service.get_pdf_bytes(report)
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report PDF not found.")
+
+    filename = f"{report.registration_number or report.vehicle_title or 'inspection-report'}.pdf"
+    safe_filename = "".join(c for c in filename if c.isalnum() or c in " ._-") or "inspection-report.pdf"
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
+    )
+
+
 @router.put("/{report_id}", response_model=InspectionReportOut)
 def update_report(
     report_id: uuid.UUID,
@@ -188,8 +213,16 @@ def update_report_status(
 def delete_report(
     report_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_owner),
+    current_user: User = Depends(get_current_user),
 ):
     service = ReportService(db)
     report = _get_report_or_404(service, report_id)
+    if current_user.role != "owner":
+        if report.status != STATUS_PENDING:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only pending reports can be deleted before the owner reviews them.",
+            )
+        if report.created_by != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own reports.")
     service.delete(report)

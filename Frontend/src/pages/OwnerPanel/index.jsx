@@ -7,6 +7,8 @@ import VehicleBlacklist from "./VehicleBlacklist"
 import ActivityLog from "./ActivityLog"
 import InspectionReports from "./InspectionReports"
 import InspectionReports2 from "./InspectionReports/InspectionReports2"
+import InspectionForm from "../TechnicianPanel/components/InspectionForm"
+import InspectionReport from "../TechnicianPanel/components/InspectionReport"
 import Settings from "../TechnicianPanel/components/Settings"
 import "../TechnicianPanel/TechnicianPanel.css"
 import "./ClientProfiles/ClientProfiles.css"
@@ -15,6 +17,7 @@ const initialForm = { email: "", fullName: "", password: "", role: "technician" 
 
 export default function OwnerPanel({ username, token, onLogout }) {
   const [view, setView] = useState("dashboard")
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [users, setUsers] = useState([])
   const [loadingUsers, setLoadingUsers] = useState(true)
   const [listError, setListError] = useState("")
@@ -24,6 +27,23 @@ export default function OwnerPanel({ username, token, onLogout }) {
   const [formError, setFormError] = useState("")
   const [formSuccess, setFormSuccess] = useState("")
   const [showCreateForm, setShowCreateForm] = useState(false)
+
+  const [showReportForm, setShowReportForm] = useState(false)
+  const [reportData, setReportData] = useState(null)
+
+  function handleReportSubmit(data) {
+    setReportData(data)
+    setShowReportForm(false)
+  }
+
+  function closeReportForm() {
+    setShowReportForm(false)
+    setReportData(null)
+  }
+
+  const reportVehicleTitle = reportData
+    ? [reportData.year, reportData.make, reportData.model].filter(Boolean).join(" ")
+    : ""
 
   async function refreshUsers() {
     setLoadingUsers(true)
@@ -77,10 +97,23 @@ export default function OwnerPanel({ username, token, onLogout }) {
 
   return (
     <div className="tp-app">
-      <Sidebar role="owner" username={username} onLogout={onLogout} activeView={view} onNavigate={setView} />
+      <Sidebar
+        role="owner"
+        username={username}
+        onLogout={onLogout}
+        activeView={view}
+        onNavigate={setView}
+        mobileOpen={mobileOpen}
+        onMobileOpenChange={setMobileOpen}
+      />
 
       <main className="tp-main">
-        <Hero name={username || "Owner"} desc="Here's an overview of your dealership today." token={token} />
+        <Hero
+          name={username || "Owner"}
+          desc="Here's an overview of your dealership today."
+          token={token}
+          onMenuClick={() => setMobileOpen(true)}
+        />
 
         {view === "clients" ? (
           <ClientProfiles token={token} role="owner" />
@@ -93,7 +126,28 @@ export default function OwnerPanel({ username, token, onLogout }) {
             emptyLabel="No client profiles are waiting for your approval."
           />
         ) : view === "reports" ? (
-          <InspectionReports token={token} />
+          <>
+            <button
+              type="button"
+              className="tp-inspection-btn"
+              onClick={() => {
+                if (showReportForm) {
+                  closeReportForm()
+                } else {
+                  setReportData(null)
+                  setShowReportForm(true)
+                }
+              }}
+            >
+              {showReportForm ? "Close Inspection Report" : "+ Inspection Report"}
+            </button>
+
+            {showReportForm && (
+              <InspectionForm onClose={closeReportForm} onSubmit={handleReportSubmit} />
+            )}
+
+            <InspectionReports token={token} />
+          </>
         ) : view === "reports2" ? (
           <InspectionReports2 token={token} />
         ) : view === "blacklist" ? (
@@ -233,6 +287,17 @@ export default function OwnerPanel({ username, token, onLogout }) {
           </>
         )}
       </main>
+
+      {reportData && !showReportForm && (
+        <InspectionReport
+          data={reportData}
+          vehicleTitle={reportVehicleTitle}
+          token={token}
+          reportId={null}
+          onClose={() => setReportData(null)}
+          onPrint={() => window.print()}
+        />
+      )}
     </div>
   )
 }

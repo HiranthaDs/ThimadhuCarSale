@@ -172,7 +172,18 @@ function fetchAllScanReports(token) {
   return scanReportsCache
 }
 
-function ScanReportField({ token, label, value, valueName, onChange, vehicleNumber, readOnly }) {
+function scanReportNameFromUrl(url) {
+  if (!url) return null
+  try {
+    const filename = decodeURIComponent(url.split("/").pop() || "")
+    return filename.replace(/\.pdf$/i, "") || null
+  } catch {
+    return null
+  }
+}
+
+function ScanReportField({ token, label, value, onChange, vehicleNumber, readOnly }) {
+  const valueName = scanReportNameFromUrl(value)
   const [query, setQuery] = useState("")
   const [all, setAll] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -213,7 +224,7 @@ function ScanReportField({ token, label, value, valueName, onChange, vehicleNumb
 
   return (
     <div className="tp-form-group" ref={boxRef}>
-      <span>{label}</span>
+      <span>{valueName ? `${label}: ${valueName}` : label}</span>
       {!readOnly && (
         <div className="cp-scan-report-search-box">
           <input
@@ -255,7 +266,7 @@ function ScanReportField({ token, label, value, valueName, onChange, vehicleNumb
       {value && isSafeMediaUrl(value) && (
         <div className="cp-scan-report-row">
           <a href={value} target="_blank" rel="noopener noreferrer" className="tp-form-btn tp-form-btn-secondary">
-            View{valueName ? `: ${valueName}` : ""}
+            View
           </a>
         </div>
       )}

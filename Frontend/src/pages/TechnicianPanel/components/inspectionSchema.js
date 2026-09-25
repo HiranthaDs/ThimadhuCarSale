@@ -64,7 +64,9 @@ export const SECTIONS = [
   {
     title: "Vehicle Exterior",
     fields: [
+      { key: "exteriorInstructions", label: "Instructions", type: "textarea" },
       { key: "hasDamages", label: "Was there any damages on the vehicle?", type: "yesno" },
+      { key: "vehicleConditionDiagram", label: "Vehicle Condition Diagram", type: "multiphoto" },
       { key: "damageDiagramNote", label: "Repainted/Faded/Scratches/Chips/Dents (areas)", type: "textarea" },
       { key: "damagePhotos", label: "Repainted/Faded/Scratches/Chips/Dents Photos", type: "multiphoto" },
       { key: "frontEndLights", label: "Front-End Exterior Lights", type: "status" },
@@ -205,7 +207,13 @@ export const SECTIONS = [
     title: "Hybrid & Electric",
     fields: [
       { key: "hybridBattery", label: "Hybrid Battery", type: "status" },
-      { key: "hybridBatteryReportFile", label: "Hybrid Battery Live Data Report PDF", type: "file" },
+      {
+        key: "hybridBatteryReportFile",
+        label: "Hybrid Battery Live Data Report PDF",
+        type: "file",
+        accept: ".pdf,application/pdf",
+      },
+      { key: "hybridBatteryReportPhotos", label: "Hybrid Battery Live Data Report Photos", type: "multiphoto" },
       { key: "stateOfCharge", label: "State of Charge/ Usable Capacity", type: "status" },
       { key: "stateOfChargeValue", label: "Value (%)", type: "text" },
       { key: "hybridInfoDisplay", label: "Hybrid Entertainment and Information Display", type: "status" },
@@ -218,6 +226,7 @@ export const SECTIONS = [
       { key: "engineCondition", label: "Engine Condition", type: "status" },
       { key: "engineBayPhoto", label: "Engine Bay Photo", type: "multiphoto" },
       { key: "engineCombustionLeakTest", label: "Engine Combustion Leak Test", type: "status" },
+      { key: "engineCombustionLeakTestPhotos", label: "Engine Combustion Leak Test Photos", type: "multiphoto" },
       { key: "engineOilCondition", label: "Engine Oil Condition", type: "status" },
       { key: "engineOilPhoto", label: "Engine Oil Dipstick Photo", type: "multiphoto" },
       { key: "engineSludgeCoolant", label: "Engine Sludge, Water or Engine Coolant in Oil", type: "status" },
@@ -245,6 +254,7 @@ export const SECTIONS = [
       { key: "fuelPumpNoise", label: "Fuel Pump Noise/Pressure Normal", type: "status" },
       { key: "starterMotorOperation", label: "Starter Motor Operation", type: "status" },
       { key: "ignitionSystem", label: "Ignition System", type: "status" },
+      { key: "batteryVoltageChart", label: "Battery Voltage Chart", type: "multiphoto" },
       { key: "batteryCondition", label: "12V Battery Condition", type: "status" },
       { key: "batteryPhoto", label: "12V Battery Photo", type: "multiphoto" },
       { key: "batteryTerminals", label: "Battery Terminals", type: "status" },
@@ -313,12 +323,13 @@ export const SECTIONS = [
     ],
   },
   {
-    title: "Summary",
+    title: "Technician Comment",
     fields: [
       { key: "technicianComments", label: "Technicians Comments", type: "textarea" },
       { key: "damagesMissingComponents", label: "Damages & Missing Components", type: "textarea" },
       { key: "damagesPhotos", label: "Damages & Missing Components Photos", type: "multiphoto" },
       { key: "recommendations", label: "Recommendations", type: "textarea" },
+      { key: "note", label: "Note", type: "textarea" },
       { key: "marketPriceValuation", label: "Market Price Valuation", type: "text" },
     ],
   },
@@ -326,7 +337,21 @@ export const SECTIONS = [
     title: "Sign Off",
     fields: [
       { key: "inspectedBy", label: "Inspected by", type: "text" },
-      { key: "signatureName", label: "Signature (type full name)", type: "text" },
+      {
+        key: "legalText",
+        label: "Legal Disclaimer",
+        type: "textarea",
+        default:
+          "The above report is offered on behalf of Thimadu Automobile Private Limited, following a detailed " +
+          "visual inspection of the structural integrity of the vehicle. The visual inspection is carried out " +
+          "without dissembling or dismantling any parts of the vehicle. Information such as verification of the " +
+          "registration, police, insurance, maintenance records of the respective vehicle or other private and " +
+          "public records, information and data have not been assessed by Thimadu. The information and " +
+          "recommendations provided by us do not amount to approval or acceptance of the concerning matter. The " +
+          "validity of this certificate is only at the time, date, mileage and place of inspection as stated " +
+          "above.\n\nI certify that all the categories in the report have been inspected.",
+      },
+      { key: "signatureName", label: "Signature", type: "signature" },
       { key: "signOffDate", label: "Date", type: "date" },
     ],
   },
@@ -358,7 +383,7 @@ export function buildInitialData() {
   SECTIONS.forEach((section) => {
     section.fields.forEach((field) => {
       if (field.type === "multiphoto") data[field.key] = []
-      else data[field.key] = ""
+      else data[field.key] = field.default ?? ""
       if (field.type === "status") data[`${field.key}Reason`] = ""
     })
   })

@@ -214,3 +214,29 @@
   .lg-features { gap: 24px; }
   .lg-role-group { grid-template-columns: repeat(2, 1fr); }
 }
+
+@media (max-width: 640px) {
+  /* On phones, show only the login form itself — the marketing hero and the
+     "Different Roles / Same Mission" banner add scroll without helping the
+     actual task of logging in. */
+  .lg-screen { height: auto; min-height: 0; background: #fff; }
+  .lg-hero-content, .lg-hero-bg, .lg-hero-overlay, .lg-hero-glow { display: none; }
+  .lg-panel-top { display: none; }
+  .lg-panel-wrap {
+    position: static;
+    width: 100%;
+    padding: 32px 16px;
+    min-height: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background: #fff;
+  }
+  .lg-card { margin: 0 auto; width: 100%; max-width: 420px; padding: 24px 20px 20px; }
+  .lg-role-group { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 360px) {
+  .lg-panel-wrap { padding: 16px 10px; }
+  .lg-card { padding: 20px 16px 18px; }
+}

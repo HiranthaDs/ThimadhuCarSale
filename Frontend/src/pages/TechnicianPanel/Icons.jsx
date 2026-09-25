@@ -1,5 +1,3 @@
-import logo from "../../assets/logo.png"
-
 const base = {
   viewBox: "0 0 24 24",
   fill: "none",
@@ -30,18 +28,12 @@ export function BrandCarIcon(props) {
   )
 }
 
-export function BrandMark({ iconSize = 40, className = "" }) {
+export function BrandMark({ className = "", tag = "Vehicle Inspection Report" }) {
   return (
     <div className={`tp-brandmark ${className}`}>
-      <img
-        className="tp-brandmark-icon"
-        src={logo}
-        alt="Thimadu Auto Trading"
-        style={{ width: iconSize, height: iconSize, objectFit: "contain" }}
-      />
       <div className="tp-brandmark-text">
-        <div className="tp-brandmark-name">Thimadu</div>
-        <div className="tp-brandmark-tag">Vehicle Inspection Report</div>
+        <div className="tp-brandmark-name">Thimadu Auto Trading</div>
+        <div className="tp-brandmark-tag">{tag}</div>
       </div>
     </div>
   )
@@ -182,6 +174,16 @@ export function BellIcon(props) {
     <svg {...base} {...props}>
       <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  )
+}
+
+export function DownloadIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M5 21h14" />
     </svg>
   )
 }

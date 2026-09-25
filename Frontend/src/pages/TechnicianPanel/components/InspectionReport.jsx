@@ -1,10 +1,14 @@
 import { Fragment, useEffect, useRef, useState } from "react"
 import html2pdf from "html2pdf.js"
 import { SECTIONS, toPhotoList } from "./inspectionSchema"
-import reportLogo from "../../../assets/logo-light.png"
 import { replaceReportPdf, uploadReportPdf } from "../../../api/reports"
+import reportLogo from "../../../assets/logo-light.png"
 
 function FieldValue({ field, value }) {
+  if (field.type === "signature") {
+    if (!value) return <span className="ir-empty">—</span>
+    return <img className="ir-signature" src={value} alt={field.label} />
+  }
   if (field.type === "file") {
     if (!value) return <span className="ir-empty">—</span>
     if (typeof value === "string" && value.startsWith("data:application/pdf")) {
@@ -42,21 +46,108 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
     minute: "2-digit",
   })
 
+  useEffect(() => {
+    // .ir-overlay is a fixed, full-screen scroll container with its own
+    // scrollbar; without this the page underneath keeps scrolling too,
+    // producing a second, useless scrollbar next to it.
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prevOverflow
+    }
+  }, [])
+
   async function handleSaveToCloud() {
     if (!pageRef.current) return
     setUploading(true)
     setUploadError(null)
     try {
-      const blob = await html2pdf()
+      if (document.fonts?.ready) {
+        await document.fonts.ready
+      }
+
+      const logoImg = new Image()
+      logoImg.src = reportLogo
+      if (!logoImg.complete) {
+        await new Promise((resolve, reject) => {
+          logoImg.onload = resolve
+          logoImg.onerror = reject
+        })
+      }
+
+      // Reserve room at the top/bottom of every page for the header and
+      // footer band drawn below; the in-DOM .ir-header is only there for
+      // on-screen viewing and browser Print, so it's hidden for this capture.
+      const pdf = await html2pdf()
         .set({
-          margin: 10,
+          margin: [30, 10, 16, 10],
           filename: "inspection-report.pdf",
           image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            // html2canvas renders the page inside its own cloned iframe, which
+            // doesn't inherit the live document's CSS custom properties
+            // (var(--tp-navy) etc.) reliably and has to re-fetch the Inter
+            // webfont on its own — so without forcing plain values here it
+            // silently falls back to the browser's default serif font and
+            // black headings, unlike the on-screen report.
+            onclone: async (clonedDoc) => {
+              const style = clonedDoc.createElement("style")
+              style.textContent = `
+                .ir-page, .ir-page * {
+                  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+                }
+                .ir-header { display: none !important; }
+                .ir-title { color: #141c2e !important; margin-top: 0 !important; }
+                .ir-section-title { color: #1a56db !important; }
+              `
+              clonedDoc.head.appendChild(style)
+              if (clonedDoc.fonts?.ready) {
+                await clonedDoc.fonts.ready
+              }
+            },
+          },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          pagebreak: { mode: ["css", "legacy"] },
         })
         .from(pageRef.current)
-        .outputPdf("blob")
+        .toPdf()
+        .get("pdf")
+
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const marginX = 10
+      const logoHeight = 16
+      const logoWidth = logoHeight * (logoImg.naturalWidth / logoImg.naturalHeight || 3)
+      const totalPages = pdf.internal.getNumberOfPages()
+
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i)
+
+        // Header: logo on the left, submission date + company on the right.
+        pdf.addImage(logoImg, "PNG", marginX, 6, logoWidth, logoHeight)
+        pdf.setFont("helvetica", "normal")
+        pdf.setFontSize(9)
+        pdf.setTextColor(107, 114, 128)
+        pdf.text(`Date Submitted: ${today}`, pageWidth - marginX, 12, { align: "right" })
+        pdf.text("Thimadu Automobile Private Limited", pageWidth - marginX, 16.5, { align: "right" })
+        pdf.setDrawColor(230, 232, 240)
+        pdf.setLineWidth(0.3)
+        pdf.line(marginX, 24, pageWidth - marginX, 24)
+
+        // Footer: brand name on the left, page count on the right.
+        pdf.line(marginX, pageHeight - 13, pageWidth - marginX, pageHeight - 13)
+        pdf.setFont("helvetica", "bold")
+        pdf.setFontSize(9.5)
+        pdf.setTextColor(20, 28, 46)
+        pdf.text("Thimadu Auto Trading", marginX, pageHeight - 7)
+        pdf.setFont("helvetica", "normal")
+        pdf.setTextColor(107, 114, 128)
+        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - marginX, pageHeight - 7, { align: "right" })
+      }
+
+      const blob = pdf.output("blob")
 
       const registrationNumber = data.registrationNumber || ""
       const fileName = `${registrationNumber || vehicleTitle || "inspection-report"}.pdf`
@@ -129,7 +220,9 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
             <h2 className="ir-section-title">{section.title}</h2>
             <table className="ir-table">
               <tbody>
-                {section.fields.map((field) => (
+                {section.fields
+                  .filter((field) => field.key !== "legalText")
+                  .map((field) => (
                   <Fragment key={field.key}>
                     <tr>
                       <th>{field.label}</th>
@@ -152,17 +245,13 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
 
         <section className="ir-section">
           <h2 className="ir-section-title">Legal</h2>
-          <p className="ir-legal">
-            The above report is offered on behalf of Thimadu Automobile Private Limited, following a detailed
-            visual inspection of the structural integrity of the vehicle. The visual inspection is carried out
-            without dissembling or dismantling any parts of the vehicle. Information such as verification of the
-            registration, police, insurance, maintenance records of the respective vehicle or other private and
-            public records, information and data have not been assessed by Thimadu. The information and
-            recommendations provided by us do not amount to approval or acceptance of the concerning matter. The
-            validity of this certificate is only at the time, date, mileage and place of inspection as stated
-            above.
-          </p>
-          <p className="ir-legal">I certify that all the categories in the report have been inspected.</p>
+          {(data.legalText || "").split("\n").map((line, i) =>
+            line ? (
+              <p className="ir-legal" key={i}>
+                {line}
+              </p>
+            ) : null
+          )}
         </section>
 
         <footer className="ir-footer">

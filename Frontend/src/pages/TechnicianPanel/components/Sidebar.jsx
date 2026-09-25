@@ -1,3 +1,4 @@
+import { useState } from "react"
 import {
   DashboardIcon,
   InventoryIcon,
@@ -44,51 +45,69 @@ const navByRole = {
   ],
 }
 
-export default function Sidebar({ role = "technician", username, onLogout, activeView, onNavigate }) {
+export default function Sidebar({ role = "technician", username, onLogout, activeView, onNavigate, mobileOpen: mobileOpenProp, onMobileOpenChange }) {
   const navItems = navByRole[role] ?? navByRole.technician
+  const [mobileOpenState, setMobileOpenState] = useState(false)
+  const mobileOpen = mobileOpenProp ?? mobileOpenState
+  const setMobileOpen = onMobileOpenChange ?? setMobileOpenState
 
   return (
-    <aside className="tp-sidebar">
-      <div className="tp-brand">
-        <div className="tp-brand-icon">
-          <img src={logo} alt="Thimadu Auto Trading" />
-        </div>
-        <div className="tp-brand-text">
-          <div className="tp-name">Thimadu</div>
-          <div className="tp-tag">Auto Trading</div>
-        </div>
-      </div>
+    <>
+      {mobileOpen && (
+        <div className="tp-sidebar-backdrop" onClick={() => setMobileOpen(false)} aria-hidden="true" />
+      )}
 
-      <nav className="tp-nav">
-        {navItems.map(({ label, icon: Icon, view, chevron }) => {
-          const isActive = view ? view === activeView : label === "Dashboard" && !activeView
-          return (
-            <a
-              key={label}
-              className={`tp-nav-item${isActive ? " tp-nav-item-active" : ""}`}
-              href="#"
-              onClick={(e) => {
-                e.preventDefault()
-                if (view && onNavigate) onNavigate(view)
-              }}
-            >
-              <Icon />
-              {label}
-              {chevron && <ChevronIcon className="tp-chev" />}
-            </a>
-          )
-        })}
-      </nav>
-
-      <div className="tp-sidebar-user">
-        <div className="tp-sidebar-user-info">
-          <div className="tp-sidebar-user-name">{username || "User"}</div>
-          <div className="tp-sidebar-user-role">{role}</div>
+      <aside className={`tp-sidebar${mobileOpen ? " tp-sidebar-open" : ""}`}>
+        <div className="tp-brand">
+          <div className="tp-brand-icon">
+            <img src={logo} alt="Thimadu Auto Trading" />
+          </div>
+          <div className="tp-brand-text">
+            <div className="tp-name">Thimadu</div>
+            <div className="tp-tag">Auto Trading</div>
+          </div>
+          <button
+            type="button"
+            className="tp-sidebar-close"
+            aria-label="Close menu"
+            onClick={() => setMobileOpen(false)}
+          >
+            ✕
+          </button>
         </div>
-        <button type="button" className="tp-logout-btn" onClick={onLogout} aria-label="Log out">
-          <LogoutIcon />
-        </button>
-      </div>
-    </aside>
+
+        <nav className="tp-nav">
+          {navItems.map(({ label, icon: Icon, view, chevron }) => {
+            const isActive = view ? view === activeView : label === "Dashboard" && !activeView
+            return (
+              <a
+                key={label}
+                className={`tp-nav-item${isActive ? " tp-nav-item-active" : ""}`}
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (view && onNavigate) onNavigate(view)
+                  setMobileOpen(false)
+                }}
+              >
+                <Icon />
+                {label}
+                {chevron && <ChevronIcon className="tp-chev" />}
+              </a>
+            )
+          })}
+        </nav>
+
+        <div className="tp-sidebar-user">
+          <div className="tp-sidebar-user-info">
+            <div className="tp-sidebar-user-name">{username || "User"}</div>
+            <div className="tp-sidebar-user-role">{role}</div>
+          </div>
+          <button type="button" className="tp-logout-btn" onClick={onLogout} aria-label="Log out">
+            <LogoutIcon />
+          </button>
+        </div>
+      </aside>
+    </>
   )
 }

@@ -175,10 +175,12 @@ export default function InspectionReports2({ token }) {
 
                   <div className="tp-reports-item-side">
                     <ReportStatusBadge status={report.status} />
-                    <span className="tp-inspections-date">{formatDate(report.created_at)}</span>
-                    <a className="tp-inspections-link" href={report.url} target="_blank" rel="noreferrer">
-                      View Scan 1 PDF
-                    </a>
+                    <span className="tp-inspections-date-link">
+                      <span className="tp-inspections-date">{formatDate(report.created_at)}</span>
+                      <a className="tp-inspections-link" href={report.url} target="_blank" rel="noreferrer">
+                        View Scan 1 PDF
+                      </a>
+                    </span>
                   </div>
                 </div>
 
@@ -202,10 +204,12 @@ export default function InspectionReports2({ token }) {
                         </button>
                       )}
                       <ReportStatusBadge status={scan2.status} />
-                      <span className="tp-inspections-date">{formatDate(scan2.created_at)}</span>
-                      <a className="tp-inspections-link" href={scan2.url} target="_blank" rel="noreferrer">
-                        View Scan 2 PDF
-                      </a>
+                      <span className="tp-inspections-date-link">
+                        <span className="tp-inspections-date">{formatDate(scan2.created_at)}</span>
+                        <a className="tp-inspections-link" href={scan2.url} target="_blank" rel="noreferrer">
+                          View Scan 2 PDF
+                        </a>
+                      </span>
                     </div>
                   </div>
                 ) : (

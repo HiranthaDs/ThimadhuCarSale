@@ -10,8 +10,17 @@ import VehicleBlacklist from "../OwnerPanel/VehicleBlacklist"
 import { getReport } from "../../api/reports"
 import "./TechnicianPanel.css"
 
+const VIEW_TAGS = {
+  dashboard: "Vehicle Inspection Report",
+  inspections: "Inspections",
+  reports2: "Inspection Reports",
+  blacklist: "Vehicle Blacklist",
+  settings: "Settings",
+}
+
 export default function TechnicianPanel({ username, token, onLogout }) {
   const [view, setView] = useState("dashboard")
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [reportData, setReportData] = useState(null)
   const [editingReportId, setEditingReportId] = useState(null)
@@ -47,10 +56,24 @@ export default function TechnicianPanel({ username, token, onLogout }) {
 
   return (
     <div className="tp-app">
-      <Sidebar role="technician" username={username} onLogout={onLogout} activeView={view} onNavigate={setView} />
+      <Sidebar
+        role="technician"
+        username={username}
+        onLogout={onLogout}
+        activeView={view}
+        onNavigate={setView}
+        mobileOpen={mobileOpen}
+        onMobileOpenChange={setMobileOpen}
+      />
 
       <main className="tp-main">
-        <Hero name={username || "Technician"} desc="Here's what's happening with your inspections today." token={token} />
+        <Hero
+          name={username || "Technician"}
+          desc="Here's what's happening with your inspections today."
+          token={token}
+          tag={VIEW_TAGS[view] || "Vehicle Inspection Report"}
+          onMenuClick={() => setMobileOpen(true)}
+        />
 
         {view === "dashboard" && (
           <>

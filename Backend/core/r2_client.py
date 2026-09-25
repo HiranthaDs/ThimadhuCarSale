@@ -37,6 +37,11 @@ def _key_from_url(public_base: str, url: str | None) -> str | None:
     return url[len(public_base) + 1 :]
 
 
+def _ext_for_content_type(content_type: str) -> str:
+    ext = (content_type.rsplit("/", 1)[-1] or "bin").lower()
+    return "jpg" if ext == "jpeg" else ext
+
+
 # --- Inspection report PDFs -------------------------------------------------
 
 
@@ -50,6 +55,13 @@ def delete_report_pdf(url: str | None) -> None:
     key = _key_from_url(REPORTS_PUBLIC_URL, url)
     if key:
         _delete(REPORTS_BUCKET, key)
+
+
+def get_report_pdf_bytes(url: str | None) -> bytes:
+    key = _key_from_url(REPORTS_PUBLIC_URL, url)
+    if not key:
+        return b""
+    return _client.get_object(Bucket=REPORTS_BUCKET, Key=key)["Body"].read()
 
 
 def list_report_pdfs(max_results: int = 500) -> list[dict]:
@@ -72,6 +84,36 @@ def list_report_pdfs(max_results: int = 500) -> list[dict]:
     return sorted(results, key=lambda r: r["filename"].lower())
 
 
+CLIENT_DOCUMENT_PREFIX = "client-documents"
+
+
+def upload_client_document(content: bytes, content_type: str) -> str:
+    key = f"{CLIENT_DOCUMENT_PREFIX}/{uuid.uuid4().hex}.{_ext_for_content_type(content_type)}"
+    _put(REPORTS_BUCKET, key, content, content_type)
+    return f"{REPORTS_PUBLIC_URL}/{key}"
+
+
+def delete_client_document(url: str | None) -> None:
+    key = _key_from_url(REPORTS_PUBLIC_URL, url)
+    if key:
+        _delete(REPORTS_BUCKET, key)
+
+
+FORM_ATTACHMENT_PREFIX = "form-attachments"
+
+
+def upload_form_attachment(content: bytes, content_type: str) -> str:
+    key = f"{FORM_ATTACHMENT_PREFIX}/{uuid.uuid4().hex}.{_ext_for_content_type(content_type)}"
+    _put(REPORTS_BUCKET, key, content, content_type)
+    return f"{REPORTS_PUBLIC_URL}/{key}"
+
+
+def delete_form_attachment(url: str | None) -> None:
+    key = _key_from_url(REPORTS_PUBLIC_URL, url)
+    if key:
+        _delete(REPORTS_BUCKET, key)
+
+
 def find_scan_reports(registration_number: str) -> dict[str, str | None]:
     reg = registration_number.strip()
 
@@ -92,10 +134,7 @@ def find_scan_reports(registration_number: str) -> dict[str, str | None]:
 
 
 def upload_blacklist_image(content: bytes, content_type: str) -> str:
-    ext = (content_type.rsplit("/", 1)[-1] or "jpg").lower()
-    if ext == "jpeg":
-        ext = "jpg"
-    key = f"{uuid.uuid4().hex}.{ext}"
+    key = f"{uuid.uuid4().hex}.{_ext_for_content_type(content_type)}"
     _put(BLACKLIST_BUCKET, key, content, content_type)
     return f"{BLACKLIST_PUBLIC_URL}/{key}"
 
