@@ -784,6 +784,17 @@
   .ir-table { break-inside: auto; }
   .ir-table tr { break-inside: avoid; }
   .ir-footer { break-inside: avoid; }
+
+  /* Browsers mute light borders/backgrounds by default when printing, so the
+     very light --tp-border grey used on screen all but disappears on paper —
+     force it dark enough to stay visible and stop the browser from washing
+     the row backgrounds out. */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ir-table, .ir-table th, .ir-table td {
+    border: 1px solid #9aa1ae !important;
+    border-collapse: collapse !important;
+  }
+  .ir-table th { background: #f2f3f7 !important; }
 }
 
 /* ---------- Inspections list ---------- */

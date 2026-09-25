@@ -54,3 +54,8 @@ def activate_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_use
 @router.patch("/users/{user_id}/deactivate", response_model=UserOut)
 def deactivate_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_owner)):
     return AuthService(db).set_account_active(user_id, False, current_user)
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_owner)):
+    AuthService(db).delete_account(user_id, current_user)

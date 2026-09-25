@@ -2,6 +2,7 @@ import math
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from activity.service import ActivityLogService
@@ -118,6 +119,35 @@ class AuthService:
             description=f"{'Activated' if is_active else 'Deactivated'} account for {updated.full_name} ({updated.email})",
         )
         return updated
+
+    def delete_account(self, user_id, current_user: User) -> None:
+        if current_user.role != UserRole.owner:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the owner can delete accounts.",
+            )
+        target = self.repository.get_by_id(user_id)
+        if not target:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found.")
+        if target.role == UserRole.owner:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete the owner account.")
+
+        description = f"Deleted account for {target.full_name} ({target.email})"
+        try:
+            self.repository.delete(target)
+        except IntegrityError:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This account has existing reports or other records and can't be deleted — deactivate it instead.",
+            )
+        ActivityLogService(self.db).log(
+            actor=current_user,
+            action="user.delete",
+            entity_type="user",
+            entity_id=user_id,
+            description=description,
+        )
 
     def change_password(self, payload: ChangePasswordRequest, current_user: User) -> User:
         if not verify_password(payload.current_password, current_user.hashed_password):

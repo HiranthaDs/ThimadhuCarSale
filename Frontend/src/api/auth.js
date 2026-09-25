@@ -27,6 +27,10 @@ export function setUserActive(token, userId, active) {
   })
 }
 
+export function deleteUser(token, userId) {
+  return apiRequest(`/auth/users/${userId}`, { method: "DELETE", token })
+}
+
 export function changePassword(token, { currentPassword, newPassword }) {
   return apiRequest("/auth/change-password", {
     method: "PATCH",

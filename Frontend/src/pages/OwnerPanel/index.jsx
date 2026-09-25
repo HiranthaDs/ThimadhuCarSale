@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import Sidebar from "../TechnicianPanel/components/Sidebar"
 import Hero from "../TechnicianPanel/components/Hero"
-import { createUser, listUsers, setUserActive } from "../../api/auth"
+import { createUser, deleteUser, listUsers, setUserActive } from "../../api/auth"
+import { confirmDialog } from "../../components/ConfirmDialog"
 import ClientProfiles from "./ClientProfiles"
 import VehicleBlacklist from "./VehicleBlacklist"
 import ActivityLog from "./ActivityLog"
@@ -21,6 +22,8 @@ export default function OwnerPanel({ username, token, onLogout }) {
   const [users, setUsers] = useState([])
   const [loadingUsers, setLoadingUsers] = useState(true)
   const [listError, setListError] = useState("")
+
+  const [deletingId, setDeletingId] = useState(null)
 
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
@@ -92,6 +95,26 @@ export default function OwnerPanel({ username, token, onLogout }) {
     } catch (err) {
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, is_active: user.is_active } : u)))
       setListError(err.message || "Could not update account.")
+    }
+  }
+
+  async function handleDeleteUser(user) {
+    const confirmed = await confirmDialog({
+      title: "Delete account?",
+      message: `This permanently deletes ${user.full_name}'s account (${user.email}). This cannot be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+    })
+    if (!confirmed) return
+    setListError("")
+    setDeletingId(user.id)
+    try {
+      await deleteUser(token, user.id)
+      setUsers((prev) => prev.filter((u) => u.id !== user.id))
+    } catch (err) {
+      setListError(err.message || "Could not delete account.")
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -254,6 +277,7 @@ export default function OwnerPanel({ username, token, onLogout }) {
                   <th>Email</th>
                   <th>Role</th>
                   <th>Active</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -276,6 +300,18 @@ export default function OwnerPanel({ username, token, onLogout }) {
                         </button>
                       ) : (
                         <span className="tp-muted">—</span>
+                      )}
+                    </td>
+                    <td>
+                      {u.role !== "owner" && (
+                        <button
+                          type="button"
+                          className="tp-reports-btn tp-reports-btn-danger"
+                          disabled={deletingId === u.id}
+                          onClick={() => handleDeleteUser(u)}
+                        >
+                          {deletingId === u.id ? "Deleting…" : "Delete"}
+                        </button>
                       )}
                     </td>
                   </tr>

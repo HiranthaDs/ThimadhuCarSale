@@ -101,6 +101,11 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
                 .ir-header { display: none !important; }
                 .ir-title { color: #141c2e !important; margin-top: 0 !important; }
                 .ir-section-title { color: #1a56db !important; }
+                .ir-table, .ir-table th, .ir-table td {
+                  border: 1px solid #c7cbd6 !important;
+                  border-collapse: collapse !important;
+                }
+                .ir-table th { background: #fafafa !important; }
               `
               clonedDoc.head.appendChild(style)
               if (clonedDoc.fonts?.ready) {
