@@ -106,7 +106,7 @@ export async function createScan2Report(token, reportId) {
   } catch {
     throw new Error("Could not reach the server. Is the backend running?")
   }
-  return parseResponse(response, "Failed to create Scan 2 copy")
+  return parseResponse(response, "Failed to create Inspection Report 2 copy")
 }
 
 export async function updateReportStatus(token, reportId, status) {

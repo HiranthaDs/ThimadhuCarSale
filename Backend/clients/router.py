@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from auth.dependencies import require_owner, require_owner_co_accountant, require_roles
+from auth.dependencies import require_owner, require_owner_ceo_accountant, require_roles
 from auth.model import User, UserRole
 from clients.schema import (
     ClientProfileCreate,
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/clients", tags=["clients"])
 def create_client_profile(
     payload: ClientProfileCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_owner_co_accountant),
+    current_user: User = Depends(require_owner_ceo_accountant),
 ):
     return ClientProfileService(db).create(payload, current_user)
 
@@ -33,7 +33,7 @@ def create_client_profile(
 def list_client_profiles(
     q: str | None = Query(default=None, description="Search across name, phone, NIC, vehicle number, etc."),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_owner_co_accountant),
+    current_user: User = Depends(require_owner_ceo_accountant),
 ):
     return ClientProfileService(db).list_all(q)
 
@@ -41,21 +41,21 @@ def list_client_profiles(
 @router.get("/scan-reports/lookup", response_model=ScanReportLookup)
 def lookup_scan_reports(
     vehicle_number: str = Query(..., min_length=1),
-    current_user: User = Depends(require_owner_co_accountant),
+    current_user: User = Depends(require_owner_ceo_accountant),
 ):
     return find_scan_reports(vehicle_number)
 
 
 @router.get("/scan-reports/all", response_model=list[ScanReportSearchResult])
 def list_all_scan_reports(
-    current_user: User = Depends(require_owner_co_accountant),
+    current_user: User = Depends(require_owner_ceo_accountant),
 ):
     return list_report_pdfs()
 
 
 @router.get("/{profile_id}", response_model=ClientProfileOut)
 def get_client_profile(
-    profile_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_owner_co_accountant)
+    profile_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_owner_ceo_accountant)
 ):
     return ClientProfileService(db).get(profile_id)
 
@@ -65,7 +65,7 @@ def update_client_profile(
     profile_id: uuid.UUID,
     payload: ClientProfileUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_owner_co_accountant),
+    current_user: User = Depends(require_owner_ceo_accountant),
 ):
     return ClientProfileService(db).update(profile_id, payload, current_user)
 

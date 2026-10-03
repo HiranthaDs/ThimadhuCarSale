@@ -15,6 +15,14 @@ const STATUS_CLASSES = {
   approved: "tp-report-status-checked",
 }
 
+function departmentPeople(p) {
+  return [
+    ["Marketing", p.marketing_person_name],
+    ["Technical", p.technical_person_name],
+    ["Purchasing", p.purchasing_person_name],
+  ].filter(([, name]) => name && name !== "N/A")
+}
+
 export default function ClientProfiles({ token, role, statusFilter, title = "Client Profiles", emptyLabel }) {
   const [profiles, setProfiles] = useState([])
   const [loading, setLoading] = useState(true)
@@ -214,7 +222,14 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
                     <td className="tp-muted">{p.previous_owner_nic || "—"}</td>
                     <td>{p.vehicle_number || "—"}</td>
                     <td className="tp-muted">{p.chassis_number || "—"}</td>
-                    <td style={{ textTransform: "capitalize" }}>{p.department || "—"}</td>
+                    <td className="tp-muted">
+                      {departmentPeople(p).map(([dept, name]) => (
+                        <div key={dept}>
+                          {dept}: {name}
+                        </div>
+                      ))}
+                      {departmentPeople(p).length === 0 && "—"}
+                    </td>
                     <td>
                       <span className={`tp-report-status ${STATUS_CLASSES[p.status] || ""}`}>
                         {STATUS_LABELS[p.status] || p.status}

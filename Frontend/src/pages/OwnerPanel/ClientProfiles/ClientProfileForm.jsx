@@ -3,6 +3,7 @@ import { createClientProfile, listAllScanReports, updateClientProfile } from "..
 import { TABS, buildSubmitPayload, initialFormState, mapProfileToForm, validateClientTypes } from "./clientProfileSchema"
 import { COUNTRIES } from "./countries"
 import { isSafeMediaUrl } from "../../../utils/safeUrl"
+import DatePicker from "../../../components/DatePicker"
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -14,6 +15,14 @@ function fileToDataUrl(file) {
 }
 
 function TextField({ label, value, onChange, type = "text", required, placeholder }) {
+  if (type === "date") {
+    return (
+      <div className="tp-form-group">
+        <span>{label}</span>
+        <DatePicker value={value} onChange={onChange} />
+      </div>
+    )
+  }
   return (
     <label className="tp-form-group">
       <span>{label}</span>
@@ -161,6 +170,30 @@ function ImageField({ label, value, onChange, full }) {
   )
 }
 
+function FileField({ label, value, onChange, full }) {
+  return (
+    <label className={`tp-form-group${full ? " tp-form-group-full" : ""}`}>
+      <span>{label}</span>
+      <input
+        type="file"
+        accept="application/pdf,image/*"
+        onChange={async (e) => {
+          const file = e.target.files?.[0]
+          if (!file) return
+          onChange(await fileToDataUrl(file))
+        }}
+      />
+      {value && isSafeMediaUrl(value) && (
+        <div className="cp-scan-report-row">
+          <a href={value} target="_blank" rel="noopener noreferrer" className="tp-form-btn tp-form-btn-secondary">
+            View
+          </a>
+        </div>
+      )}
+    </label>
+  )
+}
+
 let scanReportsCache = null
 function fetchAllScanReports(token) {
   if (!scanReportsCache) {
@@ -274,12 +307,52 @@ function ScanReportField({ token, label, value, onChange, vehicleNumber, readOnl
   )
 }
 
-const DOCUMENT_OPTIONS = [
-  { value: "nic", label: "NIC" },
-  { value: "passport", label: "Passport" },
-  { value: "other", label: "Other document" },
-  { value: "none", label: "No document" },
+const DOCUMENT_KINDS = [
+  { key: "nic", label: "NIC" },
+  { key: "passport", label: "Passport" },
+  { key: "other", label: "Other document" },
 ]
+
+function DocumentPicker({ prefix, form, set }) {
+  const typesKey = `${prefix}_client_document_types`
+  const types = form[typesKey]
+
+  function toggle(kind, checked) {
+    set(typesKey, checked ? [...types, kind] : types.filter((t) => t !== kind))
+  }
+
+  return (
+    <div className="tp-form-group">
+      <span>Identification Document</span>
+      <div className="cp-radio-row">
+        {DOCUMENT_KINDS.map((d) => (
+          <label key={d.key} className="cp-radio-option">
+            <input type="checkbox" checked={types.includes(d.key)} onChange={(e) => toggle(d.key, e.target.checked)} />
+            {d.label}
+          </label>
+        ))}
+        <label className="cp-radio-option">
+          <input type="checkbox" checked={types.length === 0} onChange={() => set(typesKey, [])} />
+          No document
+        </label>
+      </div>
+      {DOCUMENT_KINDS.filter((d) => types.includes(d.key)).map((d) => (
+        <div className="tp-form-row" key={d.key}>
+          <TextField
+            label={`${d.label} Number`}
+            value={form[`${prefix}_client_${d.key}_number`]}
+            onChange={(v) => set(`${prefix}_client_${d.key}_number`, v)}
+          />
+          <ImageField
+            label={`${d.label} Photo`}
+            value={form[`${prefix}_client_${d.key}_image`]}
+            onChange={(v) => set(`${prefix}_client_${d.key}_image`, v)}
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export default function ClientProfileForm({ token, profile, readOnly = false, onClose, onCreated, onUpdated }) {
   const isEdit = Boolean(profile)
@@ -290,6 +363,13 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  function setExtraDepartment(index, field, value) {
+    set(
+      "extra_departments",
+      form.extra_departments.map((d, i) => (i === index ? { ...d, [field]: value } : d)),
+    )
   }
 
   async function handleSubmit(e) {
@@ -369,21 +449,14 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
                     onChange={(v) => set("local_client_phone", v)}
                   />
                 </div>
-                <RadioField
-                  label="Identification Document"
-                  value={form.local_client_document_type}
-                  onChange={(v) => set("local_client_document_type", v)}
-                  options={DOCUMENT_OPTIONS}
-                />
-                {form.local_client_document_type !== "none" && (
-                  <div className="tp-form-row">
-                    <ImageField
-                      label="Document Photo"
-                      value={form.local_client_document_image}
-                      onChange={(v) => set("local_client_document_image", v)}
-                    />
-                  </div>
-                )}
+                <DocumentPicker prefix="local" form={form} set={set} />
+                <div className="tp-form-row cp-handover-row">
+                  <ImageField
+                    label="Handover Selfie"
+                    value={form.local_client_handover_selfie_image}
+                    onChange={(v) => set("local_client_handover_selfie_image", v)}
+                  />
+                </div>
               </div>
             )}
 
@@ -414,21 +487,14 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
                     onChange={(v) => set("foreign_client_phone", v)}
                   />
                 </div>
-                <RadioField
-                  label="Identification Document"
-                  value={form.foreign_client_document_type}
-                  onChange={(v) => set("foreign_client_document_type", v)}
-                  options={DOCUMENT_OPTIONS}
-                />
-                {form.foreign_client_document_type !== "none" && (
-                  <div className="tp-form-row">
-                    <ImageField
-                      label="Document Photo"
-                      value={form.foreign_client_document_image}
-                      onChange={(v) => set("foreign_client_document_image", v)}
-                    />
-                  </div>
-                )}
+                <DocumentPicker prefix="foreign" form={form} set={set} />
+                <div className="tp-form-row cp-handover-row">
+                  <ImageField
+                    label="Handover Selfie"
+                    value={form.foreign_client_handover_selfie_image}
+                    onChange={(v) => set("foreign_client_handover_selfie_image", v)}
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -482,7 +548,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
             <div className="tp-form-row">
               <ScanReportField
                 token={token}
-                label="Scan Report 1"
+                label="Inspection Report 1"
                 value={form.scan_report_1_image}
                 onChange={(v) => set("scan_report_1_image", v)}
                 vehicleNumber={form.vehicle_number}
@@ -490,11 +556,23 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
               />
               <ScanReportField
                 token={token}
-                label="Scan Report 2"
+                label="Inspection Report 2"
                 value={form.scan_report_2_image}
                 onChange={(v) => set("scan_report_2_image", v)}
                 vehicleNumber={form.vehicle_number}
                 readOnly={readOnly}
+              />
+            </div>
+            <div className="tp-form-row">
+              <FileField
+                label="Inspection Report 1 (Upload)"
+                value={form.scan_report_1_upload}
+                onChange={(v) => set("scan_report_1_upload", v)}
+              />
+              <FileField
+                label="Inspection Report 2 (Upload)"
+                value={form.scan_report_2_upload}
+                onChange={(v) => set("scan_report_2_upload", v)}
               />
             </div>
             <div className="tp-form-row">
@@ -533,23 +611,54 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
 
         {activeTab === "department" && (
           <div className="tp-form-section">
-            <div className="tp-form-row">
-              <SelectField
-                label="Department"
-                value={form.department}
-                onChange={(v) => set("department", v)}
-                options={[
-                  { value: "marketing", label: "Marketing" },
-                  { value: "technical", label: "Technical" },
-                  { value: "purchasing", label: "Purchasing" },
-                ]}
-              />
-              <TextField
-                label="Person's Name"
-                value={form.department_person_name}
-                onChange={(v) => set("department_person_name", v)}
-              />
-            </div>
+            {[
+              { key: "marketing", label: "Marketing" },
+              { key: "technical", label: "Technical" },
+              { key: "purchasing", label: "Purchasing" },
+            ].map((d) => (
+              <div className="tp-form-row" key={d.key}>
+                <TextField
+                  label={d.label}
+                  placeholder="Person's name"
+                  value={form[`${d.key}_person_name`]}
+                  onChange={(v) => set(`${d.key}_person_name`, v)}
+                />
+              </div>
+            ))}
+            {form.extra_departments.map((d, i) => (
+              <div className="tp-form-row cp-extra-department" key={i}>
+                <TextField
+                  label="Department"
+                  placeholder="Department name"
+                  value={d.department}
+                  onChange={(v) => setExtraDepartment(i, "department", v)}
+                />
+                <TextField
+                  label="Person's Name"
+                  placeholder="Person's name"
+                  value={d.person_name}
+                  onChange={(v) => setExtraDepartment(i, "person_name", v)}
+                />
+                {!readOnly && (
+                  <button
+                    type="button"
+                    className="tp-form-btn tp-form-btn-secondary cp-extra-department-remove"
+                    onClick={() => set("extra_departments", form.extra_departments.filter((_, idx) => idx !== i))}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
+            {!readOnly && (
+              <button
+                type="button"
+                className="tp-form-btn tp-form-btn-secondary"
+                onClick={() => set("extra_departments", [...form.extra_departments, { department: "", person_name: "" }])}
+              >
+                + Add Department
+              </button>
+            )}
           </div>
         )}
 

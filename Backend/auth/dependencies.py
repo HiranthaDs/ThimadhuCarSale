@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from auth.model import User, UserRole
 from auth.repository import UserRepository
 from core.database import get_db
-from core.security import decode_access_token
+from core.security import decode_access_token, password_version
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -29,6 +29,8 @@ def get_current_user(
     user = UserRepository(db).get_by_id(user_id)
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not found or inactive.")
+    if payload.get("pwd") != password_version(user.hashed_password):
+        raise HTTPException(status_code=401, detail="Password changed. Please sign in again.")
     return user
 
 
@@ -47,4 +49,4 @@ def require_roles(*roles: UserRole):
     return dependency
 
 
-require_owner_co_accountant = require_roles(UserRole.owner, UserRole.co, UserRole.accountant)
+require_owner_ceo_accountant = require_roles(UserRole.owner, UserRole.ceo, UserRole.accountant)

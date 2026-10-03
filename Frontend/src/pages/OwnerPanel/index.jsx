@@ -224,7 +224,7 @@ export default function OwnerPanel({ username, token, onLogout }) {
                   <span>Role</span>
                   <select value={form.role} onChange={(e) => updateForm("role", e.target.value)}>
                     <option value="technician">Technician</option>
-                    <option value="co">CO</option>
+                    <option value="ceo">CEO</option>
                     <option value="accountant">Accountant</option>
                   </select>
                 </label>

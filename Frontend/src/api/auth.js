@@ -38,3 +38,20 @@ export function changePassword(token, { currentPassword, newPassword }) {
     body: { current_password: currentPassword, new_password: newPassword },
   })
 }
+
+
+export function requestPasswordOtp({ token, email }) {
+  return apiRequest(token ? "/auth/password-otp" : "/auth/forgot-password", {
+    method: "POST",
+    token,
+    body: token ? undefined : { email },
+  })
+}
+
+export function resetPasswordWithOtp({ token, email, otp, newPassword }) {
+  return apiRequest(token ? "/auth/change-password-with-otp" : "/auth/reset-password", {
+    method: "POST",
+    token,
+    body: { ...(token ? {} : { email }), otp, new_password: newPassword },
+  })
+}

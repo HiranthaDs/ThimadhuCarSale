@@ -1,7 +1,6 @@
 import { useState } from "react"
 import {
   DashboardIcon,
-  InventoryIcon,
   ClipboardIcon,
   CheckBadgeIcon,
   ReportsIcon,
@@ -28,10 +27,9 @@ const navByRole = {
     { label: "Inspections", icon: ClipboardIcon, view: "inspections" },
     { label: "Inspection Report 2", icon: ReportsIcon, view: "reports2" },
     { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist" },
-    { label: "Equipment", icon: InventoryIcon },
     { label: "Settings", icon: SettingsIcon, view: "settings" },
   ],
-  co: [
+  ceo: [
     { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
     { label: "Client Profiles", icon: ClipboardIcon, view: "clients" },
     { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist" },

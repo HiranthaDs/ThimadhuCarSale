@@ -150,11 +150,11 @@ class ReportService:
         the Scan 1 report still has to be sent to the client as-is.
         """
         if is_scan2(report.registration_number):
-            raise ValueError("This report is already a Scan 2 report.")
+            raise ValueError("This report is already an Inspection Report 2.")
         if not (report.registration_number or "").strip():
-            raise ValueError("The report has no registration number, so a Scan 2 copy cannot be named.")
+            raise ValueError("The report has no registration number, so an Inspection Report 2 copy cannot be named.")
         if report.status != STATUS_CHECKED:
-            raise ValueError("A Scan 2 copy can only be created after the owner has approved the report.")
+            raise ValueError("An Inspection Report 2 copy can only be created after the owner has approved the report.")
 
         scan2_registration = scan2_name(report.registration_number)
         existing = self.repository.find_by_registration(scan2_registration)

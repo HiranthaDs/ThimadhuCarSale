@@ -1,4 +1,5 @@
 import { useRef, useState } from "react"
+import DatePicker from "../../../components/DatePicker"
 import { MAX_PHOTOS_PER_FIELD, SECTIONS, STATUS_OPTIONS, buildInitialData, toPhotoList, withDefaults } from "./inspectionSchema"
 
 function fileToDataUrl(file) {
@@ -332,11 +333,20 @@ function Field({ field, value, onChange, reasonValue, onReasonChange }) {
     return <SignatureField field={field} value={value} onChange={onChange} />
   }
 
+  if (type === "date") {
+    return (
+      <div className="tp-form-group">
+        <span>{label}</span>
+        <DatePicker value={value} onChange={(v) => onChange(key, v)} />
+      </div>
+    )
+  }
+
   return (
     <label className="tp-form-group">
       <span>{label}</span>
       <input
-        type={type === "number" ? "number" : type === "date" ? "date" : "text"}
+        type={type === "number" ? "number" : "text"}
         value={value}
         onChange={(e) => onChange(key, e.target.value)}
       />
@@ -360,7 +370,7 @@ export default function InspectionForm({ onClose, onSubmit, initialData }) {
     <div className="tp-card tp-inspection-form">
       <div className="tp-card-head">
         <div className="tp-card-title">{initialData ? "Edit Inspection Report" : "New Inspection Report"}
-          {data.scanNumber === 2 ? " — Scan 2" : ""}</div>
+          {data.scanNumber === 2 ? " — Inspection Report 2" : ""}</div>
         <button type="button" className="tp-form-close" onClick={onClose} aria-label="Close">
           ✕
         </button>

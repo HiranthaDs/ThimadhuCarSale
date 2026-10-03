@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import JSON, Boolean, Date, DateTime, Enum, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -53,6 +53,16 @@ class ClientProfile(Base):
         Enum(ClientDocumentType, name="client_document_type"), nullable=False, default=ClientDocumentType.none_
     )
     local_client_document_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Legacy single-document columns above are no longer written; the multi-document
+    # fields below replace them (comma-separated selection of nic/passport/other).
+    local_client_document_types: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    local_client_nic_number: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    local_client_nic_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    local_client_passport_number: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    local_client_passport_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    local_client_other_number: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    local_client_other_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    local_client_handover_selfie_image: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # ---- Foreign client details ----
     has_foreign_client: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -63,6 +73,14 @@ class ClientProfile(Base):
         Enum(ClientDocumentType, name="foreign_client_document_type"), nullable=False, default=ClientDocumentType.none_
     )
     foreign_client_document_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    foreign_client_document_types: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    foreign_client_nic_number: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    foreign_client_nic_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    foreign_client_passport_number: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    foreign_client_passport_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    foreign_client_other_number: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    foreign_client_other_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    foreign_client_handover_selfie_image: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # ---- Document details ----
     cr_document_image: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -81,6 +99,8 @@ class ClientProfile(Base):
     previous_owner_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     scan_report_1_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     scan_report_2_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    scan_report_1_upload: Mapped[str | None] = mapped_column(Text, nullable=True)
+    scan_report_2_upload: Mapped[str | None] = mapped_column(Text, nullable=True)
     garage_bill_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     modification_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     other_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -91,6 +111,12 @@ class ClientProfile(Base):
     # ---- Department details ----
     department: Mapped[Department | None] = mapped_column(Enum(Department, name="department"), nullable=True)
     department_person_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Legacy single department/person above is no longer written; each department has its own person.
+    marketing_person_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    technical_person_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    purchasing_person_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Additional user-added departments: [{"department": "...", "person_name": "..."}]
+    extra_departments: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     # ---- Payment details ----
     leasing_company: Mapped[str | None] = mapped_column(String(255), nullable=True)

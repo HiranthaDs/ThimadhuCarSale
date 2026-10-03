@@ -81,7 +81,7 @@ export default function InspectionReports2({ token }) {
       loadReports()
       await openScan2(copy.id)
     } catch (err) {
-      setActionError(err.message || "Failed to create Scan 2 copy.")
+      setActionError(err.message || "Failed to create Inspection Report 2 copy.")
     } finally {
       setBusyId(null)
     }
@@ -93,7 +93,7 @@ export default function InspectionReports2({ token }) {
     try {
       await openScan2(scan2.id)
     } catch (err) {
-      setActionError(err.message || "Failed to load Scan 2 report.")
+      setActionError(err.message || "Failed to load Inspection Report 2.")
     } finally {
       setBusyId(null)
     }
@@ -119,7 +119,7 @@ export default function InspectionReports2({ token }) {
         reportId={editingId}
         onSaved={loadReports}
         onClose={() => {
-          // Same as Scan 1: once generated, go back to the Scan 2 list, not the form.
+          // Same as Scan 1: once generated, go back to the Inspection Report 2 list, not the form.
           closeEditor()
           loadReports()
         }}
@@ -134,7 +134,7 @@ export default function InspectionReports2({ token }) {
   return (
     <section className="tp-inspections">
       <div className="tp-inspections-header">
-        <h2>Inspection Report 2 - Scan 2</h2>
+        <h2>Inspection Report 2</h2>
         <input
           type="text"
           className="tp-inspections-search"
@@ -147,7 +147,7 @@ export default function InspectionReports2({ token }) {
       {actionError && <p className="tp-inspections-status tp-inspections-error">{actionError}</p>}
       {!query.trim() && (
         <p className="tp-inspections-status">
-          Search for a vehicle's registration number to create or edit its Scan 2 report.
+          Search for a vehicle's registration number to create or edit its Inspection Report 2.
         </p>
       )}
       {loading && <p className="tp-inspections-status">Loading…</p>}
@@ -178,7 +178,7 @@ export default function InspectionReports2({ token }) {
                     <span className="tp-inspections-date-link">
                       <span className="tp-inspections-date">{formatDate(report.created_at)}</span>
                       <a className="tp-inspections-link" href={report.url} target="_blank" rel="noreferrer">
-                        View Scan 1 PDF
+                        View Inspection Report 1 PDF
                       </a>
                     </span>
                   </div>
@@ -189,7 +189,7 @@ export default function InspectionReports2({ token }) {
                     <div className="tp-reports-item-main">
                       <span className="tp-inspections-name">{scan2.registration_number}</span>
                       <span className="tp-inspections-meta">
-                        {scan2.technician_name ? `Scan 2 by ${scan2.technician_name}` : "Scan 2"}
+                        {scan2.technician_name ? `Inspection Report 2 by ${scan2.technician_name}` : "Inspection Report 2"}
                       </span>
                     </div>
                     <div className="tp-reports-item-side">
@@ -200,14 +200,14 @@ export default function InspectionReports2({ token }) {
                           disabled={busyId === scan2.id}
                           onClick={() => handleEditScan2(scan2)}
                         >
-                          {busyId === scan2.id ? "Loading…" : "Edit Scan 2"}
+                          {busyId === scan2.id ? "Loading…" : "Edit Inspection Report 2"}
                         </button>
                       )}
                       <ReportStatusBadge status={scan2.status} />
                       <span className="tp-inspections-date-link">
                         <span className="tp-inspections-date">{formatDate(scan2.created_at)}</span>
                         <a className="tp-inspections-link" href={scan2.url} target="_blank" rel="noreferrer">
-                          View Scan 2 PDF
+                          View Inspection Report 2 PDF
                         </a>
                       </span>
                     </div>
@@ -218,13 +218,13 @@ export default function InspectionReports2({ token }) {
                       type="button"
                       className="tp-reports-btn"
                       disabled={!approved || busyId === report.id}
-                      title={approved ? "" : "The owner must approve this report before a Scan 2 copy can be made."}
+                      title={approved ? "" : "The owner must approve this report before an Inspection Report 2 copy can be made."}
                       onClick={() => handleCreateCopy(report)}
                     >
                       {busyId === report.id ? "Creating…" : "Create a Copy"}
                     </button>
                     {!approved && (
-                      <span className="tp-inspections-meta">Waiting for owner approval before a Scan 2 can be made.</span>
+                      <span className="tp-inspections-meta">Waiting for owner approval before an Inspection Report 2 can be made.</span>
                     )}
                   </div>
                 )}

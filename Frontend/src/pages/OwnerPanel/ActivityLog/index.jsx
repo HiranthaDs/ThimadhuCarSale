@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react"
 import { listActivityLogs } from "../../../api/activity"
+import DatePicker from "../../../components/DatePicker"
 
 const ROLE_LABELS = {
   owner: "Owner",
-  co: "CO",
+  ceo: "CEO",
   accountant: "Accountant",
   technician: "Technician",
 }
@@ -92,12 +93,9 @@ export default function ActivityLog({ token }) {
         <div className="tp-activity-filters">
           <div className="tp-activity-filter-group">
             <span className="tp-activity-filter-label">Date</span>
-            <input
-              type="date"
-              className="tp-activity-date-input"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-            />
+            <div style={{ width: 220 }}>
+              <DatePicker value={dateFilter} onChange={setDateFilter} />
+            </div>
           </div>
 
           <div className="tp-activity-filter-group">

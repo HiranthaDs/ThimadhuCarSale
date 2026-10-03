@@ -12,6 +12,8 @@ MAX_PASSWORD_LENGTH = 72
 
 
 def _check_password_strength(value: str) -> str:
+    if len(value.encode("utf-8")) > MAX_PASSWORD_LENGTH:
+        raise ValueError("Password must be at most 72 bytes.")
     if not any(c.isalpha() for c in value) or not any(c.isdigit() for c in value):
         raise ValueError("Password must contain at least one letter and one number.")
     return value
@@ -23,7 +25,7 @@ class LoginRequest(BaseModel):
 
 
 class UserCreateRequest(BaseModel):
-    """Used by an owner to open an account for a co, accountant, or technician member."""
+    """Used by an owner to open an account for a ceo, accountant, or technician member."""
 
     email: EmailStr
     full_name: str = Field(min_length=1, max_length=255)
@@ -65,3 +67,31 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    otp: str = Field(pattern=r"^[0-9]{6}$")
+    new_password: str = Field(min_length=8, max_length=MAX_PASSWORD_LENGTH)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, value: str) -> str:
+        return _check_password_strength(value)
+
+
+class ForgotPasswordResetRequest(ResetPasswordRequest):
+    email: EmailStr
+
+
+class OtpSentResponse(BaseModel):
+    message: str
+    resend_after_seconds: int
+    expires_in_seconds: int
+
+
+class PasswordResetResponse(BaseModel):
+    message: str

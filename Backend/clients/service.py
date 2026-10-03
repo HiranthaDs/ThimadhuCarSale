@@ -14,8 +14,11 @@ from core.r2_client import delete_client_document, upload_client_document
 # scan_report_1/2_image are picked from an already-uploaded inspection report
 # PDF (owned by the reports feature) rather than being uploaded here, so they
 # must never be offloaded or cleaned up as if they were this profile's own
-# document.
-CLIENT_DOCUMENT_FIELDS = tuple(f for f in IMAGE_FIELDS if not f.startswith("scan_report_"))
+# document. scan_report_1/2_upload are separate PDF/image uploads made on this
+# form, so they are offloaded like any other document field.
+CLIENT_DOCUMENT_FIELDS = tuple(
+    f for f in IMAGE_FIELDS if f not in ("scan_report_1_image", "scan_report_2_image")
+)
 
 
 def _offload_documents(data: dict) -> dict:

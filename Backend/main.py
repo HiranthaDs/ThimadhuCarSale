@@ -42,6 +42,37 @@ async def lifespan(app: FastAPI):
         conn.execute(text("ALTER TABLE reminders ADD COLUMN IF NOT EXISTS acknowledged boolean NOT NULL DEFAULT false"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts integer NOT NULL DEFAULT 0"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until timestamptz"))
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS scan_report_1_upload text"))
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS scan_report_2_upload text"))
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS marketing_person_name varchar(255)"))
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS technical_person_name varchar(255)"))
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS purchasing_person_name varchar(255)"))
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS extra_departments json"))
+        for dept in ("marketing", "technical", "purchasing"):
+            # Carry over profiles saved with the old single department + person.
+            conn.execute(text(
+                f"UPDATE client_profiles SET {dept}_person_name = department_person_name "
+                f"WHERE {dept}_person_name IS NULL AND department::text = '{dept}'"
+            ))
+        for prefix in ("local", "foreign"):
+            conn.execute(text(f"ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS {prefix}_client_document_types varchar(60)"))
+            for doc in ("nic", "passport", "other"):
+                conn.execute(text(f"ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS {prefix}_client_{doc}_number varchar(120)"))
+                conn.execute(text(f"ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS {prefix}_client_{doc}_image text"))
+            conn.execute(text(f"ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS {prefix}_client_handover_selfie_image text"))
+            # Carry over profiles saved with the old single "identification document".
+            conn.execute(text(
+                f"UPDATE client_profiles SET {prefix}_client_document_types = {prefix}_client_document_type::text, "
+                f"{prefix}_client_nic_image = CASE WHEN {prefix}_client_document_type::text = 'nic' THEN {prefix}_client_document_image END, "
+                f"{prefix}_client_passport_image = CASE WHEN {prefix}_client_document_type::text = 'passport' THEN {prefix}_client_document_image END, "
+                f"{prefix}_client_other_image = CASE WHEN {prefix}_client_document_type::text = 'other' THEN {prefix}_client_document_image END "
+                f"WHERE {prefix}_client_document_types IS NULL AND {prefix}_client_document_type::text <> 'none'"
+            ))
+        # The "co" role was renamed to "ceo"; rename the existing enum value in
+        # place (not idempotent via IF EXISTS, so only run it if "co" is still there).
+        if conn.execute(text("SELECT 1 FROM pg_enum WHERE enumlabel = 'co' "
+                              "AND enumtypid = 'user_role'::regtype")).first():
+            conn.execute(text("ALTER TYPE user_role RENAME VALUE 'co' TO 'ceo'"))
 
     db = SessionLocal()
     try:

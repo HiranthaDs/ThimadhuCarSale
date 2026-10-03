@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react"
 import html2pdf from "html2pdf.js"
 import { SECTIONS, toPhotoList } from "./inspectionSchema"
 import { replaceReportPdf, uploadReportPdf } from "../../../api/reports"
+import { PDF_MARGIN, PDF_SCALE, imagesLoaded, paginateForPdf, pdfPageGeometry } from "./paginateReport"
 import reportLogo from "../../../assets/logo-light.png"
 
 function FieldValue({ field, value }) {
@@ -80,11 +81,11 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
       // on-screen viewing and browser Print, so it's hidden for this capture.
       const pdf = await html2pdf()
         .set({
-          margin: [30, 10, 16, 10],
+          margin: PDF_MARGIN,
           filename: "inspection-report.pdf",
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: {
-            scale: 2,
+            scale: PDF_SCALE,
             useCORS: true,
             // html2canvas renders the page inside its own cloned iframe, which
             // doesn't inherit the live document's CSS custom properties
@@ -111,10 +112,22 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
               if (clonedDoc.fonts?.ready) {
                 await clonedDoc.fonts.ready
               }
+
+              // Lay the pages out here, on the very DOM that is about to be
+              // drawn (html2pdf's own page-break pass is switched off below):
+              // rows, photos and titles that would straddle a page boundary
+              // move whole to the next page.
+              const container = clonedDoc.querySelector(".html2pdf__container")
+              if (container) {
+                const { widthPx, pagePx } = pdfPageGeometry()
+                container.style.width = `${widthPx}px`
+                await imagesLoaded(container)
+                paginateForPdf(container, pagePx)
+              }
             },
           },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak: { mode: ["css", "legacy"] },
+          pagebreak: { mode: [] },
         })
         .from(pageRef.current)
         .toPdf()
@@ -216,7 +229,7 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
         </header>
 
         <h1 className="ir-title">
-          Thimadu Vehicle Inspection Report{data.scanNumber === 2 ? " (Scan 2)" : ""}
+          Thimadu Vehicle Inspection Report{data.scanNumber === 2 ? " (Inspection Report 2)" : ""}
           {vehicleTitle ? ` — ${vehicleTitle}` : ""}
         </h1>
 
@@ -261,7 +274,7 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
 
         <footer className="ir-footer">
           <span>Buy used vehicles with confidence.</span>
-          <span>Thimadu Vehicle Inspection Report{data.scanNumber === 2 ? " — Scan 2" : ""}</span>
+          <span>Thimadu Vehicle Inspection Report{data.scanNumber === 2 ? " — Inspection Report 2" : ""}</span>
         </footer>
       </div>
     </div>

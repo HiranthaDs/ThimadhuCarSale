@@ -11,7 +11,7 @@ from core.database import get_db
 
 router = APIRouter(prefix="/blacklist", tags=["blacklist"])
 
-require_blacklist_access = require_roles(UserRole.owner, UserRole.co, UserRole.accountant, UserRole.technician)
+require_blacklist_access = require_roles(UserRole.owner, UserRole.ceo, UserRole.accountant, UserRole.technician)
 
 
 @router.post("/", response_model=VehicleBlacklistOut, status_code=status.HTTP_201_CREATED)

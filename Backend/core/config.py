@@ -1,5 +1,7 @@
 from functools import lru_cache
+from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,6 +44,22 @@ class Settings(BaseSettings):
     # stop a single request from exhausting server memory. 30MB comfortably
     # covers a report with dozens of compressed photos.
     max_request_body_bytes: int = 30 * 1024 * 1024
+
+    # Choose SMTP or the Brevo HTTPS API. Credentials stay on the backend.
+    email_provider: Literal["brevo_api", "smtp"] = "brevo_api"
+    smtp_host: str = "smtp-relay.brevo.com"
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_sender_email: str = ""
+    smtp_sender_name: str = "Thimadhu"
+    brevo_api_key: str = ""
+    brevo_sender_email: str = ""
+    brevo_sender_name: str = "Thimadhu"
+    password_reset_expire_minutes: int = Field(default=10, ge=1, le=30)
+    password_reset_resend_seconds: int = Field(default=60, ge=30)
+    password_reset_max_attempts: int = Field(default=5, ge=1, le=10)
+    password_reset_max_sends_per_hour: int = Field(default=5, ge=1, le=20)
 
     @property
     def cors_origin_list(self) -> list[str]:

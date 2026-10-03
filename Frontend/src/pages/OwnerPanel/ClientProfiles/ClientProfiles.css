@@ -165,6 +165,8 @@
   border-bottom: 1px dashed var(--tp-border);
 }
 .cp-client-block:last-child { border-bottom: none; }
+.cp-handover-row { margin-top: 22px; }
+.cp-extra-department { align-items: end; grid-template-columns: 1fr 1fr auto; }
 
 .cp-scan-report-row {
   display: flex;

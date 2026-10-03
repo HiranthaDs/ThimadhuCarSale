@@ -18,7 +18,9 @@ SEARCHABLE_COLUMNS = [
     "previous_owner_nic",
     "previous_owner_phone",
     "other_notes",
-    "department_person_name",
+    "marketing_person_name",
+    "technical_person_name",
+    "purchasing_person_name",
     "leasing_company",
     "bank_officer_name",
 ]

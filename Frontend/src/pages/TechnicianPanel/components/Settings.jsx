@@ -1,7 +1,9 @@
 import { useState } from "react"
+import PasswordReset from "../../../components/PasswordReset"
 import { changePassword } from "../../../api/auth"
 
 export default function Settings({ token }) {
+  const [resetting, setResetting] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -14,8 +16,8 @@ export default function Settings({ token }) {
     setError("")
     setSuccess("")
 
-    if (newPassword.length < 8) {
-      setError("New password must be at least 8 characters.")
+    if (newPassword.length < 8 || !/\p{L}/u.test(newPassword) || !/\p{N}/u.test(newPassword)) {
+      setError("New password must be at least 8 characters and contain letters and numbers.")
       return
     }
     if (newPassword !== confirmPassword) {
@@ -26,7 +28,7 @@ export default function Settings({ token }) {
     setSubmitting(true)
     try {
       await changePassword(token, { currentPassword, newPassword })
-      setSuccess("Password updated successfully.")
+      setSuccess("Password updated successfully. Please sign in again.")
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
@@ -35,6 +37,21 @@ export default function Settings({ token }) {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (resetting) {
+    return <div className="tp-card" style={{ maxWidth: 480 }}>
+      <PasswordReset token={token} onCancel={() => setResetting(false)}
+        onSuccess={() => window.dispatchEvent(new CustomEvent("thimadu:unauthorized"))} />
+    </div>
+  }
+
+  if (success) {
+    return <div className="tp-card" style={{ maxWidth: 480 }}>
+      <p role="status">{success}</p>
+      <button type="button" className="tp-form-btn tp-form-btn-primary"
+        onClick={() => window.dispatchEvent(new CustomEvent("thimadu:unauthorized"))}>Back to login</button>
+    </div>
   }
 
   return (
@@ -55,6 +72,14 @@ export default function Settings({ token }) {
               onChange={(e) => setCurrentPassword(e.target.value)}
             />
           </label>
+          <button type="button" className="tp-form-btn" disabled={submitting} onClick={() => {
+            setCurrentPassword("")
+            setNewPassword("")
+            setConfirmPassword("")
+            setError("")
+            setSuccess("")
+            setResetting(true)
+          }}>Forgot current password? Send an email code</button>
           <label className="tp-form-group">
             <span>New Password</span>
             <input

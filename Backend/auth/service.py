@@ -2,15 +2,16 @@ import math
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from activity.service import ActivityLogService
-from auth.model import User, UserRole
+from auth.model import PasswordReset, User, UserRole
 from auth.repository import UserRepository
 from auth.schema import ChangePasswordRequest, LoginRequest, TokenResponse, UserCreateRequest
 from core.config import get_settings
-from core.security import create_access_token, hash_password, verify_password
+from core.security import create_access_token, hash_password, verify_password, password_version
 
 
 class AuthService:
@@ -59,7 +60,7 @@ class AuthService:
         if user.failed_login_attempts:
             self.repository.clear_login_lockout(user)
 
-        token = create_access_token(subject=str(user.id), extra_claims={"role": user.role.value})
+        token = create_access_token(subject=str(user.id), extra_claims={"role": user.role.value, "pwd": password_version(user.hashed_password)})
         return TokenResponse(access_token=token, user=user)
 
     def create_staff_or_technician(self, payload: UserCreateRequest, current_user: User) -> User:
@@ -150,11 +151,18 @@ class AuthService:
         )
 
     def change_password(self, payload: ChangePasswordRequest, current_user: User) -> User:
+        current_user = self.db.scalar(
+            select(User).where(User.id == current_user.id).with_for_update()
+            .execution_options(populate_existing=True)
+        )
         if not verify_password(payload.current_password, current_user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Current password is incorrect.",
             )
+        challenge = self.db.get(PasswordReset, current_user.id)
+        if challenge:
+            challenge.code_hash = None
         updated = self.repository.set_password(current_user, hash_password(payload.new_password))
         ActivityLogService(self.db).log(
             actor=current_user,

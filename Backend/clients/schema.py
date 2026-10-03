@@ -3,23 +3,36 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from clients.model import ClientDocumentType, ClientProfileStatus, Department, RegistrationType
+from clients.model import ClientProfileStatus, RegistrationType
 from core.security import is_safe_media_url
 
 IMAGE_FIELDS = (
-    "local_client_document_image",
-    "foreign_client_document_image",
+    "local_client_nic_image",
+    "local_client_passport_image",
+    "local_client_other_image",
+    "foreign_client_nic_image",
+    "foreign_client_passport_image",
+    "foreign_client_other_image",
+    "local_client_handover_selfie_image",
+    "foreign_client_handover_selfie_image",
     "cr_document_image",
     "revenue_license_image",
     "previous_owner_selfie_image",
     "in_writing_letter_image",
     "scan_report_1_image",
     "scan_report_2_image",
+    "scan_report_1_upload",
+    "scan_report_2_upload",
     "garage_bill_image",
     "modification_image",
     "third_person_image",
     "handover_selfie_image",
 )
+
+
+class ExtraDepartment(BaseModel):
+    department: str = Field(max_length=120)
+    person_name: str = Field(default="", max_length=255)
 
 
 def _na_if_blank(value: str | None) -> str:
@@ -31,16 +44,28 @@ class ClientProfileCreate(BaseModel):
     has_local_client: bool = False
     local_client_name: str | None = Field(default=None, max_length=255)
     local_client_phone: str | None = None
-    local_client_document_type: ClientDocumentType = ClientDocumentType.none_
-    local_client_document_image: str | None = None
+    local_client_document_types: str | None = None
+    local_client_nic_number: str | None = None
+    local_client_nic_image: str | None = None
+    local_client_passport_number: str | None = None
+    local_client_passport_image: str | None = None
+    local_client_other_number: str | None = None
+    local_client_other_image: str | None = None
+    local_client_handover_selfie_image: str | None = None
 
     # Foreign client details
     has_foreign_client: bool = False
     foreign_client_name: str | None = Field(default=None, max_length=255)
     foreign_client_country: str | None = None
     foreign_client_phone: str | None = None
-    foreign_client_document_type: ClientDocumentType = ClientDocumentType.none_
-    foreign_client_document_image: str | None = None
+    foreign_client_document_types: str | None = None
+    foreign_client_nic_number: str | None = None
+    foreign_client_nic_image: str | None = None
+    foreign_client_passport_number: str | None = None
+    foreign_client_passport_image: str | None = None
+    foreign_client_other_number: str | None = None
+    foreign_client_other_image: str | None = None
+    foreign_client_handover_selfie_image: str | None = None
 
     # Document details
     cr_document_image: str | None = None
@@ -57,6 +82,8 @@ class ClientProfileCreate(BaseModel):
     previous_owner_phone: str | None = None
     scan_report_1_image: str | None = None
     scan_report_2_image: str | None = None
+    scan_report_1_upload: str | None = None
+    scan_report_2_upload: str | None = None
     garage_bill_image: str | None = None
     modification_image: str | None = None
     other_notes: str | None = None
@@ -65,8 +92,10 @@ class ClientProfileCreate(BaseModel):
     handover_selfie_image: str | None = None
 
     # Department details
-    department: Department | None = None
-    department_person_name: str | None = None
+    marketing_person_name: str | None = None
+    technical_person_name: str | None = None
+    purchasing_person_name: str | None = None
+    extra_departments: list[ExtraDepartment] = Field(default_factory=list, max_length=20)
 
     # Payment details
     leasing_company: str | None = None
@@ -88,6 +117,14 @@ class ClientProfileCreate(BaseModel):
             raise ValueError("Images must be an uploaded photo or an https link.")
         return value
 
+    @field_validator("local_client_document_types", "foreign_client_document_types")
+    @classmethod
+    def document_types_are_valid(cls, value: str | None) -> str | None:
+        if not value:
+            return None
+        picked = [t for t in ("nic", "passport", "other") if t in value.split(",")]
+        return ",".join(picked) or None
+
     @model_validator(mode="after")
     def fill_blank_fields_with_na(self):
         if self.has_local_client:
@@ -105,7 +142,9 @@ class ClientProfileCreate(BaseModel):
             "previous_owner_nic",
             "previous_owner_phone",
             "other_notes",
-            "department_person_name",
+            "marketing_person_name",
+            "technical_person_name",
+            "purchasing_person_name",
             "leasing_company",
             "bank_officer_name",
         ):
@@ -127,15 +166,27 @@ class ClientProfileOut(BaseModel):
     has_local_client: bool
     local_client_name: str | None
     local_client_phone: str | None
-    local_client_document_type: ClientDocumentType
-    local_client_document_image: str | None
+    local_client_document_types: str | None
+    local_client_nic_number: str | None
+    local_client_nic_image: str | None
+    local_client_passport_number: str | None
+    local_client_passport_image: str | None
+    local_client_other_number: str | None
+    local_client_other_image: str | None
+    local_client_handover_selfie_image: str | None
 
     has_foreign_client: bool
     foreign_client_name: str | None
     foreign_client_country: str | None
     foreign_client_phone: str | None
-    foreign_client_document_type: ClientDocumentType
-    foreign_client_document_image: str | None
+    foreign_client_document_types: str | None
+    foreign_client_nic_number: str | None
+    foreign_client_nic_image: str | None
+    foreign_client_passport_number: str | None
+    foreign_client_passport_image: str | None
+    foreign_client_other_number: str | None
+    foreign_client_other_image: str | None
+    foreign_client_handover_selfie_image: str | None
 
     cr_document_image: str | None
     revenue_license_image: str | None
@@ -150,6 +201,8 @@ class ClientProfileOut(BaseModel):
     previous_owner_phone: str | None
     scan_report_1_image: str | None
     scan_report_2_image: str | None
+    scan_report_1_upload: str | None
+    scan_report_2_upload: str | None
     garage_bill_image: str | None
     modification_image: str | None
     other_notes: str | None
@@ -157,8 +210,10 @@ class ClientProfileOut(BaseModel):
     third_person_image: str | None
     handover_selfie_image: str | None
 
-    department: Department | None
-    department_person_name: str | None
+    marketing_person_name: str | None
+    technical_person_name: str | None
+    purchasing_person_name: str | None
+    extra_departments: list[ExtraDepartment] | None
 
     leasing_company: str | None
     file_signed_date: date | None
@@ -202,4 +257,6 @@ class ClientProfileSummary(BaseModel):
     vehicle_number: str | None
     chassis_number: str | None
     previous_owner_nic: str | None
-    department: Department | None
+    marketing_person_name: str | None
+    technical_person_name: str | None
+    purchasing_person_name: str | None

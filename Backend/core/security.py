@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -37,3 +40,7 @@ _SAFE_MEDIA_PREFIXES = ("data:image/", "https://")
 
 def is_safe_media_url(value: str) -> bool:
     return isinstance(value, str) and value.startswith(_SAFE_MEDIA_PREFIXES)
+
+
+def password_version(hashed_password: str) -> str:
+    return hmac.new(settings.jwt_secret_key.encode(), hashed_password.encode(), hashlib.sha256).hexdigest()

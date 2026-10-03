@@ -12,6 +12,7 @@ import {
   ArrowRightIcon,
   ShieldIcon,
 } from "./icons"
+import PasswordReset from "../../components/PasswordReset"
 import { login } from "../../api/auth"
 import logo from "../../assets/logo.png"
 import logoLight from "../../assets/logo-light.png"
@@ -19,12 +20,15 @@ import "./Login.css"
 
 const roles = [
   { key: "owner", label: "Owner", icon: UsersIcon },
-  { key: "co", label: "CO", icon: StaffIcon },
+  { key: "ceo", label: "CEO", icon: StaffIcon },
   { key: "accountant", label: "Accountant", icon: ShieldIcon },
   { key: "technician", label: "Technician", icon: WrenchIcon },
 ]
 
 export default function Login({ onLogin }) {
+  const [resetting, setResetting] = useState(false)
+  const [email, setEmail] = useState("")
+  const [resetSuccess, setResetSuccess] = useState("")
   const [role, setRole] = useState("owner")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -133,7 +137,15 @@ export default function Login({ onLogin }) {
           </div>
         </div>
 
-        <form className="lg-card" onSubmit={handleSubmit}>
+        {resetting ? (
+          <div className="lg-card lg-reset-card">
+            <PasswordReset initialEmail={email} onCancel={() => setResetting(false)} onSuccess={(message) => {
+              setResetting(false)
+              setError("")
+              setResetSuccess(message)
+            }} />
+          </div>
+        ) : <form className="lg-card" onSubmit={handleSubmit}>
           <div className="lg-card-brand">
             <img src={logoLight} alt="Thimadu Auto Trading" className="lg-card-brand-icon" />
             <div className="lg-card-brand-text">
@@ -164,7 +176,7 @@ export default function Login({ onLogin }) {
             <span className="lg-field-label">Email Address</span>
             <div className="lg-input-wrap">
               <MailIcon />
-              <input name="email" type="email" placeholder="Enter your email" required />
+              <input name="email" type="email" autoComplete="email" placeholder="Enter your email" required value={email} onChange={(event) => setEmail(event.target.value)} />
             </div>
           </div>
 
@@ -188,11 +200,15 @@ export default function Login({ onLogin }) {
             <label className="lg-remember">
               <input type="checkbox" /> Remember me
             </label>
-            <a className="lg-forgot" href="#">
+            <button className="lg-forgot" type="button" disabled={loading} onClick={() => {
+              setResetSuccess("")
+              setResetting(true)
+            }}>
               Forgot password?
-            </a>
+            </button>
           </div>
 
+          {resetSuccess && <div className="password-reset-message" role="status">{resetSuccess}</div>}
           {error && <div className="lg-error">{error}</div>}
 
           <button type="submit" className="lg-login-btn" disabled={loading}>
@@ -205,7 +221,7 @@ export default function Login({ onLogin }) {
             <ShieldIcon />
             Secure Login
           </div>
-        </form>
+        </form>}
       </div>
     </div>
   )

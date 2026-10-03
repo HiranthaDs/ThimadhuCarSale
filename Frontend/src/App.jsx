@@ -7,7 +7,7 @@ import StaffPanel from "./pages/StaffPanel"
 const panels = {
   owner: OwnerPanel,
   technician: TechnicianPanel,
-  co: StaffPanel,
+  ceo: StaffPanel,
   accountant: StaffPanel,
 }
 
