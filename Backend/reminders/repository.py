@@ -21,14 +21,14 @@ class ReminderRepository:
     def get_by_id(self, reminder_id: uuid.UUID) -> Reminder | None:
         return self.db.scalar(select(Reminder).where(Reminder.id == reminder_id))
 
-    def list_range(self, start: date | None = None, end: date | None = None) -> list[Reminder]:
+    def list_range(self, start: date | None = None, end: date | None = None, limit=500, offset=0) -> list[Reminder]:
         stmt = select(Reminder)
         if start is not None:
             stmt = stmt.where(Reminder.remind_date >= start)
         if end is not None:
             stmt = stmt.where(Reminder.remind_date <= end)
-        stmt = stmt.order_by(Reminder.remind_date.asc(), Reminder.created_at.asc())
-        return list(self.db.scalars(stmt))
+        stmt = stmt.order_by(Reminder.remind_date.asc(), Reminder.created_at.asc(), Reminder.id.asc())
+        return list(self.db.scalars(stmt.limit(limit).offset(offset)))
 
     def update(self, reminder: Reminder, **fields) -> Reminder:
         for key, value in fields.items():

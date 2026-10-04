@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,7 +14,19 @@ class Settings(BaseSettings):
 
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 480
+    access_token_expire_minutes: int = Field(default=60, ge=5, le=120)
+    cookie_secure: bool = True
+    cookie_samesite: Literal["lax", "strict", "none"] = "none"
+    api_root_path: str = ""
+    allowed_hosts: str = "localhost,127.0.0.1"
+    database_pool_size: int = Field(default=5, ge=1, le=20)
+    database_max_overflow: int = Field(default=5, ge=0, le=20)
+    database_sslmode: str = "verify-full"
+    database_sslrootcert: str = "certs/prod-ca-2021.crt"
+    auto_migrate: bool = False
+    private_download_seconds: int = Field(default=900, ge=60, le=3600)
+    max_file_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=10 * 1024 * 1024)
+    blocking_worker_threads: int = Field(default=8, ge=2, le=32)
 
     owner_bootstrap_email: str = ""
     owner_bootstrap_password: str = ""
@@ -30,15 +42,10 @@ class Settings(BaseSettings):
     r2_blacklist_bucket: str = ""
     r2_blacklist_public_url: str = ""
 
-    # "development" (default) leaves /docs, /redoc and /openapi.json open, which
+    # "development" leaves /docs, /redoc and /openapi.json open, which
     # is convenient while building. Set APP_ENV=production in the deployed .env
     # once the API is live, to close off that map of every endpoint and schema.
-    app_env: str = "development"
-
-    # Failed-login lockout: this many wrong passwords in a row locks the
-    # account out for the given number of minutes.
-    login_max_attempts: int = 5
-    login_lockout_minutes: int = 15
+    app_env: str = "production"
 
     # Hard cap on request bodies (mainly inspection-report photo uploads), to
     # stop a single request from exhausting server memory. 30MB comfortably
@@ -59,7 +66,19 @@ class Settings(BaseSettings):
     password_reset_expire_minutes: int = Field(default=10, ge=1, le=30)
     password_reset_resend_seconds: int = Field(default=60, ge=30)
     password_reset_max_attempts: int = Field(default=5, ge=1, le=10)
-    password_reset_max_sends_per_hour: int = Field(default=5, ge=1, le=20)
+    password_reset_max_sends_per_hour: int = Field(default=20, ge=1, le=20)
+
+    @model_validator(mode="after")
+    def validate_security_settings(self):
+        if len(self.jwt_secret_key) < 32 or self.jwt_algorithm != "HS256":
+            raise ValueError("Use a random JWT secret of at least 32 characters and HS256.")
+        if self.is_production and (not self.cookie_secure or self.database_sslmode != "verify-full"):
+            raise ValueError("Production requires secure cookies and verified database TLS.")
+        if self.cookie_samesite == "none" and not self.cookie_secure:
+            raise ValueError("SameSite=None requires secure cookies.")
+        if "*" in self.cors_origin_list:
+            raise ValueError("Explicit frontend origins are required.")
+        return self
 
     @property
     def cors_origin_list(self) -> list[str]:

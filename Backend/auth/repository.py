@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from auth.model import User, UserRole
@@ -55,10 +55,8 @@ class UserRepository:
         return user
 
     def register_failed_login(self, user: User, *, max_attempts: int, lockout_minutes: int) -> User:
-        user.failed_login_attempts += 1
-        if user.failed_login_attempts >= max_attempts:
-            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=lockout_minutes)
-            user.failed_login_attempts = 0
+        self.db.execute(update(User).where(User.id == user.id).values(
+            failed_login_attempts=User.failed_login_attempts + 1))
         self.db.commit()
         self.db.refresh(user)
         return user

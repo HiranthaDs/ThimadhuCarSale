@@ -1,7 +1,7 @@
 import uuid
 
 from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from clients.model import ClientProfile
 
@@ -37,17 +37,23 @@ class ClientProfileRepository:
         self.db.refresh(profile)
         return profile
 
-    def get_by_id(self, profile_id: uuid.UUID) -> ClientProfile | None:
-        return self.db.get(ClientProfile, profile_id)
+    def get_by_id(self, profile_id: uuid.UUID, lock=False) -> ClientProfile | None:
+        stmt = select(ClientProfile).where(ClientProfile.id == profile_id)
+        if lock:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
+        return self.db.scalar(stmt)
 
-    def list_all(self, q: str | None = None) -> list[ClientProfile]:
-        stmt = select(ClientProfile)
+    def list_all(self, q: str | None = None, limit=100, offset=0, status_filter=None) -> list[ClientProfile]:
+        from clients.schema import ClientProfileSummary
+        stmt = select(ClientProfile).options(load_only(*(getattr(ClientProfile, key) for key in ClientProfileSummary.model_fields)))
+        if status_filter:
+            stmt = stmt.where(ClientProfile.status == status_filter)
         if q:
             pattern = f"%{q.strip()}%"
             conditions = [getattr(ClientProfile, col).ilike(pattern) for col in SEARCHABLE_COLUMNS]
             stmt = stmt.where(or_(*conditions))
-        stmt = stmt.order_by(ClientProfile.created_at.desc())
-        return list(self.db.scalars(stmt))
+        stmt = stmt.order_by(ClientProfile.created_at.desc(), ClientProfile.id.desc())
+        return list(self.db.scalars(stmt.limit(limit).offset(offset)))
 
     def update(self, profile: ClientProfile, **fields) -> ClientProfile:
         for key, value in fields.items():

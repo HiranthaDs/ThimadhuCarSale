@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { approveClientProfile, deleteClientProfile, getClientProfile, listClientProfiles } from "../../../api/clients"
 import ClientProfileForm from "./ClientProfileForm"
 import { confirmDialog } from "../../../components/ConfirmDialog"
@@ -24,6 +24,8 @@ function departmentPeople(p) {
 }
 
 export default function ClientProfiles({ token, role, statusFilter, title = "Client Profiles", emptyLabel }) {
+  const requestNumber = useRef(0)
+  const [page, setPage] = useState(0)
   const [profiles, setProfiles] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -39,22 +41,24 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
   // `silent` refreshes keep the table on screen instead of flashing "Loading…".
   async function refresh(q, { silent = false } = {}) {
     if (!silent) setLoading(true)
+    const requestId = ++requestNumber.current
     setError("")
     try {
-      setProfiles(await listClientProfiles(token, q))
+      const data = await listClientProfiles(token, q, page, statusFilter)
+      if (requestId === requestNumber.current) setProfiles(data)
     } catch (err) {
-      setError(err.message || "Could not load client profiles.")
+      if (requestId === requestNumber.current) setError(err.message || "Could not load client profiles.")
     } finally {
-      if (!silent) setLoading(false)
+      if (!silent && requestId === requestNumber.current) setLoading(false)
     }
   }
 
   useEffect(() => {
     if (!token) return
     const timer = setTimeout(() => refresh(search), 300)
-    return () => clearTimeout(timer)
+    return () => { clearTimeout(timer); requestNumber.current += 1 }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, search])
+  }, [token, search, page, statusFilter])
 
   function handleCreated() {
     setShowForm(false)
@@ -159,7 +163,7 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
             type="text"
             placeholder="Search by client name, phone, NIC, vehicle number, chassis, country…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setPage(0); setSearch(e.target.value) }}
           />
         </div>
 

@@ -2,10 +2,14 @@ from contextlib import asynccontextmanager
 
 from pathlib import Path
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, status, Depends
+from core.rate_limit import consume
+from core.database import get_db
+from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from core.middleware import BodySizeLimitMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy import text
 
@@ -30,15 +34,15 @@ from reports import model as report_model  # noqa: F401
 settings = get_settings()
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+def migrate_schema():
 
     # There's no migration tool in this project — create_all only adds tables
     # that don't exist yet, so a column added to a model after its table was
     # first created (like `reminders.acknowledged`) needs to be patched in by
-    # hand here. Safe to run every startup.
+    # hand here. Run explicitly as the migration account before starting workers.
     with engine.begin() as conn:
+        conn.execute(text("SELECT pg_advisory_xact_lock(734021)"))
+        Base.metadata.create_all(bind=conn)
         conn.execute(text("ALTER TABLE reminders ADD COLUMN IF NOT EXISTS acknowledged boolean NOT NULL DEFAULT false"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts integer NOT NULL DEFAULT 0"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until timestamptz"))
@@ -74,6 +78,34 @@ async def lifespan(app: FastAPI):
                               "AND enumtypid = 'user_role'::regtype")).first():
             conn.execute(text("ALTER TYPE user_role RENAME VALUE 'co' TO 'ceo'"))
 
+        # Protect application tables from Supabase's public REST roles.
+        for table in Base.metadata.sorted_tables:
+            name = table.name  # application model identifiers, never request input
+            conn.execute(text(f'ALTER TABLE "{name}" ENABLE ROW LEVEL SECURITY'))
+            conn.execute(text(f'REVOKE ALL ON TABLE "{name}" FROM PUBLIC'))
+            for role in ("anon", "authenticated"):
+                if conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname=:role"), {"role": role}).first():
+                    conn.execute(text(f'REVOKE ALL ON TABLE "{name}" FROM "{role}"'))
+        for statement in (
+            "CREATE INDEX IF NOT EXISTS ix_reports_created_id ON inspection_reports (created_at DESC, id DESC)",
+            "CREATE INDEX IF NOT EXISTS ix_reports_status_created ON inspection_reports (status, created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS ix_reports_registration_lower ON inspection_reports (lower(registration_number))",
+            "CREATE INDEX IF NOT EXISTS ix_clients_status_created ON client_profiles (status, created_at DESC, id DESC)",
+            "CREATE INDEX IF NOT EXISTS ix_clients_created_id ON client_profiles (created_at DESC, id DESC)",
+            "CREATE INDEX IF NOT EXISTS ix_blacklist_created_id ON vehicle_blacklist (created_at DESC, id DESC)",
+            "CREATE INDEX IF NOT EXISTS ix_reminders_date ON reminders (remind_date, created_at)",
+        ):
+            conn.execute(text(statement))
+        # Rename legacy copy labels without changing their stored file references.
+        conn.execute(text("""UPDATE inspection_reports AS old
+            SET registration_number = left(old.registration_number, length(old.registration_number)-6) || '-Inspection Report 2'
+            WHERE lower(right(old.registration_number,6)) = '-scan2'
+              AND length(old.registration_number) <= 47
+              AND NOT EXISTS (SELECT 1 FROM inspection_reports AS current
+                WHERE lower(current.registration_number) = lower(left(old.registration_number, length(old.registration_number)-6) || '-Inspection Report 2'))"""))
+        from core.db_permissions import grant_runtime_permissions
+        grant_runtime_permissions(conn)
+
     db = SessionLocal()
     try:
         AuthService(db).bootstrap_owner(
@@ -84,10 +116,28 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    import anyio.to_thread
+    anyio.to_thread.current_default_thread_limiter().total_tokens = settings.blocking_worker_threads
+    if settings.auto_migrate:
+        from starlette.concurrency import run_in_threadpool
+        await run_in_threadpool(migrate_schema)
     yield
 
 
+
+def api_budget(request: Request, db: Session = Depends(get_db)):
+    if request.url.path == "/health":
+        return
+    ip = request.client.host if request.client else "unknown"
+    consume(db, "api-ip", ip, 600, 60)
+
+
 app = FastAPI(
+    root_path=settings.api_root_path,
+    dependencies=[Depends(api_budget)],
     title="Thimadu API",
     version="1.0.0",
     lifespan=lifespan,
@@ -108,30 +158,20 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Cache-Control"] = "no-store"
+        if "Content-Security-Policy" not in response.headers and (
+                settings.is_production or request.url.path not in ("/docs", "/redoc")):
+            response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         return response
 
 
-class BodySizeLimitMiddleware(BaseHTTPMiddleware):
-    """Rejects requests up front (before reading the body) whose declared
-    Content-Length is past the configured cap, so one oversized request can't
-    exhaust server memory."""
-
-    async def dispatch(self, request: Request, call_next):
-        content_length = request.headers.get("content-length")
-        if content_length and int(content_length) > settings.max_request_body_bytes:
-            return JSONResponse(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                content={"detail": "Request body is too large."},
-            )
-        return await call_next(request)
-
-
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(BodySizeLimitMiddleware)
+app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_body_bytes)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in settings.allowed_hosts.split(",") if h.strip()])
 
 app.add_middleware(
     CORSMiddleware,
@@ -147,11 +187,6 @@ app.include_router(blacklist_router)
 app.include_router(reminders_router)
 app.include_router(activity_router)
 app.include_router(reports_router)
-
-uploads_dir = Path(__file__).resolve().parent / "uploads"
-uploads_dir.mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
-
 
 @app.get("/health")
 def health():

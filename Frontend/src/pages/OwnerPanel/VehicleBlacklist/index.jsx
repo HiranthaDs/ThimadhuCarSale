@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { deleteBlacklistEntry, listBlacklistEntries } from "../../../api/blacklist"
 import { confirmDialog } from "../../../components/ConfirmDialog"
 import VehicleBlacklistForm from "./VehicleBlacklistForm"
@@ -7,6 +7,8 @@ import "./VehicleBlacklist.css"
 
 // Everyone with blacklist access can view and edit entries; only the owner can delete.
 export default function VehicleBlacklist({ token, role }) {
+  const requestNumber = useRef(0)
+  const [page, setPage] = useState(0)
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -20,22 +22,24 @@ export default function VehicleBlacklist({ token, role }) {
 
   async function refresh(q) {
     setLoading(true)
+    const requestId = ++requestNumber.current
     setError("")
     try {
-      setEntries(await listBlacklistEntries(token, q))
+      const data = await listBlacklistEntries(token, q, page)
+      if (requestId === requestNumber.current) setEntries(data)
     } catch (err) {
-      setError(err.message || "Could not load blacklist entries.")
+      if (requestId === requestNumber.current) setError(err.message || "Could not load blacklist entries.")
     } finally {
-      setLoading(false)
+      if (requestId === requestNumber.current) setLoading(false)
     }
   }
 
   useEffect(() => {
     if (!token) return
     const timer = setTimeout(() => refresh(search), 300)
-    return () => clearTimeout(timer)
+    return () => { clearTimeout(timer); requestNumber.current += 1 }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, search])
+  }, [token, search, page])
 
   function handleCreated() {
     setShowForm(false)
@@ -113,7 +117,7 @@ export default function VehicleBlacklist({ token, role }) {
             type="text"
             placeholder="Search by vehicle number, chassis number, remarks…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setPage(0); setSearch(e.target.value) }}
           />
         </div>
 

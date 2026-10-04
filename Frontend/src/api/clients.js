@@ -4,8 +4,8 @@ export function createClientProfile(token, payload) {
   return apiRequest("/clients/", { method: "POST", token, body: payload })
 }
 
-export function listClientProfiles(token, q) {
-  const query = q ? `?q=${encodeURIComponent(q)}` : ""
+export function listClientProfiles(token, q, page = 0, status) {
+  const query = `?limit=200&offset=${page * 200}&q=${encodeURIComponent(q || "")}${status ? `&status=${encodeURIComponent(status)}` : ""}`
   return apiRequest(`/clients/${query}`, { token })
 }
 
@@ -29,6 +29,6 @@ export function lookupScanReports(token, vehicleNumber) {
   return apiRequest(`/clients/scan-reports/lookup?vehicle_number=${encodeURIComponent(vehicleNumber)}`, { token })
 }
 
-export function listAllScanReports(token) {
-  return apiRequest(`/clients/scan-reports/all`, { token })
+export function listAllScanReports(token, q = "") {
+  return apiRequest(`/clients/scan-reports/all?limit=50&q=${encodeURIComponent(q)}`, { token })
 }

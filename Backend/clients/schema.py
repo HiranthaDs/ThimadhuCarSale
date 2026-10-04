@@ -1,3 +1,4 @@
+from core.r2_client import PrivateMediaResponse
 import uuid
 from datetime import date, datetime
 
@@ -156,7 +157,7 @@ class ClientProfileUpdate(ClientProfileCreate):
     pass
 
 
-class ClientProfileOut(BaseModel):
+class ClientProfileOut(PrivateMediaResponse):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -228,12 +229,12 @@ class ClientProfileOut(BaseModel):
     customer_down_payment: float | None
 
 
-class ScanReportLookup(BaseModel):
+class ScanReportLookup(PrivateMediaResponse):
     scan_report_1_url: str | None
     scan_report_2_url: str | None
 
 
-class ScanReportSearchResult(BaseModel):
+class ScanReportSearchResult(PrivateMediaResponse):
     public_id: str
     filename: str
     secure_url: str

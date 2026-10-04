@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react"
-import { deleteReport, downloadReportPdf, listReports, updateReport, updateReportStatus } from "../../../api/reports"
+import { useEffect, useRef, useState } from "react"
+import { deleteReport, downloadReportPdf, listReports, reportViewUrl, updateReport, updateReportStatus } from "../../../api/reports"
 import { ReportStatusBadge, ReportStatusFilter } from "../../TechnicianPanel/components/reportStatus"
 import { confirmDialog } from "../../../components/ConfirmDialog"
 import { DownloadIcon } from "../../TechnicianPanel/Icons"
 
 export default function InspectionReports({ token }) {
+  const requestNumber = useRef(0)
+  const [page, setPage] = useState(0)
   const [reports, setReports] = useState([])
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
@@ -21,17 +23,18 @@ export default function InspectionReports({ token }) {
   function loadReports() {
     setLoading(true)
     setError(null)
-    listReports(token, query, statusFilter)
-      .then(setReports)
-      .catch((err) => setError(err.message || "Failed to load inspection reports."))
-      .finally(() => setLoading(false))
+    const requestId = ++requestNumber.current
+    listReports(token, query, statusFilter, page)
+      .then(data => { if (requestId === requestNumber.current) setReports(data) })
+      .catch((err) => { if (requestId === requestNumber.current) setError(err.message || "Failed to load inspection reports.") })
+      .finally(() => { if (requestId === requestNumber.current) setLoading(false) })
   }
 
   useEffect(() => {
     const handle = setTimeout(loadReports, 300)
-    return () => clearTimeout(handle)
+    return () => { clearTimeout(handle); requestNumber.current += 1 }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, query, statusFilter])
+  }, [token, query, statusFilter, page])
 
   async function handleStatusChange(report, status) {
     setActionError("")
@@ -126,11 +129,11 @@ export default function InspectionReports({ token }) {
           className="tp-inspections-search"
           placeholder="Search by registration number, vehicle, buyer..."
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { setPage(0); setQuery(e.target.value) }}
         />
       </div>
 
-      <ReportStatusFilter value={statusFilter} onChange={setStatusFilter} />
+      <ReportStatusFilter value={statusFilter} onChange={(value) => { setPage(0); setStatusFilter(value) }} />
 
       {actionError && <p className="tp-inspections-status tp-inspections-error">{actionError}</p>}
       {loading && <p className="tp-inspections-status">Loading…</p>}
@@ -167,7 +170,7 @@ export default function InspectionReports({ token }) {
                         minute: "2-digit",
                       })}
                     </span>
-                    <a className="tp-inspections-link" href={report.url} target="_blank" rel="noreferrer">
+                    <a className="tp-inspections-link" href={reportViewUrl(report.id)} target="_blank" rel="noreferrer">
                       View PDF
                     </a>
                     {report.status === "checked" && (

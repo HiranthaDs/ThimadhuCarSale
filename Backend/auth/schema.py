@@ -21,7 +21,7 @@ def _check_password_strength(value: str) -> str:
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=72)
 
 
 class UserCreateRequest(BaseModel):
@@ -54,7 +54,7 @@ class UserOut(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
-    current_password: str
+    current_password: str = Field(min_length=1, max_length=72)
     new_password: str = Field(min_length=8, max_length=MAX_PASSWORD_LENGTH)
 
     @field_validator("new_password")
@@ -74,6 +74,7 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
+    challenge_id: uuid.UUID
     otp: str = Field(pattern=r"^[0-9]{6}$")
     new_password: str = Field(min_length=8, max_length=MAX_PASSWORD_LENGTH)
 
@@ -88,6 +89,7 @@ class ForgotPasswordResetRequest(ResetPasswordRequest):
 
 
 class OtpSentResponse(BaseModel):
+    challenge_id: uuid.UUID
     message: str
     resend_after_seconds: int
     expires_in_seconds: int
@@ -95,3 +97,7 @@ class OtpSentResponse(BaseModel):
 
 class PasswordResetResponse(BaseModel):
     message: str
+
+
+class BrowserSessionResponse(BaseModel):
+    user: UserOut

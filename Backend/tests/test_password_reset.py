@@ -3,11 +3,25 @@ import json
 import os
 import smtplib
 import unittest
+import uuid
+from starlette.requests import Request
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
 # Override real settings before importing any application module.
+os.environ["R2_ACCOUNT_ID"] = "test-account"
+os.environ["R2_ACCESS_KEY_ID"] = "test-key"
+os.environ["R2_SECRET_ACCESS_KEY"] = "test-secret"
+os.environ["R2_REPORTS_BUCKET"] = "reports"
+os.environ["R2_BLACKLIST_BUCKET"] = "blacklist"
+os.environ["R2_REPORTS_PUBLIC_URL"] = "https://reports.invalid"
+os.environ["R2_BLACKLIST_PUBLIC_URL"] = "https://blacklist.invalid"
+os.environ["APP_ENV"] = "development"
+os.environ["COOKIE_SECURE"] = "false"
+os.environ["COOKIE_SAMESITE"] = "lax"
+os.environ["CORS_ORIGINS"] = "http://localhost:5173"
+
 os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
 os.environ["JWT_SECRET_KEY"] = "isolated-test-secret-not-for-production"
 os.environ["BREVO_API_KEY"] = "test-api-key"
@@ -26,7 +40,7 @@ from sqlalchemy.pool import StaticPool
 
 from activity.model import ActivityLog
 from auth.dependencies import get_current_user
-from auth.model import PasswordReset, User, UserRole
+from auth.model import ResetChallenge, AuthSession, User, UserRole
 from auth.password_reset import PasswordResetService
 from auth.router import router
 from auth.schema import ChangePasswordRequest, LoginRequest, ResetPasswordRequest
@@ -79,6 +93,9 @@ class PasswordResetTests(unittest.TestCase):
         self.sender = self.sender_patch.start()
         self.random_patch = patch("auth.password_reset.secrets.randbelow", return_value=123456)
         self.random_patch.start()
+        background = patch("auth.router.deliver_challenge", side_effect=self.service.issue)
+        background.start()
+        self.addCleanup(background.stop)
         self.app = FastAPI()
         self.app.include_router(router)
         self.app.dependency_overrides[get_db] = lambda: self.db
@@ -90,18 +107,16 @@ class PasswordResetTests(unittest.TestCase):
         self.engine.dispose()
 
     def send(self):
-        return self.service.request(self.user.email)
+        result = self.service.request(self.user.email)
+        self.challenge_id = result.challenge_id
+        return result
 
     def challenge(self):
-        return self.db.get(PasswordReset, self.user.id)
-
-    def allow_resend(self):
-        self.challenge().sent_at = datetime.now(timezone.utc) - timedelta(minutes=2)
-        self.db.commit()
+        return self.db.get(ResetChallenge, self.challenge_id)
 
     def assert_invalid(self, otp="123456", email=None):
         with self.assertRaises(HTTPException) as caught:
-            self.service.reset(email or self.user.email, otp, "Replacement123!")
+            self.service.reset(email or self.user.email, otp, "Replacement123!", self.challenge_id)
         self.assertEqual(caught.exception.status_code, 400)
         self.assertEqual(self.db.get(User, self.user.id).hashed_password, self.old_hash)
 
@@ -113,14 +128,14 @@ class PasswordResetTests(unittest.TestCase):
         self.user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=10)
         self.user.failed_login_attempts = 3
         self.db.commit()
-        self.service.reset(self.user.email, "123456", "Replacement123!")
+        self.service.reset(self.user.email, "123456", "Replacement123!", self.challenge_id)
         self.assertTrue(verify_password("Replacement123!", self.user.hashed_password))
         self.assertIsNone(self.user.locked_until)
         self.assertEqual(self.user.failed_login_attempts, 0)
-        self.assertIsNone(self.challenge().code_hash)
+        self.assertIsNone(self.challenge())
         self.assertEqual(self.db.scalar(select(ActivityLog)).action, "user.reset_password")
         with self.assertRaises(HTTPException):
-            self.service.reset(self.user.email, "123456", "Another123!")
+            self.service.reset(self.user.email, "123456", "Another123!", self.challenge_id)
 
     def test_code_is_not_stored_or_returned(self):
         response = self.send()
@@ -130,11 +145,11 @@ class PasswordResetTests(unittest.TestCase):
         self.assertNotEqual(self.challenge().code_hash, "123456")
 
     def test_unknown_and_inactive_accounts_have_same_response(self):
-        known = self.send().model_dump()
-        unknown = self.service.request("unknown@example.com").model_dump()
+        known = self.send().model_dump(exclude={"challenge_id"})
+        unknown = self.service.request("unknown@example.com").model_dump(exclude={"challenge_id"})
         self.user.is_active = False
         self.db.commit()
-        inactive = self.send().model_dump()
+        inactive = self.send().model_dump(exclude={"challenge_id"})
         self.assertEqual(known, unknown)
         self.assertEqual(known, inactive)
         self.assertEqual(self.sender.call_count, 1)
@@ -151,39 +166,17 @@ class PasswordResetTests(unittest.TestCase):
         self.assertEqual(caught.exception.status_code, 503)
         self.sender.assert_not_called()
 
-    def test_cooldown_and_hourly_send_limit(self):
-        self.send()
-        self.send()
-        self.assertEqual(self.sender.call_count, 1)
-        for _ in range(settings.password_reset_max_sends_per_hour + 1):
-            self.allow_resend()
-            self.send()
-        self.assertEqual(self.sender.call_count, settings.password_reset_max_sends_per_hour)
-        self.challenge().window_started_at = datetime.now(timezone.utc) - timedelta(hours=2)
-        self.db.commit()
-        self.send()
-        self.assertEqual(self.sender.call_count, settings.password_reset_max_sends_per_hour + 1)
-
-    def test_wrong_attempt_limit_persists_across_resends(self):
-        self.send()
-        for _ in range(settings.password_reset_max_attempts - 1):
+    def test_guessing_one_challenge_does_not_exhaust_another(self):
+        first = self.send().challenge_id
+        second = self.send().challenge_id
+        for _ in range(settings.password_reset_max_attempts):
             self.assert_invalid("000000")
-        self.allow_resend()
-        self.send()
-        self.assertEqual(self.challenge().attempts, settings.password_reset_max_attempts - 1)
-        self.assert_invalid("000000")
         self.assert_invalid()
-        self.allow_resend()
-        self.send()
-        self.assertEqual(self.sender.call_count, 2)
+        self.service.reset(self.user.email, "123456", "Replacement123!", first)
 
-    def test_resend_replaces_previous_code(self):
+    def test_smtp_holds_no_database_transaction(self):
+        self.sender.side_effect = lambda *args: self.assertFalse(self.db.in_transaction())
         self.send()
-        self.allow_resend()
-        with patch("auth.password_reset.secrets.randbelow", return_value=654321):
-            self.send()
-        self.assert_invalid("123456")
-        self.service.reset(self.user.email, "654321", "Replacement123!")
 
     def test_expired_code_rejected(self):
         self.send()
@@ -200,31 +193,21 @@ class PasswordResetTests(unittest.TestCase):
         self.assert_invalid(email=other.email)
         self.assertEqual(other.hashed_password, self.old_hash)
 
-    def test_first_delivery_failure_leaves_no_challenge(self):
+    def test_failed_delivery_preserves_existing_challenge(self):
+        first = self.send().challenge_id
         self.sender.side_effect = HTTPException(503, "Delivery failed")
         with self.assertRaises(HTTPException):
             self.send()
-        self.assertIsNone(self.challenge())
-
-    def test_failed_resend_preserves_original_code(self):
-        self.send()
-        self.allow_resend()
-        original_hash = self.challenge().code_hash
-        self.sender.side_effect = HTTPException(503, "Delivery failed")
-        with self.assertRaises(HTTPException):
-            self.send()
-        self.assertEqual(self.challenge().code_hash, original_hash)
-        self.assertEqual(self.challenge().send_count, 1)
-        self.service.reset(self.user.email, "123456", "Replacement123!")
+        self.service.reset(self.user.email, "123456", "Replacement123!", first)
 
     def test_reset_revokes_old_access_token(self):
         token = self.token()
         credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
-        self.assertEqual(get_current_user(credentials, self.db).id, self.user.id)
+        self.assertEqual(get_current_user(Request({"type":"http","method":"GET","headers":[]}), credentials, self.db).id, self.user.id)
         self.send()
-        self.service.reset(self.user.email, "123456", "Replacement123!")
+        self.service.reset(self.user.email, "123456", "Replacement123!", self.challenge_id)
         with self.assertRaises(HTTPException) as caught:
-            get_current_user(credentials, self.db)
+            get_current_user(Request({"type":"http","method":"GET","headers":[]}), credentials, self.db)
         self.assertEqual(caught.exception.status_code, 401)
         fresh = AuthService(self.db).login(LoginRequest(email=self.user.email, password="Replacement123!"))
         self.assertTrue(fresh.access_token)
@@ -234,27 +217,27 @@ class PasswordResetTests(unittest.TestCase):
         self.send()
         AuthService(self.db).change_password(
             ChangePasswordRequest(current_password="Original123!", new_password="Replacement123!"), self.user)
-        self.assertIsNone(self.challenge().code_hash)
+        self.assertIsNone(self.challenge())
         with self.assertRaises(HTTPException):
-            get_current_user(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token), self.db)
+            get_current_user(Request({"type":"http","method":"GET","headers":[]}), HTTPAuthorizationCredentials(scheme="Bearer", credentials=token), self.db)
 
     def test_password_and_code_validation(self):
         for password in ("short1", "lettersalone", "123456789", "a1" + chr(0x754c) * 24):
             with self.subTest(password=password), self.assertRaises(ValidationError):
-                ResetPasswordRequest(otp="123456", new_password=password)
+                ResetPasswordRequest(challenge_id=uuid.uuid4(), otp="123456", new_password=password)
         for code in ("12345", "1234567", "abcdef", "".join(chr(0xff10 + n) for n in range(1, 7))):
             with self.subTest(code=code), self.assertRaises(ValidationError):
-                ResetPasswordRequest(otp=code, new_password="Replacement123!")
+                ResetPasswordRequest(challenge_id=uuid.uuid4(), otp=code, new_password="Replacement123!")
 
     def test_public_endpoints_validate_and_reset(self):
         status, response = asyncio.run(asgi_request(self.app, "/auth/forgot-password", {"email": self.user.email}))
         self.assertEqual(status, 200)
         self.assertNotIn("otp", response)
         status, _ = asyncio.run(asgi_request(self.app, "/auth/reset-password", {
-            "email": self.user.email, "otp": "123456", "new_password": "Replacement123!"}))
+            "email": self.user.email, "otp": "123456", "new_password": "Replacement123!", "challenge_id": response["challenge_id"]}))
         self.assertEqual(status, 200)
         status, _ = asyncio.run(asgi_request(self.app, "/auth/reset-password", {
-            "email": self.user.email, "otp": "123456", "new_password": "Replacement123!"}))
+            "email": self.user.email, "otp": "123456", "new_password": "Replacement123!", "challenge_id": response["challenge_id"]}))
         self.assertEqual(status, 400)
         status, _ = asyncio.run(asgi_request(self.app, "/auth/reset-password", {
             "email": self.user.email, "otp": "bad", "new_password": "short"}))
@@ -264,14 +247,14 @@ class PasswordResetTests(unittest.TestCase):
         status, _ = asyncio.run(asgi_request(self.app, "/auth/password-otp"))
         self.assertEqual(status, 401)
         status, _ = asyncio.run(asgi_request(self.app, "/auth/change-password-with-otp", {
-            "otp": "123456", "new_password": "Replacement123!"}))
+            "otp": "123456", "new_password": "Replacement123!", "challenge_id": str(uuid.uuid4())}))
         self.assertEqual(status, 401)
         token = self.token()
-        status, _ = asyncio.run(asgi_request(self.app, "/auth/password-otp", {"email": "other@example.com"}, token))
+        status, response = asyncio.run(asgi_request(self.app, "/auth/password-otp", {"email": "other@example.com"}, token))
         self.assertEqual(status, 200)
         self.sender.assert_called_once_with(self.user.email, "123456")
         status, _ = asyncio.run(asgi_request(self.app, "/auth/change-password-with-otp", {
-            "email": "other@example.com", "otp": "123456", "new_password": "Replacement123!"}, token))
+            "email": "other@example.com", "otp": "123456", "new_password": "Replacement123!", "challenge_id": response["challenge_id"]}, token))
         self.assertEqual(status, 200)
         self.assertTrue(verify_password("Replacement123!", self.user.hashed_password))
 

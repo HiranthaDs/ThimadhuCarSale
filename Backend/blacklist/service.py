@@ -8,10 +8,10 @@ from auth.model import User
 from blacklist.repository import VehicleBlacklistRepository
 from blacklist.schema import VehicleBlacklistCreate, VehicleBlacklistUpdate
 from core.media import decode_data_url
-from core.r2_client import delete_blacklist_image, upload_blacklist_image
+from core.r2_client import delete_blacklist_image, upload_blacklist_image, existing_reference
 
 
-def _store_images(images: list[str]) -> list[str]:
+def _store_images(images: list[str], allowed=()) -> list[str]:
     """Upload any base64 photos to R2, returning their public URLs.
 
     Images already sent back as an https URL (kept from a previous save) are
@@ -21,7 +21,7 @@ def _store_images(images: list[str]) -> list[str]:
     for image in images:
         decoded = decode_data_url(image)
         if not decoded:
-            stored.append(image)
+            stored.append(existing_reference(image, allowed))
             continue
         content_type, content = decoded
         stored.append(upload_blacklist_image(content, content_type))
@@ -46,8 +46,8 @@ class VehicleBlacklistService:
         )
         return entry
 
-    def list_all(self, q: str | None = None):
-        return self.repository.list_all(q)
+    def list_all(self, q: str | None = None, limit=100, offset=0):
+        return self.repository.list_all(q, limit, offset)
 
     def get(self, entry_id: uuid.UUID):
         entry = self.repository.get_by_id(entry_id)
@@ -59,7 +59,7 @@ class VehicleBlacklistService:
         entry = self.get(entry_id)
         old_images = {img.image for img in entry.images}
         data = payload.model_dump()
-        images = _store_images(data.pop("images"))
+        images = _store_images(data.pop("images"), old_images)
         entry = self.repository.update(entry, images=images, **data)
         for removed_url in old_images - set(images):
             delete_blacklist_image(removed_url)

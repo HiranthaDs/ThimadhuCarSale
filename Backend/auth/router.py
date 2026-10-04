@@ -1,13 +1,17 @@
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, status
+from sqlalchemy import delete
+from core.config import get_settings
+from core.rate_limit import consume
 from sqlalchemy.orm import Session
 
-from auth.dependencies import get_current_user, require_owner
-from auth.model import User
+from auth.dependencies import get_current_user, require_owner, require_origin, rate_auth
+from auth.model import User, AuthSession
 from auth.schema import ChangePasswordRequest, LoginRequest, TokenResponse, UserCreateRequest, UserOut
 from auth.service import AuthService
-from auth.password_reset import PasswordResetService
+from auth.password_reset import PasswordResetService, challenge_response, deliver_challenge
+from auth.schema import BrowserSessionResponse
 from auth.schema import (
     ForgotPasswordRequest, ForgotPasswordResetRequest, ResetPasswordRequest,
     OtpSentResponse, PasswordResetResponse,
@@ -17,9 +21,28 @@ from core.database import get_db
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    return AuthService(db).login(payload)
+@router.post("/login", response_model=BrowserSessionResponse, dependencies=[Depends(rate_auth), Depends(require_origin)])
+def login(payload: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    ip = request.client.host if request.client else "unknown"
+    consume(db, "login-requester", ip + ":" + payload.email.lower(), 10, 600)
+    consume(db, "login-account", payload.email.lower(), 100, 3600)
+    result = AuthService(db).login(payload)
+    settings = get_settings()
+    response.set_cookie("thimadhu_session", result.access_token, httponly=True,
+                        secure=settings.cookie_secure, samesite=settings.cookie_samesite,
+                        max_age=settings.access_token_expire_minutes * 60, path="/")
+    response.headers["Cache-Control"] = "no-store"
+    return BrowserSessionResponse(user=result.user)
+
+
+@router.post("/logout", status_code=204)
+def logout(request: Request, response: Response, db: Session = Depends(get_db),
+           current_user: User = Depends(get_current_user)):
+    db.execute(delete(AuthSession).where(AuthSession.id == request.state.session_id))
+    db.commit()
+    response.delete_cookie("thimadhu_session", path="/", secure=get_settings().cookie_secure,
+                           samesite=get_settings().cookie_samesite)
+
 
 
 @router.get("/me", response_model=UserOut)
@@ -66,27 +89,32 @@ def delete_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user:
     AuthService(db).delete_account(user_id, current_user)
 
 
-@router.post("/forgot-password", response_model=OtpSentResponse)
-def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
-    return PasswordResetService(db).request(payload.email)
+@router.post("/forgot-password", response_model=OtpSentResponse, dependencies=[Depends(rate_auth)])
+def forgot_password(payload: ForgotPasswordRequest, request: Request, tasks: BackgroundTasks,
+                    db: Session = Depends(get_db)):
+    ip = request.client.host if request.client else "unknown"
+    consume(db, "reset-requester", ip + ":" + payload.email.lower(), 1, 60)
+    consume(db, "reset-requester-hour", ip, 10, 3600)
+    result = challenge_response()
+    tasks.add_task(deliver_challenge, payload.email, result.challenge_id)
+    return result
 
 
-@router.post("/reset-password", response_model=PasswordResetResponse)
+@router.post("/reset-password", response_model=PasswordResetResponse, dependencies=[Depends(rate_auth)])
 def reset_password(payload: ForgotPasswordResetRequest, db: Session = Depends(get_db)):
-    return PasswordResetService(db).reset(payload.email, payload.otp, payload.new_password)
+    return PasswordResetService(db).reset(payload.email, payload.otp, payload.new_password, payload.challenge_id)
 
 
-@router.post("/password-otp", response_model=OtpSentResponse)
-def request_settings_otp(
-    db: Session = Depends(get_db), current_user: User = Depends(get_current_user),
-):
-    # Always use the authenticated account's saved email.
-    return PasswordResetService(db).request(current_user.email)
+@router.post("/password-otp", response_model=OtpSentResponse, dependencies=[Depends(rate_auth)])
+def request_settings_otp(tasks: BackgroundTasks, db: Session = Depends(get_db),
+                         current_user: User = Depends(get_current_user)):
+    consume(db, "reset-settings", str(current_user.id), 1, 60)
+    result = challenge_response()
+    tasks.add_task(deliver_challenge, current_user.email, result.challenge_id)
+    return result
 
 
-@router.post("/change-password-with-otp", response_model=PasswordResetResponse)
-def change_password_with_otp(
-    payload: ResetPasswordRequest, db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    return PasswordResetService(db).reset(current_user.email, payload.otp, payload.new_password)
+@router.post("/change-password-with-otp", response_model=PasswordResetResponse, dependencies=[Depends(rate_auth)])
+def change_password_with_otp(payload: ResetPasswordRequest, db: Session = Depends(get_db),
+                             current_user: User = Depends(get_current_user)):
+    return PasswordResetService(db).reset(current_user.email, payload.otp, payload.new_password, payload.challenge_id)

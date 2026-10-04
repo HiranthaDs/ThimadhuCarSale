@@ -1,11 +1,18 @@
 import { apiRequest } from "./client"
 
-export function listReminders(token, start, end) {
+export async function listReminders(token, start, end) {
   const params = new URLSearchParams()
   if (start) params.set("start", start)
   if (end) params.set("end", end)
-  const query = params.toString() ? `?${params.toString()}` : ""
-  return apiRequest(`/reminders/${query}`, { token })
+  const results = []
+  params.set("limit", "500")
+  for (let offset = 0; offset <= 100000; offset += 500) {
+    params.set("offset", String(offset))
+    const batch = await apiRequest(`/reminders/?${params}`, { token })
+    results.push(...batch)
+    if (batch.length < 500) return results
+  }
+  throw new Error("Too many reminders. Choose a narrower date range.")
 }
 
 export function createReminder(token, payload) {

@@ -26,8 +26,8 @@ class ReminderService:
         )
         return reminder
 
-    def list_range(self, start: date | None, end: date | None):
-        return self.repository.list_range(start, end)
+    def list_range(self, start: date | None, end: date | None, limit=500, offset=0):
+        return self.repository.list_range(start, end, limit, offset)
 
     def get(self, reminder_id: uuid.UUID):
         reminder = self.repository.get_by_id(reminder_id)

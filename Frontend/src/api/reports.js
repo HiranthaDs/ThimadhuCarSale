@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
+import { BASE_URL, apiRequest } from "./client"
 
 async function parseResponse(response, fallbackMessage) {
   const isJson = response.headers.get("content-type")?.includes("application/json")
@@ -13,6 +13,7 @@ async function parseResponse(response, fallbackMessage) {
   }
 
   if (!response.ok) {
+    if (response.status === 401) window.dispatchEvent(new CustomEvent("thimadu:unauthorized"))
     const message = data?.detail || `${fallbackMessage} (${response.status})`
     throw new Error(typeof message === "string" ? message : fallbackMessage)
   }
@@ -40,7 +41,7 @@ export async function uploadReportPdf(token, file, meta = {}) {
   try {
     response = await fetch(`${BASE_URL}/reports/pdf`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: "include",
       body: buildReportFormData(file, meta),
     })
   } catch {
@@ -54,7 +55,7 @@ export async function replaceReportPdf(token, reportId, file, meta = {}) {
   try {
     response = await fetch(`${BASE_URL}/reports/${reportId}/pdf`, {
       method: "PUT",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: "include",
       body: buildReportFormData(file, meta),
     })
   } catch {
@@ -67,7 +68,7 @@ export async function getReport(token, reportId) {
   let response
   try {
     response = await fetch(`${BASE_URL}/reports/${reportId}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: "include",
     })
   } catch {
     throw new Error("Could not reach the server. Is the backend running?")
@@ -80,9 +81,10 @@ export async function updateReport(token, reportId, meta = {}) {
   try {
     response = await fetch(`${BASE_URL}/reports/${reportId}`, {
       method: "PUT",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+
       },
       body: JSON.stringify({
         registration_number: meta.registrationNumber ?? null,
@@ -101,7 +103,7 @@ export async function createScan2Report(token, reportId) {
   try {
     response = await fetch(`${BASE_URL}/reports/${reportId}/scan2`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: "include",
     })
   } catch {
     throw new Error("Could not reach the server. Is the backend running?")
@@ -114,9 +116,10 @@ export async function updateReportStatus(token, reportId, status) {
   try {
     response = await fetch(`${BASE_URL}/reports/${reportId}/status`, {
       method: "PATCH",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+
       },
       body: JSON.stringify({ status }),
     })
@@ -131,13 +134,14 @@ export async function deleteReport(token, reportId) {
   try {
     response = await fetch(`${BASE_URL}/reports/${reportId}`, {
       method: "DELETE",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: "include",
     })
   } catch {
     throw new Error("Could not reach the server. Is the backend running?")
   }
 
   if (!response.ok) {
+    if (response.status === 401) window.dispatchEvent(new CustomEvent("thimadu:unauthorized"))
     const isJson = response.headers.get("content-type")?.includes("application/json")
     const data = isJson ? await response.json() : null
     const message = data?.detail || `Failed to delete report (${response.status})`
@@ -149,12 +153,13 @@ export async function downloadReportPdf(token, reportId) {
   let response
   try {
     response = await fetch(`${BASE_URL}/reports/${reportId}/download`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: "include",
     })
   } catch {
     throw new Error("Could not reach the server. Is the backend running?")
   }
   if (!response.ok) {
+    if (response.status === 401) window.dispatchEvent(new CustomEvent("thimadu:unauthorized"))
     const isJson = response.headers.get("content-type")?.includes("application/json")
     const data = isJson ? await response.json() : null
     const message = data?.detail || `Failed to download report (${response.status})`
@@ -163,18 +168,30 @@ export async function downloadReportPdf(token, reportId) {
   return response.blob()
 }
 
-export async function listReports(token, q, status) {
-  const url = new URL(`${BASE_URL}/reports/`)
+export async function listReports(token, q, status, page = 0) {
+  const url = new URL(`${BASE_URL}/reports/`, window.location.origin)
+  url.searchParams.set("limit", "200")
+  url.searchParams.set("offset", String(page * 200))
   if (q) url.searchParams.set("q", q)
   if (status) url.searchParams.set("status", status)
 
   let response
   try {
     response = await fetch(url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: "include",
     })
   } catch {
     throw new Error("Could not reach the server. Is the backend running?")
   }
   return parseResponse(response, "Failed to load reports")
+}
+
+export async function listReportPairs(token, q, page = 0) {
+  const pairs = await apiRequest(`/reports/copies?limit=100&offset=${page * 100}&q=${encodeURIComponent(q || "")}`)
+  return pairs.flatMap(pair => pair.copy ? [pair.original, pair.copy] : [pair.original])
+}
+
+// Opens the PDF in the browser's viewer (a normal link, authenticated by the session cookie).
+export function reportViewUrl(reportId) {
+  return `${BASE_URL}/reports/${reportId}/view`
 }

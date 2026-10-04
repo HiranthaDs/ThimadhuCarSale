@@ -194,21 +194,10 @@ function FileField({ label, value, onChange, full }) {
   )
 }
 
-let scanReportsCache = null
-function fetchAllScanReports(token) {
-  if (!scanReportsCache) {
-    scanReportsCache = listAllScanReports(token).catch((err) => {
-      scanReportsCache = null
-      throw err
-    })
-  }
-  return scanReportsCache
-}
-
 function scanReportNameFromUrl(url) {
   if (!url) return null
   try {
-    const filename = decodeURIComponent(url.split("/").pop() || "")
+    const filename = decodeURIComponent(new URL(url).pathname.split("/").pop() || "")
     return filename.replace(/\.pdf$/i, "") || null
   } catch {
     return null
@@ -232,22 +221,20 @@ function ScanReportField({ token, label, value, onChange, vehicleNumber, readOnl
     return () => document.removeEventListener("mousedown", onClickOutside)
   }, [])
 
-  async function ensureLoaded() {
-    if (all || loading) return
-    setLoading(true)
-    setError("")
-    try {
-      const found = await fetchAllScanReports(token)
-      setAll(found)
-    } catch (err) {
-      setError(err.message || "Could not load PDFs.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const term = query.trim().toLowerCase()
-  const matches = term && all ? all.filter((r) => r.filename.toLowerCase().startsWith(term)) : []
+  const term = query.trim()
+  useEffect(() => {
+    let active = true
+    if (!open || !term) return
+    const timer = setTimeout(() => {
+      setLoading(true)
+      setError("")
+      listAllScanReports(token, term).then(found => { if (active) setAll(found) })
+        .catch(err => { if (active) setError(err.message || "Could not load reports.") })
+        .finally(() => { if (active) setLoading(false) })
+    }, 250)
+    return () => { active = false; clearTimeout(timer) }
+  }, [token, term, open])
+  const matches = all || []
 
   function handlePick(resource) {
     onChange(resource.secure_url, resource.filename)
@@ -257,7 +244,7 @@ function ScanReportField({ token, label, value, onChange, vehicleNumber, readOnl
 
   return (
     <div className="tp-form-group" ref={boxRef}>
-      <span>{valueName ? `${label}: ${valueName}` : label}</span>
+      <span>{label}{valueName ? " (report selected)" : ""}</span>
       {!readOnly && (
         <div className="cp-scan-report-search-box">
           <input
@@ -266,11 +253,11 @@ function ScanReportField({ token, label, value, onChange, vehicleNumber, readOnl
             placeholder="Type a letter to see matching PDFs…"
             value={query}
             onChange={(e) => {
+              setAll([])
               setQuery(e.target.value)
               setOpen(true)
             }}
             onFocus={() => {
-              ensureLoaded()
               setOpen(true)
             }}
           />

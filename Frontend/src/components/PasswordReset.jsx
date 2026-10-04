@@ -4,6 +4,7 @@ import "./PasswordReset.css"
 
 export default function PasswordReset({ token, initialEmail = "", onCancel, onSuccess }) {
   const [email, setEmail] = useState(initialEmail)
+  const [challengeId, setChallengeId] = useState(null)
   const [sent, setSent] = useState(false)
   const [otp, setOtp] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -30,6 +31,7 @@ export default function PasswordReset({ token, initialEmail = "", onCancel, onSu
     setMessage("")
     try {
       const result = await requestPasswordOtp({ token, email })
+      setChallengeId(result.challenge_id)
       setSent(true)
       setOtp("")
       setRetryAt(Date.now() + result.resend_after_seconds * 1000)
@@ -60,7 +62,7 @@ export default function PasswordReset({ token, initialEmail = "", onCancel, onSu
     }
     setBusy(true)
     try {
-      const result = await resetPasswordWithOtp({ token, email, otp, newPassword })
+      const result = await resetPasswordWithOtp({ token, email, otp, newPassword, challengeId })
       setMessage(result.message)
       setOtp("")
       setNewPassword("")

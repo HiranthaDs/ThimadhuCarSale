@@ -25,11 +25,13 @@ def create_blacklist_entry(
 
 @router.get("/", response_model=list[VehicleBlacklistOut])
 def list_blacklist_entries(
-    q: str | None = Query(default=None, description="Search across vehicle number, chassis number, remarks."),
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0, le=100000),
+    q: str | None = Query(default=None, max_length=120, description="Search across vehicle number, chassis number, remarks."),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_blacklist_access),
 ):
-    return VehicleBlacklistService(db).list_all(q)
+    return VehicleBlacklistService(db).list_all(q, limit, offset)
 
 
 @router.get("/{entry_id}", response_model=VehicleBlacklistOut)

@@ -1,0 +1,45 @@
+x-api: &api
+  build: ./Backend
+  env_file: ./Backend/.env
+  restart: unless-stopped
+  environment:
+    APP_ENV: production
+    API_ROOT_PATH: /api
+    AUTO_MIGRATE: "false"
+    COOKIE_SECURE: "true"
+    COOKIE_SAMESITE: lax
+    WEB_CONCURRENCY: "2"
+    MAX_CONCURRENT_REQUESTS: "64"
+    DATABASE_POOL_SIZE: "3"
+    DATABASE_MAX_OVERFLOW: "2"
+    FORWARDED_ALLOW_IPS: "172.29.83.10"
+  expose: ["8000"]
+  security_opt: ["no-new-privileges:true"]
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+  networks: [application]
+
+services:
+  api1:
+    <<: *api
+  api2:
+    <<: *api
+  web:
+    build: ./Frontend
+    restart: unless-stopped
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on:
+      api1: {condition: service_healthy}
+      api2: {condition: service_healthy}
+    security_opt: ["no-new-privileges:true"]
+    networks:
+      application:
+        ipv4_address: 172.29.83.10
+
+networks:
+  application:
+    ipam:
+      config: [{subnet: 172.29.83.0/24}]

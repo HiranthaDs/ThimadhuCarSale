@@ -1,13 +1,14 @@
+from core.r2_client import PrivateMediaResponse
 import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from reports.model import REPORT_STATUSES, STATUS_CHECKED
 
 
-class InspectionReportOut(BaseModel):
+class InspectionReportOut(PrivateMediaResponse):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -19,10 +20,7 @@ class InspectionReportOut(BaseModel):
     url: str
     status: str
 
-    @computed_field
-    @property
-    def editable(self) -> bool:
-        return self.status != STATUS_CHECKED
+    editable: bool = False
 
 
 class InspectionReportDetail(InspectionReportOut):
@@ -30,9 +28,9 @@ class InspectionReportDetail(InspectionReportOut):
 
 
 class InspectionReportUpdate(BaseModel):
-    registration_number: str | None = None
-    vehicle_title: str | None = None
-    buyer_name: str | None = None
+    registration_number: str | None = Field(default=None, max_length=60)
+    vehicle_title: str | None = Field(default=None, max_length=255)
+    buyer_name: str | None = Field(default=None, max_length=255)
 
 
 class InspectionReportStatusUpdate(BaseModel):
@@ -44,3 +42,8 @@ class InspectionReportStatusUpdate(BaseModel):
         if value not in REPORT_STATUSES:
             raise ValueError(f"status must be one of {REPORT_STATUSES}")
         return value
+
+
+class InspectionReportPair(BaseModel):
+    original: InspectionReportOut
+    copy_report: InspectionReportOut | None = Field(default=None, alias="copy")

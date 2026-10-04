@@ -1,7 +1,8 @@
 import uuid
 
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session
+from activity.model import ActivityLog
+from sqlalchemy.orm import Session, defer
 
 from reports.model import InspectionReport
 
@@ -16,24 +17,52 @@ SEARCHABLE_COLUMNS = [
 class ReportRepository:
     def __init__(self, db: Session):
         self.db = db
+        self.actor = None
+
+    def audit(self, action, report):
+        actor = self.actor
+        if actor:
+            self.db.add(ActivityLog(
+                actor_id=actor.id, actor_name=actor.full_name, actor_role=actor.role.value,
+                action=action, entity_type="inspection_report", entity_id=report.id,
+                description=f"{action}: {report.registration_number or report.id}",
+            ))
 
     def create(self, *, created_by: uuid.UUID | None, **fields) -> InspectionReport:
         report = InspectionReport(created_by=created_by, **fields)
         self.db.add(report)
+        self.db.flush()
+        self.audit("report.create", report)
         self.db.commit()
         self.db.refresh(report)
         return report
 
-    def list_all(self, q: str | None = None, status: str | None = None) -> list[InspectionReport]:
-        stmt = select(InspectionReport)
+    def list_all(self, q: str | None = None, status: str | None = None, limit: int = 100, offset: int = 0) -> list[InspectionReport]:
+        stmt = select(InspectionReport).options(defer(InspectionReport.form_data))
         if q:
             pattern = f"%{q.strip()}%"
             conditions = [getattr(InspectionReport, col).ilike(pattern) for col in SEARCHABLE_COLUMNS]
             stmt = stmt.where(or_(*conditions))
         if status:
             stmt = stmt.where(InspectionReport.status == status)
-        stmt = stmt.order_by(InspectionReport.created_at.desc())
-        return list(self.db.scalars(stmt))
+        stmt = stmt.order_by(InspectionReport.created_at.desc(), InspectionReport.id.desc())
+        return list(self.db.scalars(stmt.limit(limit).offset(offset)))
+
+    def list_with_copies(self, q=None, limit=50, offset=0):
+        suffixes = ("-Inspection Report 2", "-Scan2")
+        stmt = select(InspectionReport).options(defer(InspectionReport.form_data)).where(
+            InspectionReport.registration_number.is_not(None),
+            ~func.lower(InspectionReport.registration_number).endswith("-scan2"),
+            ~func.lower(InspectionReport.registration_number).endswith("-inspection report 2"),
+        )
+        if q:
+            stmt = stmt.where(or_(*(getattr(InspectionReport, col).ilike(f"%{q.strip()}%") for col in SEARCHABLE_COLUMNS)))
+        originals = list(self.db.scalars(stmt.order_by(InspectionReport.created_at.desc(), InspectionReport.id.desc()).limit(limit).offset(offset)))
+        names = [r.registration_number.lower() + suffix.lower() for r in originals for suffix in suffixes]
+        copies = self.db.scalars(select(InspectionReport).options(defer(InspectionReport.form_data)).where(
+            func.lower(InspectionReport.registration_number).in_(names))) if names else []
+        by_name = {r.registration_number.lower(): r for r in copies}
+        return [(r, by_name.get(r.registration_number.lower() + suffixes[0].lower()) or by_name.get(r.registration_number.lower() + suffixes[1].lower())) for r in originals]
 
     def find_by_registration(self, registration_number: str) -> InspectionReport | None:
         stmt = select(InspectionReport).where(
@@ -41,23 +70,29 @@ class ReportRepository:
         )
         return self.db.scalars(stmt).first()
 
-    def get(self, report_id: uuid.UUID) -> InspectionReport | None:
-        return self.db.get(InspectionReport, report_id)
+    def get(self, report_id: uuid.UUID, lock=False) -> InspectionReport | None:
+        stmt = select(InspectionReport).where(InspectionReport.id == report_id)
+        if lock:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
+        return self.db.scalar(stmt)
 
     def update(self, report: InspectionReport, **fields) -> InspectionReport:
         for key, value in fields.items():
             if value is not None:
                 setattr(report, key, value)
+        self.audit("report.update", report)
         self.db.commit()
         self.db.refresh(report)
         return report
 
     def set_status(self, report: InspectionReport, status: str) -> InspectionReport:
         report.status = status
+        self.audit("report.status." + status, report)
         self.db.commit()
         self.db.refresh(report)
         return report
 
     def delete(self, report: InspectionReport) -> None:
+        self.audit("report.delete", report)
         self.db.delete(report)
         self.db.commit()

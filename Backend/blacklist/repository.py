@@ -30,14 +30,14 @@ class VehicleBlacklistRepository:
         )
         return self.db.scalar(stmt)
 
-    def list_all(self, q: str | None = None) -> list[VehicleBlacklist]:
+    def list_all(self, q: str | None = None, limit=100, offset=0) -> list[VehicleBlacklist]:
         stmt = select(VehicleBlacklist).options(selectinload(VehicleBlacklist.images))
         if q:
             pattern = f"%{q.strip()}%"
             conditions = [getattr(VehicleBlacklist, col).ilike(pattern) for col in SEARCHABLE_COLUMNS]
             stmt = stmt.where(or_(*conditions))
-        stmt = stmt.order_by(VehicleBlacklist.created_at.desc())
-        return list(self.db.scalars(stmt))
+        stmt = stmt.order_by(VehicleBlacklist.created_at.desc(), VehicleBlacklist.id.desc())
+        return list(self.db.scalars(stmt.limit(limit).offset(offset)))
 
     def update(self, entry: VehicleBlacklist, *, images: list[str], **fields) -> VehicleBlacklist:
         for key, value in fields.items():

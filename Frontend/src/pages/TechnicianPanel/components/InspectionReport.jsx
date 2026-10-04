@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react"
-import html2pdf from "html2pdf.js"
 import { SECTIONS, toPhotoList } from "./inspectionSchema"
-import { replaceReportPdf, uploadReportPdf } from "../../../api/reports"
+import { replaceReportPdf, reportViewUrl, uploadReportPdf } from "../../../api/reports"
 import { PDF_MARGIN, PDF_SCALE, imagesLoaded, paginateForPdf, pdfPageGeometry } from "./paginateReport"
 import reportLogo from "../../../assets/logo-light.png"
 
@@ -79,6 +78,7 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
       // Reserve room at the top/bottom of every page for the header and
       // footer band drawn below; the in-DOM .ir-header is only there for
       // on-screen viewing and browser Print, so it's hidden for this capture.
+      const { default: html2pdf } = await import("html2pdf.js")
       const pdf = await html2pdf()
         .set({
           margin: PDF_MARGIN,
@@ -168,14 +168,14 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
       const blob = pdf.output("blob")
 
       const registrationNumber = data.registrationNumber || ""
-      const fileName = `${registrationNumber || vehicleTitle || "inspection-report"}.pdf`
+      const fileName = `${registrationNumber || vehicleTitle || "inspection-report"}${data.scanNumber === 2 ? "-Inspection Report 2" : ""}.pdf`
       const file = new File([blob], fileName, { type: "application/pdf" })
       const buyerName = [data.buyerFirstName, data.buyerLastName].filter(Boolean).join(" ")
       const meta = { registrationNumber, vehicleTitle, buyerName, formData: data }
       const result = reportId
         ? await replaceReportPdf(token, reportId, file, meta)
         : await uploadReportPdf(token, file, meta)
-      setUploadedUrl(result.url)
+      setUploadedUrl(reportViewUrl(result.id))
       onSaved?.(result)
     } catch (err) {
       setUploadError(err.message || "Failed to upload PDF.")

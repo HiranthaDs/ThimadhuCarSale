@@ -1,17 +1,22 @@
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import uuid
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from activity.service import ActivityLogService
-from auth.model import PasswordReset, User, UserRole
+from auth.model import AuthSession, ResetChallenge, PasswordReset, User, UserRole, is_owner_level
+from core.rate_limit import consume
 from auth.repository import UserRepository
 from auth.schema import ChangePasswordRequest, LoginRequest, TokenResponse, UserCreateRequest
 from core.config import get_settings
 from core.security import create_access_token, hash_password, verify_password, password_version
+
+
+_DUMMY_PASSWORD_HASH = hash_password("dummy-password-not-an-account")
 
 
 class AuthService:
@@ -21,55 +26,37 @@ class AuthService:
 
     def login(self, payload: LoginRequest) -> TokenResponse:
         settings = get_settings()
-        user = self.repository.get_by_email(payload.email)
+        user = self.db.scalar(select(User).where(User.email == payload.email.lower()).with_for_update().execution_options(populate_existing=True))
 
-        if user and user.locked_until:
-            now = datetime.now(timezone.utc)
-            if user.locked_until > now:
-                minutes_left = math.ceil((user.locked_until - now).total_seconds() / 60)
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=f"Too many failed attempts. Try again in {minutes_left} minute(s).",
-                )
-            # The lockout has expired on its own — clear it before checking the password.
-            self.repository.clear_login_lockout(user)
+        # Hash every attempt, including unknown/inactive accounts.
+        # Requester limits run before this work at the route.
+        candidate_hash = user.hashed_password if user else _DUMMY_PASSWORD_HASH
+        valid = verify_password(payload.password, candidate_hash)
+        if not user or not user.is_active or not valid:
+            self.db.rollback()
+            raise HTTPException(401, "Invalid email or password.")
+        if user.failed_login_attempts or user.locked_until:
+            user.failed_login_attempts = 0
+            user.locked_until = None
 
-        if not user or not verify_password(payload.password, user.hashed_password):
-            if user:
-                self.repository.register_failed_login(
-                    user,
-                    max_attempts=settings.login_max_attempts,
-                    lockout_minutes=settings.login_lockout_minutes,
-                )
-            ActivityLogService(self.db).log_anonymous(
-                action="auth.login_failed",
-                entity_type="user",
-                description=f"Failed login attempt for {payload.email}",
-            )
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password.",
-            )
-
-        if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="This account has been deactivated. Contact the owner.",
-            )
-
-        if user.failed_login_attempts:
-            self.repository.clear_login_lockout(user)
-
-        token = create_access_token(subject=str(user.id), extra_claims={"role": user.role.value, "pwd": password_version(user.hashed_password)})
+        session = AuthSession(
+            id=uuid.uuid4(), user_id=user.id,
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes),
+        )
+        self.db.execute(delete(AuthSession).where(AuthSession.expires_at < datetime.now(timezone.utc)))
+        self.db.add(session)
+        self.db.commit()
+        token = create_access_token(subject=str(user.id), extra_claims={"role": user.role.value, "pwd": password_version(user.hashed_password), "sid": str(session.id)})
         return TokenResponse(access_token=token, user=user)
 
     def create_staff_or_technician(self, payload: UserCreateRequest, current_user: User) -> User:
-        if current_user.role != UserRole.owner:
+        if not is_owner_level(current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the owner can create accounts.",
+                detail="Only the owner or CEO can create accounts.",
             )
-        payload.ensure_creatable_role()
+        if payload.role == UserRole.owner:
+            raise HTTPException(400, "Owner accounts cannot be created through this endpoint.")
 
         if self.repository.get_by_email(payload.email):
             raise HTTPException(
@@ -93,24 +80,29 @@ class AuthService:
         return new_user
 
     def list_users(self, current_user: User) -> list[User]:
-        if current_user.role != UserRole.owner:
+        if not is_owner_level(current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the owner can view all accounts.",
+                detail="Only the owner or CEO can view all accounts.",
             )
         return self.repository.list_all()
 
     def set_account_active(self, user_id, is_active: bool, current_user: User) -> User:
-        if current_user.role != UserRole.owner:
+        if not is_owner_level(current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the owner can update account status.",
+                detail="Only the owner or CEO can update account status.",
             )
-        target = self.repository.get_by_id(user_id)
+        target = self.db.scalar(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))
         if not target:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found.")
         if target.role == UserRole.owner:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot modify the owner account.")
+        if target.id == current_user.id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot change your own account status.")
+        if not is_active:
+            self.db.execute(delete(AuthSession).where(AuthSession.user_id == target.id))
+            self.db.execute(delete(ResetChallenge).where(ResetChallenge.user_id == target.id))
         updated = self.repository.set_active(target, is_active)
         ActivityLogService(self.db).log(
             actor=current_user,
@@ -122,16 +114,18 @@ class AuthService:
         return updated
 
     def delete_account(self, user_id, current_user: User) -> None:
-        if current_user.role != UserRole.owner:
+        if not is_owner_level(current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the owner can delete accounts.",
+                detail="Only the owner or CEO can delete accounts.",
             )
-        target = self.repository.get_by_id(user_id)
+        target = self.db.scalar(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))
         if not target:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found.")
         if target.role == UserRole.owner:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete the owner account.")
+        if target.id == current_user.id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot delete your own account.")
 
         description = f"Deleted account for {target.full_name} ({target.email})"
         try:
@@ -151,6 +145,7 @@ class AuthService:
         )
 
     def change_password(self, payload: ChangePasswordRequest, current_user: User) -> User:
+        consume(self.db, "password-change-user", str(current_user.id), 5, 300)
         current_user = self.db.scalar(
             select(User).where(User.id == current_user.id).with_for_update()
             .execution_options(populate_existing=True)
@@ -163,6 +158,8 @@ class AuthService:
         challenge = self.db.get(PasswordReset, current_user.id)
         if challenge:
             challenge.code_hash = None
+        self.db.execute(delete(AuthSession).where(AuthSession.user_id == current_user.id))
+        self.db.execute(delete(ResetChallenge).where(ResetChallenge.user_id == current_user.id))
         updated = self.repository.set_password(current_user, hash_password(payload.new_password))
         ActivityLogService(self.db).log(
             actor=current_user,
@@ -177,6 +174,8 @@ class AuthService:
         """Ensures exactly one owner account exists, created on first startup."""
         if not email or not password:
             return
+        if password == "ChangeMe123!" or len(password) < 16:
+            raise RuntimeError("Bootstrap requires a unique password of at least 16 characters.")
         if self.repository.get_by_email(email):
             return
         if self.repository.count_by_role(UserRole.owner) > 0:

@@ -1,3 +1,4 @@
+from core.r2_client import PrivateMediaResponse
 import uuid
 from datetime import datetime
 
@@ -38,7 +39,7 @@ class VehicleBlacklistUpdate(BaseModel):
         return _check_images(value)
 
 
-class VehicleBlacklistImageOut(BaseModel):
+class VehicleBlacklistImageOut(PrivateMediaResponse):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID

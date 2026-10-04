@@ -3,6 +3,9 @@ __pycache__/
 **/__pycache__/
 *.pyc
 .env
+.env.*
+*.pem
+*.key
 .git
 uploads/*
 !uploads/.gitkeep

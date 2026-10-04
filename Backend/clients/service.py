@@ -2,14 +2,16 @@ import uuid
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import select
+from reports.model import InspectionReport
 
 from activity.service import ActivityLogService
-from auth.model import User, UserRole
+from auth.model import User, UserRole, is_owner_level
 from clients.model import ClientProfileStatus
 from clients.repository import ClientProfileRepository
 from clients.schema import IMAGE_FIELDS, ClientProfileCreate, ClientProfileUpdate
 from core.media import decode_data_url
-from core.r2_client import delete_client_document, upload_client_document
+from core.r2_client import delete_client_document, upload_client_document, existing_reference, canonical_url
 
 # scan_report_1/2_image are picked from an already-uploaded inspection report
 # PDF (owned by the reports feature) rather than being uploaded here, so they
@@ -21,7 +23,7 @@ CLIENT_DOCUMENT_FIELDS = tuple(
 )
 
 
-def _offload_documents(data: dict) -> dict:
+def _offload_documents(data: dict, allowed=()) -> dict:
     """Upload any base64 document/photo fields to R2, replacing them with URLs."""
     for field in CLIENT_DOCUMENT_FIELDS:
         value = data.get(field)
@@ -31,6 +33,8 @@ def _offload_documents(data: dict) -> dict:
         if decoded:
             content_type, content = decoded
             data[field] = upload_client_document(content, content_type)
+        else:
+            data[field] = existing_reference(value, allowed)
     return data
 
 
@@ -44,8 +48,29 @@ class ClientProfileService:
         self.db = db
         self.repository = ClientProfileRepository(db)
 
+    def prepare_documents(self, data, profile=None):
+        allowed = [getattr(profile, field) for field in CLIENT_DOCUMENT_FIELDS] if profile else []
+        data = _offload_documents(data, allowed)
+        for field in ("scan_report_1_image", "scan_report_2_image"):
+            value = data.get(field)
+            if value:
+                canonical = canonical_url(value)
+                # Match an actual report, never an arbitrary object in the bucket.
+                from core.r2_client import storage_reference
+                reference = storage_reference(canonical)
+                if not reference:
+                    raise HTTPException(400, "Choose a saved inspection report.")
+                key = reference[1]
+                reports = self.db.scalars(select(InspectionReport).where(
+                    InspectionReport.url.endswith(key)
+                ))
+                if not any(canonical_url(report.url) == canonical for report in reports):
+                    raise HTTPException(400, "Inspection report not found.")
+                data[field] = canonical
+        return data
+
     def create(self, payload: ClientProfileCreate, current_user: User):
-        data = _offload_documents(payload.model_dump())
+        data = self.prepare_documents(payload.model_dump())
         profile = self.repository.create(created_by=current_user.id, **data)
         ActivityLogService(self.db).log(
             actor=current_user,
@@ -56,8 +81,8 @@ class ClientProfileService:
         )
         return profile
 
-    def list_all(self, q: str | None = None):
-        return self.repository.list_all(q)
+    def list_all(self, q: str | None = None, limit=100, offset=0, status_filter=None):
+        return self.repository.list_all(q, limit, offset, status_filter)
 
     def get(self, profile_id: uuid.UUID):
         profile = self.repository.get_by_id(profile_id)
@@ -66,14 +91,19 @@ class ClientProfileService:
         return profile
 
     def update(self, profile_id: uuid.UUID, payload: ClientProfileUpdate, current_user: User):
-        profile = self.get(profile_id)
-        if profile.status == ClientProfileStatus.approved and current_user.role != UserRole.owner:
+        profile = self.repository.get_by_id(profile_id, lock=True)
+        if not profile:
+            raise HTTPException(404, "Client profile not found.")
+        if profile.status == ClientProfileStatus.approved and not is_owner_level(current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="This profile is approved and can only be edited by the owner.",
+                detail="This profile is approved and can only be edited by the owner or CEO.",
             )
         old_documents = {field: getattr(profile, field) for field in CLIENT_DOCUMENT_FIELDS}
-        data = _offload_documents(payload.model_dump())
+        data = self.prepare_documents(payload.model_dump(), profile)
+        # Any edited content must go through both approvals again.
+        if profile.status != ClientProfileStatus.pending_accountant:
+            data["status"] = ClientProfileStatus.pending_accountant
         updated = self.repository.update(profile, **data)
         for field in CLIENT_DOCUMENT_FIELDS:
             old_url = old_documents.get(field)
@@ -89,7 +119,9 @@ class ClientProfileService:
         return updated
 
     def approve(self, profile_id: uuid.UUID, current_user: User):
-        profile = self.get(profile_id)
+        profile = self.repository.get_by_id(profile_id, lock=True)
+        if not profile:
+            raise HTTPException(404, "Client profile not found.")
 
         if current_user.role == UserRole.accountant:
             if profile.status != ClientProfileStatus.pending_accountant:
@@ -100,7 +132,7 @@ class ClientProfileService:
             next_status = ClientProfileStatus.pending_owner
             action = "client.accountant_approve"
             description = f"Accountant approved client profile for {_display_names(profile)}"
-        elif current_user.role == UserRole.owner:
+        elif is_owner_level(current_user):
             if profile.status != ClientProfileStatus.pending_owner:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -112,7 +144,7 @@ class ClientProfileService:
         else:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the accountant or owner can approve client profiles.",
+                detail="Only the accountant, owner or CEO can approve client profiles.",
             )
 
         updated = self.repository.update(profile, status=next_status)

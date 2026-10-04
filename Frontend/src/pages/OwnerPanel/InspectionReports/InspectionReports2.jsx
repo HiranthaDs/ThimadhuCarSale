@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { createScan2Report, getReport, listReports } from "../../../api/reports"
+import { useEffect, useRef, useState } from "react"
+import { createScan2Report, getReport, listReportPairs, reportViewUrl } from "../../../api/reports"
 import { ReportStatusBadge } from "../../TechnicianPanel/components/reportStatus"
 import InspectionForm from "../../TechnicianPanel/components/InspectionForm"
 import InspectionReport from "../../TechnicianPanel/components/InspectionReport"
@@ -9,13 +9,13 @@ import InspectionReport from "../../TechnicianPanel/components/InspectionReport"
 // Once the owner has approved (checked) a report such as "CBE-1245", it is
 // locked, and it still has to go to the client unchanged. When a second scan
 // is needed, "Create a Copy" asks the backend to duplicate it into a new
-// report named "CBE-1245-Scan2". Only that copy is edited; it goes back to
+// report named "CBE-1245-Inspection Report 2". Only that copy is edited; it goes back to
 // the owner for approval and is locked in turn once approved.
 
-const SCAN2_SUFFIX = "-scan2"
+const SCAN2_SUFFIX = "-inspection report 2"
 
 function isScan2(report) {
-  return (report.registration_number || "").toLowerCase().endsWith(SCAN2_SUFFIX)
+  return (report.registration_number || "").toLowerCase().match(/-(inspection report 2|scan2)$/)
 }
 
 function scan2Key(registrationNumber) {
@@ -33,6 +33,8 @@ function formatDate(value) {
 }
 
 export default function InspectionReports2({ token }) {
+  const requestNumber = useRef(0)
+  const [page, setPage] = useState(0)
   const [reports, setReports] = useState([])
   const [query, setQuery] = useState("")
   const [loading, setLoading] = useState(false)
@@ -40,7 +42,7 @@ export default function InspectionReports2({ token }) {
   const [actionError, setActionError] = useState("")
   const [busyId, setBusyId] = useState(null)
 
-  // The Scan 2 report currently being edited.
+  // The Inspection Report 2 currently being edited.
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState(null)
   const [reportData, setReportData] = useState(null)
@@ -54,17 +56,18 @@ export default function InspectionReports2({ token }) {
     }
     setLoading(true)
     setError(null)
-    listReports(token, query.trim())
-      .then(setReports)
-      .catch((err) => setError(err.message || "Failed to load inspection reports."))
-      .finally(() => setLoading(false))
+    const requestId = ++requestNumber.current
+    listReportPairs(token, query.trim(), page)
+      .then(data => { if (requestId === requestNumber.current) setReports(data) })
+      .catch((err) => { if (requestId === requestNumber.current) setError(err.message || "Failed to load inspection reports.") })
+      .finally(() => { if (requestId === requestNumber.current) setLoading(false) })
   }
 
   useEffect(() => {
     const handle = setTimeout(loadReports, 300)
-    return () => clearTimeout(handle)
+    return () => { clearTimeout(handle); requestNumber.current += 1 }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, query])
+  }, [token, query, page])
 
   async function openScan2(scan2Id) {
     const detail = await getReport(token, scan2Id)
@@ -128,7 +131,7 @@ export default function InspectionReports2({ token }) {
     )
   }
 
-  const scan2ByReg = new Map(reports.filter(isScan2).map((r) => [r.registration_number.toLowerCase(), r]))
+  const scan2ByReg = new Map(reports.filter(isScan2).map((r) => [r.registration_number.toLowerCase().replace(/-scan2$/, SCAN2_SUFFIX), r]))
   const originals = reports.filter((r) => !isScan2(r) && r.registration_number)
 
   return (
@@ -140,7 +143,7 @@ export default function InspectionReports2({ token }) {
           className="tp-inspections-search"
           placeholder="Search by registration number, e.g. CBE-1245"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { setPage(0); setQuery(e.target.value) }}
         />
       </div>
 
@@ -177,7 +180,7 @@ export default function InspectionReports2({ token }) {
                     <ReportStatusBadge status={report.status} />
                     <span className="tp-inspections-date-link">
                       <span className="tp-inspections-date">{formatDate(report.created_at)}</span>
-                      <a className="tp-inspections-link" href={report.url} target="_blank" rel="noreferrer">
+                      <a className="tp-inspections-link" href={reportViewUrl(report.id)} target="_blank" rel="noreferrer">
                         View Inspection Report 1 PDF
                       </a>
                     </span>
@@ -193,7 +196,7 @@ export default function InspectionReports2({ token }) {
                       </span>
                     </div>
                     <div className="tp-reports-item-side">
-                      {scan2.status !== "checked" && (
+                      {scan2.editable && (
                         <button
                           type="button"
                           className="tp-reports-btn"
@@ -206,7 +209,7 @@ export default function InspectionReports2({ token }) {
                       <ReportStatusBadge status={scan2.status} />
                       <span className="tp-inspections-date-link">
                         <span className="tp-inspections-date">{formatDate(scan2.created_at)}</span>
-                        <a className="tp-inspections-link" href={scan2.url} target="_blank" rel="noreferrer">
+                        <a className="tp-inspections-link" href={reportViewUrl(scan2.id)} target="_blank" rel="noreferrer">
                           View Inspection Report 2 PDF
                         </a>
                       </span>

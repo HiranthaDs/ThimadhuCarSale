@@ -1,12 +1,12 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
+export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
-export async function apiRequest(path, { method = "GET", body, token } = {}) {
+export async function apiRequest(path, { method = "GET", body } = {}) {
   const headers = { "Content-Type": "application/json" }
-  if (token) headers.Authorization = `Bearer ${token}`
 
   let response
   try {
     response = await fetch(`${BASE_URL}${path}`, {
+      credentials: "include",
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,

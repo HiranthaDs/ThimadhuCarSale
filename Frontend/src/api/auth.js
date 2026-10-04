@@ -48,10 +48,14 @@ export function requestPasswordOtp({ token, email }) {
   })
 }
 
-export function resetPasswordWithOtp({ token, email, otp, newPassword }) {
+export function resetPasswordWithOtp({ token, email, otp, newPassword, challengeId }) {
   return apiRequest(token ? "/auth/change-password-with-otp" : "/auth/reset-password", {
     method: "POST",
     token,
-    body: { ...(token ? {} : { email }), otp, new_password: newPassword },
+    body: { ...(token ? {} : { email }), otp, challenge_id: challengeId, new_password: newPassword },
   })
+}
+
+export function logout() {
+  return apiRequest("/auth/logout", { method: "POST" })
 }

@@ -56,11 +56,11 @@ export default function Login({ onLogin }) {
 
     setLoading(true)
     try {
-      const { access_token: token, user } = await login(email, password)
+      const { user } = await login(email, password)
       if (user.role !== role) {
         setError(`This account is registered as "${user.role}", not "${role}". Logging you in to the correct portal.`)
       }
-      onLogin({ role: user.role, username: user.email, fullName: user.full_name, token })
+      onLogin({ role: user.role, username: user.email, fullName: user.full_name })
     } catch (err) {
       setError(err.message || "Login failed. Please check your credentials.")
     } finally {

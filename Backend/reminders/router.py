@@ -27,12 +27,14 @@ def create_reminder(
 
 @router.get("/", response_model=list[ReminderOut])
 def list_reminders(
+    limit: int = Query(default=500, ge=1, le=500),
+    offset: int = Query(default=0, ge=0, le=100000),
     start: date | None = Query(default=None),
     end: date | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return ReminderService(db).list_range(start, end)
+    return ReminderService(db).list_range(start, end, limit, offset)
 
 
 @router.get("/{reminder_id}", response_model=ReminderOut)
