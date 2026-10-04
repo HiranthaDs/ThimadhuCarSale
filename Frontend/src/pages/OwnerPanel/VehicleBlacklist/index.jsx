@@ -108,17 +108,23 @@ export default function VehicleBlacklist({ token, role }) {
           <div className="tp-card-title">Vehicle Blacklist</div>
         </div>
 
-        <div className="cp-search">
-          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <div className="vb-search">
+          <svg className="vb-search-icon" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="11" cy="11" r="7" />
             <path d="m21 21-4.3-4.3" />
           </svg>
           <input
             type="text"
             placeholder="Search by vehicle number, chassis number, remarks…"
+            aria-label="Search blacklist"
             value={search}
             onChange={(e) => { setPage(0); setSearch(e.target.value) }}
           />
+          {search && (
+            <button type="button" className="vb-search-clear" aria-label="Clear search" onClick={() => { setPage(0); setSearch("") }}>
+              ×
+            </button>
+          )}
         </div>
 
         {loading && <p>Loading blacklist…</p>}
