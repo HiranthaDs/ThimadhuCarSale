@@ -535,7 +535,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
             <div className="tp-form-row">
               <ScanReportField
                 token={token}
-                label="Inspection Report 1"
+                label="Scan Report 1"
                 value={form.scan_report_1_image}
                 onChange={(v) => set("scan_report_1_image", v)}
                 vehicleNumber={form.vehicle_number}
@@ -543,7 +543,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
               />
               <ScanReportField
                 token={token}
-                label="Inspection Report 2"
+                label="Scan Report 2"
                 value={form.scan_report_2_image}
                 onChange={(v) => set("scan_report_2_image", v)}
                 vehicleNumber={form.vehicle_number}
@@ -552,12 +552,12 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
             </div>
             <div className="tp-form-row">
               <FileField
-                label="Inspection Report 1 (Upload)"
+                label="Scan Report 1 (Upload)"
                 value={form.scan_report_1_upload}
                 onChange={(v) => set("scan_report_1_upload", v)}
               />
               <FileField
-                label="Inspection Report 2 (Upload)"
+                label="Scan Report 2 (Upload)"
                 value={form.scan_report_2_upload}
                 onChange={(v) => set("scan_report_2_upload", v)}
               />
