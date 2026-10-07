@@ -1,0 +1,67 @@
+.sl-network{position:relative;isolation:isolate;background:#071a30;color:#fff;padding:108px 5.5% 95px;overflow:hidden}
+.sl-network:before{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(ellipse at 80% 49%,#164b752e,transparent 55%),linear-gradient(140deg,#081d35,transparent 62%);pointer-events:none}
+.sl-network-inner{max-width:1330px;margin:auto;display:grid;grid-template-columns:.96fr 1fr;gap:8%;align-items:center}
+.sl-network-copy{max-width:550px;padding:10px 0}
+.sl-network-eyebrow{display:flex;align-items:center;gap:11px;color:#a9c5e9;font-size:9px;letter-spacing:.19em;font-weight:500;margin-bottom:29px}
+.sl-network-eyebrow>span{width:6px;height:6px;border-radius:50%;background:#73a7ff;box-shadow:0 0 0 5px #73a7ff12}
+.sl-network h2{font-size:clamp(49px,5.2vw,77px);font-weight:500;line-height:1.035;letter-spacing:-.06em;color:#f6f9ff;margin:0 0 25px}
+.sl-network h2 em{font-style:normal;color:#8eb6ff}
+.sl-network-intro{max-width:395px;color:#a4b9d1;font-size:15px;line-height:1.75;letter-spacing:-.012em;margin-bottom:31px}
+.sl-destination{max-width:395px;border:1px solid #94baff26;border-radius:17px;background:linear-gradient(125deg,#20406459,#0e2b4729);padding:23px 24px 0;overflow:hidden;box-shadow:0 15px 40px #0000000a}
+.sl-destination-top{display:flex;align-items:center;justify-content:space-between;gap:15px;color:#afc4e1;font-size:8px;letter-spacing:.17em;font-weight:500;margin-bottom:16px}
+.sl-destination-top>svg{color:#81adff}
+.sl-destination-place{display:flex;align-items:baseline;justify-content:space-between;gap:14px;min-height:42px;flex-wrap:wrap}
+.sl-destination-place h3{font-size:28px;line-height:1.15;letter-spacing:-.035em;font-weight:500;max-width:100%;overflow-wrap:anywhere;color:#fff;margin:0}
+.sl-destination-place>span{font-size:10px;color:#adc1da;white-space:nowrap}
+.sl-destination-link{display:flex;justify-content:space-between;align-items:center;gap:20px;min-height:58px;margin-top:16px;border-top:1px solid #9bc0e521;color:#d0e1ff;font-size:11px;line-height:1.5}
+.sl-destination-link>svg{flex-shrink:0;transition:transform .3s ease}
+.sl-destination-link:hover{color:#fff}.sl-destination-link:hover>svg{transform:translate(3px,-3px)}
+.sl-city-form{max-width:395px;margin-top:24px}
+.sl-city-form>label{font-size:10px;display:block;color:#a3b7d1;margin:0 0 8px}
+.sl-city-input{display:flex;align-items:center;gap:11px;border-bottom:1px solid #829bbb4a}
+.sl-city-input>svg{flex-shrink:0;color:#90accd}
+.sl-city-input>input:not([type=hidden]){min-width:0;width:100%;padding:13px 0;border:0;background:transparent;color:#fff;font:inherit;font-size:13px;outline-offset:3px}
+.sl-city-input>input::placeholder{color:#8da5c1}
+.sl-city-input>button{display:grid;place-items:center;width:44px;height:44px;flex-shrink:0;padding:0;border:0;border-radius:50%;color:#d8e7ff;background:transparent;transition:background .25s}
+.sl-city-input>button:hover{background:#22476c}
+.sl-sourcing-link{display:inline-flex;align-items:center;gap:14px;font-size:10px;line-height:1.5;color:#97b5e3;margin-top:24px;padding:8px 0}
+.sl-sourcing-link:hover{color:#fff}
+.sl-network-map-panel{position:relative;min-width:0;align-self:center}
+.sl-map-topline,.sl-map-bottomline{display:flex;align-items:center;justify-content:space-between;gap:15px;color:#9bb2d0;font-size:8px;font-weight:500;letter-spacing:.14em;line-height:1.5}
+.sl-map-topline{border-bottom:1px solid #8dabd329;padding-bottom:15px}
+.sl-map-topline>span:first-child{display:flex;align-items:center;gap:8px}
+.sl-map-status-dot{height:4px;width:4px;background:#87b4ff;border-radius:50%}
+.sl-map{position:relative;width:100%;aspect-ratio:600/720;max-width:570px;margin:5px auto 10px}
+.sl-map-coastline,.sl-map-grid,.sl-map-selection{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.sl-map-grid path{stroke:#6891be;stroke-opacity:.12;stroke-width:.8;stroke-dasharray:2 5}
+.sl-map-grid text{font:8px Arial,sans-serif;fill:#7996b9;opacity:.75}
+.sl-map-selection{overflow:visible}
+.sl-map-beacon{animation:sl-beacon-arrive 1.3s cubic-bezier(.2,.7,.3,1) both}
+.sl-map-beacon circle{stroke:#669fff;stroke-width:1;opacity:.5}
+.sl-map-beacon circle:nth-child(2){opacity:.2;stroke-dasharray:2 5}
+.sl-map-beacon path{stroke:#83b4ff;opacity:.4;stroke-width:1}
+.sl-map-ocean{position:absolute;right:2.5%;top:65%;font-size:9px;font-weight:400;line-height:2.1;letter-spacing:.23em;color:#6888af;text-align:center}
+.sl-map-compass{position:absolute;right:9%;top:6%;display:flex;align-items:center;flex-direction:column;gap:7px;color:#88a9d1;font-size:9px;letter-spacing:.05em}
+.sl-map-city{position:absolute;z-index:2;display:flex;align-items:center;gap:0;height:44px;padding:0;color:#b8cce7;background:transparent;border:0;transform:translate(-22px,-22px);font-family:inherit;border-radius:8px;cursor:pointer}
+.sl-map-city-left{flex-direction:row-reverse;transform:translate(calc(-100% + 22px),-22px)}
+.sl-map-city-dot{position:relative;display:grid;place-items:center;width:44px;height:44px;flex-shrink:0}
+.sl-map-city-dot>span{width:7px;height:7px;border-radius:50%;background:#b1cbef;border:1px solid #eff7ff;box-shadow:0 0 0 5px #adcafa0d;transition:box-shadow .3s,background .3s}
+.sl-map-city-name{display:block;padding:6px 8px;background:#0a213ce8;border:1px solid #8eadd51a;border-radius:5px;white-space:nowrap;font-size:11px;font-weight:500;line-height:1.5;transition:background .3s,color .3s,border-color .3s}
+.sl-map-city:hover,.sl-map-city.is-selected{color:#fff;z-index:3}
+.sl-map-city:hover .sl-map-city-name{border-color:#79aafd66}
+.sl-map-city.is-selected .sl-map-city-name{background:#286bdf;border-color:#5595ff}
+.sl-map-city.is-selected .sl-map-city-dot>span{background:#fff;box-shadow:0 0 0 5px #307bff5c,0 0 22px #478fff9c}
+.sl-map-city:focus-visible{outline:2px solid #b8d3ff;outline-offset:3px}
+.sl-map-bottomline{border-top:1px solid #8dabd329;padding-top:15px;font-size:7px;letter-spacing:.1em}
+.sl-map-bottomline>a{display:flex;align-items:center;gap:9px;min-height:35px;color:#a9caff;overflow-wrap:anywhere}
+.sl-map-bottomline>a:hover{color:#fff}.sl-map-bottomline>a>svg{flex-shrink:0}.sl-map-bottomline>span{flex-shrink:0}
+.sl-map-note{font-size:9px;line-height:1.6;color:#9bb0cc;text-align:center;margin:16px 0 0}
+.sl-map-attribution{font-size:8px;line-height:1.6;color:#849bb8;text-align:center;margin:5px 0 0}
+.sl-map-attribution a{color:inherit;text-decoration:underline;text-decoration-color:#829bbb77;text-underline-offset:2px}
+.sl-network a:focus-visible,.sl-network button:focus-visible,.sl-network input:focus-visible{outline:2px solid #a9ceff;outline-offset:4px}
+@keyframes sl-beacon-arrive{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+@media(min-width:1500px){.sl-network{padding-block:125px}}
+@media(max-width:1100px){.sl-network{padding:90px 5%;}.sl-network-inner{gap:5%;grid-template-columns:1fr 1fr}.sl-network h2{font-size:62px}.sl-network-intro{font-size:14px}.sl-destination{padding:21px 20px 0}.sl-destination-place{gap:6px}.sl-destination-place h3{font-size:27px}.sl-destination-place>span{font-size:9px}.sl-map-city-name{font-size:10px;padding-inline:7px}.sl-map-ocean{right:0}}
+@media(max-width:780px){.sl-network{padding:70px 6% 65px}.sl-network-inner{grid-template-columns:1fr;gap:48px;max-width:520px}.sl-network-copy{max-width:none}.sl-network h2{font-size:clamp(53px,10vw,75px)}.sl-network-intro{font-size:15px;max-width:430px}.sl-destination,.sl-city-form{max-width:none}.sl-destination-place{align-items:baseline}.sl-destination-place>span{font-size:11px}.sl-network-map-panel{width:100%;max-width:500px;margin:auto}.sl-map{max-width:465px}.sl-map-city-name{font-size:12px;padding:6px 9px}.sl-map-topline{font-size:8px}.sl-map-bottomline{font-size:7px}.sl-map-note{font-size:10px}.sl-map-attribution{font-size:9px}}
+@media(max-width:400px){.sl-network{padding-inline:5%}.sl-network h2{font-size:51px}.sl-network-eyebrow{font-size:8px}.sl-map-city-name{font-size:10px;padding-inline:7px}.sl-map-city-dot{width:38px}.sl-map-city{transform:translate(-19px,-22px)}.sl-map-city-left{transform:translate(calc(-100% + 19px),-22px)}.sl-map-ocean{font-size:8px;letter-spacing:.13em}.sl-destination-place h3{font-size:25px}.sl-destination-place>span{font-size:10px}.sl-map-bottomline{font-size:6.5px;letter-spacing:.07em}}
+@media(prefers-reduced-motion:reduce){.sl-map-beacon{animation:none}.sl-network *,.sl-network *:before,.sl-network *:after{transition:none!important}}

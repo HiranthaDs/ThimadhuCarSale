@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f6f8">
+  <title>Thimadu Auto Traders Admin</title>
+  <meta name="description" content="Private Thimadu Auto Traders content administration interface.">
+<meta name="robots" content="noindex,nofollow,noarchive">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+
+  <script>
+    // ============================================================
+    // THIMADU ADMIN CONFIGURATION
+    // ============================================================
+    // If you UPDATE the existing Apps Script deployment using
+    // Deploy -> Manage deployments -> Edit -> New version,
+    // the same URL below can remain unchanged.
+    const CONFIG = {
+      DEPLOY_URL: "https://script.google.com/macros/s/AKfycbzh9gqz8J6qWbiqW0-N1gZMzM66TD7sQ4QHsmDBL7Osml99CEnUPC3LFLnAHCBN2mvSXg/exec",
+      DATABASE_URL: "https://docs.google.com/spreadsheets/d/1kyJXiH67w19sgt5sqeDeiqytXUVMlqAsrEKKJwRaue0/edit",
+      PUBLIC_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQtUtkiDWGhuls-2JhfsVL1Hj_oFiFTyBPZyHndMBHeNoRotTcjppZe-tN32NqST4-t-xsgXnjYMK-8/pub?output=csv",
+      DRIVE_FOLDER_URL: "https://drive.google.com/drive/folders/1Ot4nsPI2Q9oaxsj-T_JJSM9NMvs6GIy1?usp=sharing",
+      MAX_VEHICLE_IMAGES: 20,
+      REQUEST_TIMEOUT_MS: 120000
+    };
+
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ["Inter", "sans-serif"] },
+          colors: {
+            ink: "#111827",
+            paper: "#f4f6f8",
+            thimadu: "#0f5ce1",
+            orange: "#ff6a2a"
+          },
+          boxShadow: {
+            soft: "0 10px 35px rgba(15,23,42,.07)",
+            float: "0 18px 55px rgba(15,23,42,.12)"
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+    html { background: #f4f6f8; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: #111827;
+      background: #f4f6f8;
+      font-family: Inter, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, textarea, select { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    .surface {
+      border: 1px solid #e5e7eb;
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: 0 8px 28px rgba(15,23,42,.05);
+    }
+    .field {
+      width: 100%;
+      min-height: 48px;
+      padding: 0 14px;
+      border: 1px solid #dfe3e8;
+      border-radius: 14px;
+      outline: none;
+      background: #f8fafc;
+      color: #111827;
+      font-size: 14px;
+      transition: .2s ease;
+    }
+    textarea.field { min-height: 118px; padding-top: 13px; resize: vertical; }
+    .field:focus {
+      border-color: #8bb4ff;
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(15,92,225,.09);
+    }
+    .field.invalid { border-color: #ef4444; background: #fff7f7; }
+    .btn {
+      min-height: 44px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease, background .18s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-primary { background: #0f5ce1; color: #fff; box-shadow: 0 9px 24px rgba(15,92,225,.18); }
+    .btn-dark { background: #111827; color: #fff; }
+    .btn-light { background: #eef2f7; color: #1f2937; }
+    .btn-danger { background: #fff0f0; color: #dc2626; }
+    .nav-btn {
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      font-size: 13px;
+      font-weight: 700;
+      transition: .2s ease;
+    }
+    .nav-btn:hover { color: #111827; background: #f1f5f9; }
+    .nav-btn.active { color: #0f5ce1; background: #eaf2ff; }
+    .segment {
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 10px;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 700;
+      transition: .2s ease;
+    }
+    .segment.active { background: #fff; color: #111827; box-shadow: 0 3px 12px rgba(15,23,42,.08); }
+    .upload-zone {
+      min-height: 155px;
+      padding: 28px;
+      border: 1.5px dashed #cbd5e1;
+      border-radius: 20px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+    .upload-zone:hover { border-color: #0f5ce1; background: #f4f8ff; }
+    .thumb-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+      gap: 12px;
+    }
+    .thumb {
+      position: relative;
+      aspect-ratio: 4 / 3;
+      overflow: visible;
+      border-radius: 14px;
+      background: #eef2f7;
+      cursor: grab;
+    }
+    .thumb:active { cursor: grabbing; }
+    .thumb > img {
+      width: 100%;
+      height: 100%;
+      border-radius: 14px;
+      object-fit: cover;
+      border: 1px solid #e5e7eb;
+    }
+    .thumb-remove {
+      position: absolute;
+      top: -7px;
+      right: -7px;
+      width: 26px;
+      height: 26px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #ef4444;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,.18);
+      cursor: pointer;
+      z-index: 2;
+    }
+    .sortable-ghost { opacity: .35; }
+    .list-card {
+      border: 1px solid #e6eaf0;
+      border-radius: 18px;
+      background: #fff;
+      transition: .2s ease;
+    }
+    .list-card:hover { border-color: #cbd5e1; box-shadow: 0 8px 24px rgba(15,23,42,.06); }
+    .status {
+      padding: 5px 8px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .status-green { background: #eaf8f0; color: #0d7a43; }
+    .status-red { background: #fff0f0; color: #c62828; }
+    .status-amber { background: #fff7df; color: #9a6500; }
+    .status-gray { background: #eef2f7; color: #64748b; }
+    .toast {
+      transform: translateY(-18px);
+      opacity: 0;
+      pointer-events: none;
+      transition: .3s ease;
+    }
+    .toast.show { transform: none; opacity: 1; }
+    .modal-backdrop {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: .25s ease;
+    }
+    .modal-backdrop.open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    .loader {
+      width: 34px;
+      height: 34px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #0f5ce1;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 760px) {
+      .desktop-nav { display: none; }
+      #section-videos .surface { box-shadow: none; }
+      #section-videos > div:first-child { padding: 2px 2px 0; }
+      #section-videos .grid.lg\:grid-cols-\[\.8fr_1\.2fr\] { display: block; }
+      #videoForm { margin-top: 20px; padding: 18px; }
+      #videoList { margin-top: 4px; }
+      #videoList .list-card { padding: 12px; gap: 12px; border-radius: 16px; }
+      #videoList .list-card > div:first-child { width: 112px; }
+      .surface { border-radius: 18px; }
+      .field { font-size: 16px; }
+      .thumb-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    }
+    @media (max-width: 390px) {
+      .thumb-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+  </style>
+</head>
+
+<body class="pb-24">
+  <!-- Login -->
+  <div id="loginOverlay" class="fixed inset-0 z-[100] bg-paper flex items-center justify-center p-5">
+    <div class="surface w-full max-w-md p-7 sm:p-9">
+      <div class="w-14 h-14 rounded-2xl bg-ink text-white grid place-items-center mb-6">
+        <i class='bx bxs-car text-2xl'></i>
+      </div>
+      <p class="text-[11px] font-extrabold tracking-[.16em] uppercase text-thimadu mb-2">Thimadu Auto Traders</p>
+      <h1 class="text-3xl font-extrabold tracking-[-.04em]">Admin access</h1>
+      <p class="text-sm text-slate-500 mt-2 leading-6">Enter the Apps Script admin password to manage vehicles, happy customers and videos.</p>
+
+      <form id="loginForm" class="mt-7 space-y-4">
+        <div>
+          <label class="text-xs font-bold text-slate-600 block mb-2">Admin password</label>
+          <div class="relative">
+            <input id="passwordInput" type="password" class="field pr-12" autocomplete="current-password" required>
+            <button id="togglePassword" type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <i class='bx bx-show text-xl'></i>
+            </button>
+          </div>
+        </div>
+        <p id="loginError" class="hidden text-xs font-semibold text-red-600"></p>
+        <button id="loginBtn" class="btn btn-primary w-full h-12" type="submit">
+          <i class='bx bx-lock-open-alt text-lg'></i> Open dashboard
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- App -->
+  <div id="app" class="hidden">
+    <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        <button class="flex items-center gap-3 text-left" data-section-link="dashboard">
+          <div class="w-9 h-9 rounded-xl bg-ink text-white grid place-items-center"><i class='bx bxs-car'></i></div>
+          <div class="hidden sm:block">
+            <div class="text-sm font-extrabold tracking-tight">Thimadu Admin</div>
+            <div class="text-[10px] text-slate-400 font-semibold">Content management</div>
+          </div>
+        </button>
+
+        <nav class="desktop-nav flex items-center gap-1">
+          <button class="nav-btn active" data-section-link="dashboard"><i class='bx bx-grid-alt'></i> Dashboard</button>
+          <button class="nav-btn" data-section-link="vehicles"><i class='bx bx-car'></i> Vehicles</button>
+          <button class="nav-btn" data-section-link="customers"><i class='bx bx-happy-heart-eyes'></i> Happy Customers</button>
+          <button class="nav-btn" data-section-link="videos"><i class='bx bx-video'></i> Videos</button>
+        </nav>
+
+        <div class="flex items-center gap-2">
+          <a class="w-10 h-10 rounded-full bg-slate-100 grid place-items-center text-slate-600 hover:bg-slate-200" href="https://docs.google.com/spreadsheets/d/1kyJXiH67w19sgt5sqeDeiqytXUVMlqAsrEKKJwRaue0/edit" target="_blank" aria-label="Open database">
+            <i class='bx bx-table text-lg'></i>
+          </a>
+          <button id="logoutBtn" class="w-10 h-10 rounded-full bg-slate-100 grid place-items-center text-slate-600 hover:bg-red-50 hover:text-red-600" aria-label="Log out">
+            <i class='bx bx-log-out text-lg'></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-7 sm:py-10">
+      <!-- Dashboard -->
+      <section id="section-dashboard" class="app-section">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-5">
+          <div>
+            <p class="text-[11px] uppercase tracking-[.14em] font-extrabold text-thimadu">Overview</p>
+            <h2 class="text-3xl sm:text-4xl font-extrabold tracking-[-.045em] mt-2">Thimadu content dashboard</h2>
+            <p class="text-sm text-slate-500 mt-2">Manage all website content from one place.</p>
+          </div>
+          <button id="refreshAllBtn" class="btn btn-light"><i class='bx bx-refresh text-lg'></i> Refresh data</button>
+        </div>
+
+        <div class="grid sm:grid-cols-3 gap-4 mt-8">
+          <button class="surface p-6 text-left hover:border-blue-200 transition" data-section-link="vehicles">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 text-thimadu grid place-items-center"><i class='bx bx-car text-xl'></i></div>
+            <div id="countVehicles" class="text-4xl font-extrabold tracking-[-.05em] mt-6">0</div>
+            <div class="text-sm font-bold mt-1">Vehicles</div>
+            <div class="text-xs text-slate-400 mt-1">Current inventory records</div>
+          </button>
+          <button class="surface p-6 text-left hover:border-blue-200 transition" data-section-link="customers">
+            <div class="w-10 h-10 rounded-xl bg-orange-50 text-orange grid place-items-center"><i class='bx bx-happy-heart-eyes text-xl'></i></div>
+            <div id="countCustomers" class="text-4xl font-extrabold tracking-[-.05em] mt-6">0</div>
+            <div class="text-sm font-bold mt-1">Happy Customers</div>
+            <div class="text-xs text-slate-400 mt-1">Website trust stories</div>
+          </button>
+          <button class="surface p-6 text-left hover:border-blue-200 transition" data-section-link="videos">
+            <div class="w-10 h-10 rounded-xl bg-slate-100 text-ink grid place-items-center"><i class='bx bx-video text-xl'></i></div>
+            <div id="countVideos" class="text-4xl font-extrabold tracking-[-.05em] mt-6">0</div>
+            <div class="text-sm font-bold mt-1">Videos</div>
+            <div class="text-xs text-slate-400 mt-1">Video links and stories</div>
+          </button>
+        </div>
+
+        <div class="grid lg:grid-cols-[1.3fr_.7fr] gap-4 mt-4">
+          <div class="surface p-6 sm:p-7">
+            <h3 class="text-lg font-extrabold">Quick actions</h3>
+            <div class="grid sm:grid-cols-3 gap-3 mt-5">
+              <button class="btn btn-primary justify-start" data-quick="vehicle"><i class='bx bx-plus'></i> Add vehicle</button>
+              <button class="btn btn-dark justify-start" data-quick="customer"><i class='bx bx-plus'></i> Add customer</button>
+              <button class="btn btn-light justify-start" data-quick="video"><i class='bx bx-plus'></i> Add video</button>
+            </div>
+          </div>
+
+          <div class="surface p-6 sm:p-7">
+            <h3 class="text-lg font-extrabold">Data sources</h3>
+            <div class="grid gap-3 mt-5 text-sm">
+              <a class="flex items-center justify-between gap-3 font-semibold hover:text-thimadu" href="https://docs.google.com/spreadsheets/d/1kyJXiH67w19sgt5sqeDeiqytXUVMlqAsrEKKJwRaue0/edit" target="_blank">
+                Google Sheet <i class='bx bx-link-external'></i>
+              </a>
+              <a class="flex items-center justify-between gap-3 font-semibold hover:text-thimadu" href="https://drive.google.com/drive/folders/1Ot4nsPI2Q9oaxsj-T_JJSM9NMvs6GIy1?usp=sharing" target="_blank">
+                Media Drive <i class='bx bx-link-external'></i>
+              </a>
+              <a class="flex items-center justify-between gap-3 font-semibold hover:text-thimadu" href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQtUtkiDWGhuls-2JhfsVL1Hj_oFiFTyBPZyHndMBHeNoRotTcjppZe-tN32NqST4-t-xsgXnjYMK-8/pub?output=csv" target="_blank">
+                Public vehicle CSV <i class='bx bx-link-external'></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Vehicles -->
+      <section id="section-vehicles" class="app-section hidden">
+        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
+          <div>
+            <p class="text-[11px] uppercase tracking-[.14em] font-extrabold text-thimadu">Inventory</p>
+            <h2 class="text-3xl sm:text-4xl font-extrabold tracking-[-.045em] mt-2">Vehicles</h2>
+            <p class="text-sm text-slate-500 mt-2">Add, update and remove vehicle listings.</p>
+          </div>
+          <div class="inline-flex p-1 bg-slate-200/70 rounded-xl w-fit">
+            <button id="vehicleTabForm" class="segment active">Add / edit</button>
+            <button id="vehicleTabManage" class="segment">Manage</button>
+          </div>
+        </div>
+
+        <div id="vehicleFormPanel" class="mt-8">
+          <form id="vehicleForm" class="space-y-5">
+            <input type="hidden" name="id">
+
+            <div class="surface p-5 sm:p-7">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <h3 id="vehicleFormTitle" class="text-xl font-extrabold">Add new vehicle</h3>
+                  <p class="text-xs text-slate-400 mt-1">Required fields are brand, model, year and at least one image.</p>
+                </div>
+                <button id="cancelVehicleEdit" type="button" class="hidden btn btn-danger">Cancel edit</button>
+              </div>
+
+              <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                <div><label class="text-xs font-bold text-slate-600 block mb-2">Brand *</label><input name="brand" class="field" placeholder="Toyota" required></div>
+                <div><label class="text-xs font-bold text-slate-600 block mb-2">Model *</label><input name="model" class="field" placeholder="Premio" required></div>
+                <div><label class="text-xs font-bold text-slate-600 block mb-2">Year *</label><input name="year" class="field" type="number" min="1900" max="2030" placeholder="2024" required></div>
+                <div><label class="text-xs font-bold text-slate-600 block mb-2">Price</label><input name="price" class="field" placeholder="12,500,000"></div>
+              </div>
+
+              <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                <div><label class="text-xs font-bold text-slate-600 block mb-2">Grade</label><input name="grade" class="field" placeholder="G Superior"></div>
+                <div><label class="text-xs font-bold text-slate-600 block mb-2">Body type</label><input name="type" class="field" placeholder="SUV / Sedan"></div>
+                <div><label class="text-xs font-bold text-slate-600 block mb-2">Mileage</label><input name="mileage" class="field" placeholder="45,000"></div>
+                <div><label class="text-xs font-bold text-slate-600 block mb-2">Engine</label><input name="engine" class="field" placeholder="1500 cc"></div>
+              </div>
+
+              <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
+                <div>
+                  <label class="text-xs font-bold text-slate-600 block mb-2">Fuel</label>
+                  <select name="fuel" class="field">
+                    <option>Petrol</option><option>Diesel</option><option>Hybrid</option><option>Electric</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs font-bold text-slate-600 block mb-2">Transmission</label>
+                  <select name="transmission" class="field">
+                    <option>Automatic</option><option>Manual</option><option>Tiptronic</option><option>CVT</option>
+                  </select>
+                </div>
+                <div><label class="text-xs font-bold text-slate-600 block mb-2">Color</label><input name="color" class="field" placeholder="Pearl White"></div>
+                <div>
+                  <label class="text-xs font-bold text-slate-600 block mb-2">Condition</label>
+                  <select name="condition" class="field"><option>Used</option><option>New</option></select>
+                </div>
+                <div>
+                  <label class="text-xs font-bold text-slate-600 block mb-2">Availability</label>
+                  <select name="availability" class="field">
+                    <option>Available</option><option>Pending</option><option>Reserved</option><option>Japan Auction</option><option>Sold</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid lg:grid-cols-[.4fr_.6fr] gap-4 mt-4">
+                <div><label class="text-xs font-bold text-slate-600 block mb-2">Location</label><input name="location" class="field" placeholder="Beliatta, Sri Lanka"></div>
+                <div><label class="text-xs font-bold text-slate-600 block mb-2">Description</label><textarea name="description" class="field" placeholder="Vehicle highlights, condition, features and other useful details..."></textarea></div>
+              </div>
+            </div>
+
+            <div class="surface p-5 sm:p-7">
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <h3 class="text-lg font-extrabold">Vehicle photos</h3>
+                  <p class="text-xs text-slate-400 mt-1">Maximum 20 images. Drag thumbnails to change display order.</p>
+                </div>
+                <span id="vehicleImageCount" class="text-xs font-bold text-slate-400">0 / 20</span>
+              </div>
+
+              <div id="vehicleUploadZone" class="upload-zone mt-5">
+                <div>
+                  <div class="w-12 h-12 rounded-full bg-blue-50 text-thimadu grid place-items-center mx-auto"><i class='bx bx-cloud-upload text-2xl'></i></div>
+                  <p class="text-sm font-bold mt-3">Choose vehicle images</p>
+                  <p class="text-xs text-slate-400 mt-1">JPG, PNG, WEBP — images are compressed before upload</p>
+                </div>
+                <input id="vehicleFiles" type="file" accept="image/*" multiple hidden>
+              </div>
+
+              <div id="vehicleImageGrid" class="thumb-grid mt-5"></div>
+            </div>
+
+            <button id="vehicleSubmitBtn" type="submit" class="btn btn-dark w-full h-14 text-base">
+              <i class='bx bx-cloud-upload'></i> Save vehicle
+            </button>
+          </form>
+        </div>
+
+        <div id="vehicleManagePanel" class="hidden mt-8">
+          <div class="surface p-4 sm:p-5">
+            <div class="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+              <div class="relative flex-1 max-w-xl">
+                <i class='bx bx-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400'></i>
+                <input id="vehicleSearch" class="field pl-11" placeholder="Search brand, model, year, status...">
+              </div>
+              <button id="vehicleRefreshBtn" class="btn btn-light"><i class='bx bx-refresh'></i> Refresh</button>
+            </div>
+          </div>
+          <div id="vehicleList" class="grid gap-3 mt-4"></div>
+        </div>
+      </section>
+
+      <!-- Happy Customers -->
+      <section id="section-customers" class="app-section hidden">
+        <div>
+          <p class="text-[11px] uppercase tracking-[.14em] font-extrabold text-orange">Social proof</p>
+          <h2 class="text-3xl sm:text-4xl font-extrabold tracking-[-.045em] mt-2">Happy Customers</h2>
+          <p class="text-sm text-slate-500 mt-2">Add customer delivery photos, a headline and a short story.</p>
+        </div>
+
+        <div class="grid lg:grid-cols-[.8fr_1.2fr] gap-5 mt-8 items-start">
+          <form id="customerForm" class="surface p-5 sm:p-7 space-y-4 lg:sticky lg:top-24">
+            <input type="hidden" name="id">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h3 id="customerFormTitle" class="text-xl font-extrabold">Add happy customer</h3>
+                <p class="text-xs text-slate-400 mt-1">One main image per customer entry.</p>
+              </div>
+              <button id="cancelCustomerEdit" type="button" class="hidden btn btn-danger">Cancel</button>
+            </div>
+
+            <div><label class="text-xs font-bold text-slate-600 block mb-2">Headline *</label><input name="headline" class="field" placeholder="Another happy delivery" required></div>
+            <div><label class="text-xs font-bold text-slate-600 block mb-2">Short description</label><textarea name="description" class="field" placeholder="A short customer story or delivery note..."></textarea></div>
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div><label class="text-xs font-bold text-slate-600 block mb-2">Customer name</label><input name="customer_name" class="field" placeholder="Optional"></div>
+              <div><label class="text-xs font-bold text-slate-600 block mb-2">Location</label><input name="location" class="field" placeholder="Matara"></div>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div><label class="text-xs font-bold text-slate-600 block mb-2">Display order</label><input name="display_order" type="number" min="0" class="field" value="0"></div>
+              <div>
+                <label class="text-xs font-bold text-slate-600 block mb-2">Visibility</label>
+                <select name="status" class="field"><option>Active</option><option>Hidden</option></select>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-xs font-bold text-slate-600 block mb-2">Customer image *</label>
+              <div id="customerUploadZone" class="upload-zone min-h-[130px]">
+                <div>
+                  <i class='bx bx-image-add text-3xl text-thimadu'></i>
+                  <p class="text-sm font-bold mt-2">Choose customer image</p>
+                </div>
+                <input id="customerFile" type="file" accept="image/*" hidden>
+              </div>
+              <div id="customerPreview" class="mt-3"></div>
+            </div>
+
+            <button id="customerSubmitBtn" type="submit" class="btn btn-dark w-full h-12">Save customer story</button>
+          </form>
+
+          <div>
+            <div class="flex items-center justify-between gap-4 mb-4">
+              <h3 class="text-lg font-extrabold">Customer stories</h3>
+              <button id="customerRefreshBtn" class="btn btn-light"><i class='bx bx-refresh'></i> Refresh</button>
+            </div>
+            <div id="customerList" class="grid sm:grid-cols-2 gap-4"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Videos -->
+      <section id="section-videos" class="app-section hidden">
+        <div>
+          <p class="text-[11px] uppercase tracking-[.14em] font-extrabold text-thimadu">Media</p>
+          <h2 class="text-3xl sm:text-4xl font-extrabold tracking-[-.045em] mt-2">Videos</h2>
+          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mt-2">
+            <p class="text-sm text-slate-500 leading-6 max-w-2xl">Publish videos stored in the Thimadu Google Drive folder, or use YouTube, Facebook, TikTok, Instagram and Vimeo links. Normal Google Drive share links work directly.</p>
+            <div class="flex flex-wrap gap-2">
+              <button id="videoInfoBtn" type="button" class="btn btn-light"><i class='bx bx-info-circle text-lg'></i> How to add videos</button>
+              <a href="https://drive.google.com/drive/folders/1Ot4nsPI2Q9oaxsj-T_JJSM9NMvs6GIy1?usp=sharing" target="_blank" rel="noopener" class="btn btn-primary"><i class='bx bxl-google-drive text-lg'></i> Open video Drive</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid lg:grid-cols-[.8fr_1.2fr] gap-5 mt-8 items-start">
+          <form id="videoForm" class="surface p-5 sm:p-7 space-y-4 lg:sticky lg:top-24">
+            <input type="hidden" name="id">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h3 id="videoFormTitle" class="text-xl font-extrabold">Add video</h3>
+                <p class="text-xs text-slate-400 mt-1">Google Drive and YouTube thumbnails are handled automatically.</p>
+              </div>
+              <button id="cancelVideoEdit" type="button" class="hidden btn btn-danger">Cancel</button>
+            </div>
+
+            <div><label class="text-xs font-bold text-slate-600 block mb-2">Headline *</label><input name="headline" class="field" placeholder="Vehicle handover video" required></div>
+            <div><label class="text-xs font-bold text-slate-600 block mb-2">Description</label><textarea name="description" class="field" placeholder="Short context for this video..."></textarea></div>
+            <div>
+              <label class="text-xs font-bold text-slate-600 block mb-2">Video link *</label>
+              <input name="video_url" type="url" class="field" placeholder="Paste Google Drive share link or another video URL" required>
+              <div id="videoLinkHint" class="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] leading-5 text-slate-500">
+                Recommended: paste the normal Google Drive share link. No direct-link conversion is required.
+              </div>
+            </div>
+            <div><label class="text-xs font-bold text-slate-600 block mb-2">Custom thumbnail URL</label><input name="thumbnail_url" type="url" class="field" placeholder="Optional — Drive/YouTube thumbnail is automatic"></div>
+            <div id="videoLinkPreview" class="hidden rounded-2xl border border-slate-200 bg-white p-3">
+              <div class="flex gap-3 items-center">
+                <div class="w-28 aspect-video rounded-xl overflow-hidden bg-slate-100 grid place-items-center flex-none"><img id="videoPreviewImg" class="w-full h-full object-cover hidden" alt="Video preview"><i id="videoPreviewIcon" class='bx bx-video text-2xl text-slate-300'></i></div>
+                <div class="min-w-0"><div id="videoPreviewPlatform" class="text-xs font-extrabold text-ink">Video</div><div id="videoPreviewText" class="text-[11px] text-slate-500 mt-1 leading-5">Paste a link to preview how it will be handled.</div></div>
+              </div>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div><label class="text-xs font-bold text-slate-600 block mb-2">Display order</label><input name="display_order" type="number" min="0" class="field" value="0"></div>
+              <div>
+                <label class="text-xs font-bold text-slate-600 block mb-2">Visibility</label>
+                <select name="status" class="field"><option>Active</option><option>Hidden</option></select>
+              </div>
+            </div>
+
+            <button id="videoSubmitBtn" type="submit" class="btn btn-dark w-full h-12">Save video</button>
+          </form>
+
+          <div>
+            <div class="flex items-center justify-between gap-4 mb-4">
+              <h3 class="text-lg font-extrabold">Video library</h3>
+              <button id="videoRefreshBtn" class="btn btn-light"><i class='bx bx-refresh'></i> Refresh</button>
+            </div>
+            <div id="videoList" class="grid gap-4"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Mobile navigation -->
+    <nav class="fixed bottom-3 left-3 right-3 z-30 sm:hidden border border-slate-200 bg-white/95 backdrop-blur-xl rounded-2xl shadow-float p-1 grid grid-cols-4">
+      <button class="nav-btn justify-center active" data-section-link="dashboard"><i class='bx bx-grid-alt text-lg'></i></button>
+      <button class="nav-btn justify-center" data-section-link="vehicles"><i class='bx bx-car text-lg'></i></button>
+      <button class="nav-btn justify-center" data-section-link="customers"><i class='bx bx-happy-heart-eyes text-lg'></i></button>
+      <button class="nav-btn justify-center" data-section-link="videos"><i class='bx bx-video text-lg'></i></button>
+    </nav>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast fixed top-5 left-1/2 -translate-x-1/2 z-[120] bg-ink text-white rounded-full px-5 py-3 shadow-float flex items-center gap-2 max-w-[90vw]">
+    <i id="toastIcon" class='bx bx-check-circle text-lg'></i>
+    <span id="toastText" class="text-sm font-semibold truncate">Done</span>
+  </div>
+
+  <!-- Video help -->
+  <div id="videoInfoOverlay" class="modal-backdrop fixed inset-0 z-[115] bg-slate-950/45 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-5" aria-hidden="true">
+    <div class="bg-white w-full sm:max-w-2xl rounded-t-[28px] sm:rounded-[28px] shadow-float max-h-[92vh] overflow-y-auto">
+      <div class="sticky top-0 z-10 bg-white/95 backdrop-blur-xl border-b border-slate-100 px-5 sm:px-7 py-4 flex items-center justify-between gap-4">
+        <div><p class="text-[10px] uppercase tracking-[.14em] text-thimadu font-extrabold">Video publishing guide</p><h3 class="text-xl font-extrabold tracking-tight mt-1">Add a Google Drive video</h3></div>
+        <button id="videoInfoClose" type="button" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 grid place-items-center text-xl"><i class='bx bx-x'></i></button>
+      </div>
+      <div class="p-5 sm:p-7">
+        <div class="rounded-2xl bg-blue-50 border border-blue-100 p-4 text-sm text-blue-900 leading-6">
+          All Thimadu videos can stay in Google Drive. The website extracts the Drive file ID from the normal share link, creates a thumbnail automatically, and opens the video in the Google Drive player.
+        </div>
+        <ol class="mt-6 grid gap-4">
+          <li class="flex gap-4"><span class="w-8 h-8 rounded-full bg-ink text-white grid place-items-center text-xs font-extrabold flex-none">1</span><div><h4 class="font-extrabold">Open the Thimadu video folder</h4><p class="text-sm text-slate-500 mt-1 leading-6">Use the Open video Drive button above, then upload the MP4/MOV video file to Google Drive.</p></div></li>
+          <li class="flex gap-4"><span class="w-8 h-8 rounded-full bg-ink text-white grid place-items-center text-xs font-extrabold flex-none">2</span><div><h4 class="font-extrabold">Set viewing permission</h4><p class="text-sm text-slate-500 mt-1 leading-6">Right-click the video → Share → General access → Anyone with the link → Viewer. Public visitors only need View permission; Edit permission is not required.</p></div></li>
+          <li class="flex gap-4"><span class="w-8 h-8 rounded-full bg-ink text-white grid place-items-center text-xs font-extrabold flex-none">3</span><div><h4 class="font-extrabold">Copy the normal Drive link</h4><p class="text-sm text-slate-500 mt-1 leading-6">A link such as <code class="px-1.5 py-1 bg-slate-100 rounded text-[11px] break-all">https://drive.google.com/file/d/FILE_ID/view?usp=sharing</code> is correct. Do not convert it to another URL.</p></div></li>
+          <li class="flex gap-4"><span class="w-8 h-8 rounded-full bg-ink text-white grid place-items-center text-xs font-extrabold flex-none">4</span><div><h4 class="font-extrabold">Create the Video entry</h4><p class="text-sm text-slate-500 mt-1 leading-6">Enter a clear headline, a useful description, paste the Drive link into Video link, choose display order/visibility, then Save video.</p></div></li>
+          <li class="flex gap-4"><span class="w-8 h-8 rounded-full bg-ink text-white grid place-items-center text-xs font-extrabold flex-none">5</span><div><h4 class="font-extrabold">Thumbnail is automatic</h4><p class="text-sm text-slate-500 mt-1 leading-6">For Google Drive videos the public site requests a Drive thumbnail automatically. If Drive does not generate one immediately, you may paste a custom public image URL in Custom thumbnail URL.</p></div></li>
+        </ol>
+        <div class="mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-100 text-sm text-amber-900 leading-6"><strong>Important:</strong> test the Drive link in a private/incognito browser. If it asks the visitor to request access, the video is not public yet.</div>
+        <div class="mt-6 grid sm:grid-cols-2 gap-3">
+          <a href="https://drive.google.com/drive/folders/1Ot4nsPI2Q9oaxsj-T_JJSM9NMvs6GIy1?usp=sharing" target="_blank" rel="noopener" class="btn btn-primary h-12"><i class='bx bxl-google-drive text-lg'></i> Open Google Drive</a>
+          <button id="videoInfoDone" type="button" class="btn btn-dark h-12">Got it</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="busyOverlay" class="modal-backdrop fixed inset-0 z-[110] bg-slate-950/30 backdrop-blur-sm flex items-center justify-center p-5">
+    <div class="surface p-7 min-w-[230px] text-center">
+      <div class="loader mx-auto"></div>
+      <h3 id="busyTitle" class="font-extrabold mt-4">Working...</h3>
+      <p id="busyText" class="text-xs text-slate-400 mt-1">Please keep this page open.</p>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const state = {
+        token: sessionStorage.getItem("thimadu_admin_token") || "",
+        vehicles: [],
+        customers: [],
+        videos: [],
+        currentSection: "dashboard",
+        vehicleEditingId: "",
+        customerEditingId: "",
+        videoEditingId: "",
+        vehicleImages: [],
+        vehicleImagesTouched: false,
+        customerImage: null,
+        customerImageTouched: false
+      };
+
+      const $ = (sel, root = document) => root.querySelector(sel);
+      const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+      const loginOverlay = $("#loginOverlay");
+      const app = $("#app");
+      const busyOverlay = $("#busyOverlay");
+      const toast = $("#toast");
+
+      let toastTimer = null;
+
+      function escapeHtml(value) {
+        return String(value == null ? "" : value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function safeUrl(url) {
+        const value = String(url || "").trim();
+        return /^https?:\/\//i.test(value) ? value : "";
+      }
+
+      function driveId(url) {
+        const value = String(url || "");
+        const patterns = [
+          /[?&]id=([^&#]+)/,
+          /\/d\/([^/]+)/,
+          /\/file\/d\/([^/]+)/,
+          /thumbnail\?id=([^&]+)/
+        ];
+        for (const p of patterns) {
+          const m = value.match(p);
+          if (m && m[1]) return m[1];
+        }
+        return "";
+      }
+
+      function imageView(url, size = 700) {
+        const id = driveId(url);
+        return id
+          ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${size}`
+          : safeUrl(url);
+      }
+
+      function detectVideoPlatformClient(url) {
+        const value = String(url || "").toLowerCase();
+        if (driveId(value) && value.includes("drive.google.com")) return "Google Drive";
+        if (value.includes("youtube.com") || value.includes("youtu.be")) return "YouTube";
+        if (value.includes("vimeo.com")) return "Vimeo";
+        if (value.includes("facebook.com") || value.includes("fb.watch")) return "Facebook";
+        if (value.includes("tiktok.com")) return "TikTok";
+        if (value.includes("instagram.com")) return "Instagram";
+        return value ? "External video" : "Video";
+      }
+
+      function youtubeId(url) {
+        const value = String(url || "");
+        const m = value.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{6,})/i);
+        return m ? m[1] : "";
+      }
+
+      function videoThumb(url, custom = "", size = 900) {
+        if (safeUrl(custom)) return safeUrl(custom);
+        const y = youtubeId(url);
+        if (y) return `https://i.ytimg.com/vi/${encodeURIComponent(y)}/hqdefault.jpg`;
+        const id = driveId(url);
+        if (id && /drive\.google\.com/i.test(String(url || ""))) return `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${size}`;
+        return "";
+      }
+
+      function formatPrice(value) {
+        const raw = String(value || "").trim();
+        if (!raw) return "Contact for price";
+        return /rs|lkr/i.test(raw) ? raw : `Rs. ${raw}`;
+      }
+
+      function statusClass(value) {
+        const v = String(value || "").toLowerCase();
+        if (v === "available" || v === "active") return "status status-green";
+        if (v === "sold") return "status status-red";
+        if (v === "pending" || v === "reserved" || v === "japan auction") return "status status-amber";
+        return "status status-gray";
+      }
+
+      function showToast(message, error = false) {
+        clearTimeout(toastTimer);
+        $("#toastText").textContent = message;
+        $("#toastIcon").className = error
+          ? "bx bx-error-circle text-lg text-red-300"
+          : "bx bx-check-circle text-lg text-green-300";
+        toast.classList.add("show");
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 3200);
+      }
+
+      function setBusy(on, title = "Working...", text = "Please keep this page open.") {
+        $("#busyTitle").textContent = title;
+        $("#busyText").textContent = text;
+        busyOverlay.classList.toggle("open", !!on);
+      }
+
+      async function fetchWithTimeout(url, options = {}, timeout = CONFIG.REQUEST_TIMEOUT_MS) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
+        try {
+          const response = await fetch(url, { ...options, signal: controller.signal });
+          const text = await response.text();
+          let json;
+          try { json = JSON.parse(text); }
+          catch { throw new Error("The server returned an invalid response. Redeploy Code.gs and try again."); }
+          return json;
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      async function apiPost(payload, timeout) {
+        if (!CONFIG.DEPLOY_URL.includes("script.google.com")) {
+          throw new Error("DEPLOY_URL is not configured.");
+        }
+
+        const json = await fetchWithTimeout(CONFIG.DEPLOY_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        }, timeout);
+
+        if (!json || json.status !== "success") {
+          const err = new Error(json?.message || "Request failed.");
+          err.code = json?.code || "API_ERROR";
+          throw err;
+        }
+        return json;
+      }
+
+      async function authenticate(token) {
+        return apiPost({ action: "auth", token }, 30000);
+      }
+
+      async function loadAllData(showLoader = true) {
+        if (showLoader) setBusy(true, "Syncing data", "Loading Thimadu content...");
+        try {
+          const res = await apiPost({
+            action: "read_admin",
+            token: state.token
+          }, 60000);
+
+          state.vehicles = Array.isArray(res.data?.vehicles) ? res.data.vehicles : [];
+          state.customers = Array.isArray(res.data?.customers) ? res.data.customers : [];
+          state.videos = Array.isArray(res.data?.videos) ? res.data.videos : [];
+
+          renderAll();
+        } finally {
+          if (showLoader) setBusy(false);
+        }
+      }
+
+      function renderAll() {
+        $("#countVehicles").textContent = state.vehicles.length;
+        $("#countCustomers").textContent = state.customers.length;
+        $("#countVideos").textContent = state.videos.length;
+        renderVehicles();
+        renderCustomers();
+        renderVideos();
+      }
+
+      function switchSection(name) {
+        state.currentSection = name;
+        $$(".app-section").forEach(el => el.classList.toggle("hidden", el.id !== `section-${name}`));
+        $$("[data-section-link]").forEach(btn => btn.classList.toggle("active", btn.dataset.sectionLink === name));
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function setVehiclePanel(panel) {
+        const formMode = panel === "form";
+        $("#vehicleFormPanel").classList.toggle("hidden", !formMode);
+        $("#vehicleManagePanel").classList.toggle("hidden", formMode);
+        $("#vehicleTabForm").classList.toggle("active", formMode);
+        $("#vehicleTabManage").classList.toggle("active", !formMode);
+        if (!formMode) renderVehicles();
+      }
+
+      function makeImageKey() {
+        return `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      }
+
+      function renderVehicleImages() {
+        const grid = $("#vehicleImageGrid");
+        grid.innerHTML = state.vehicleImages.map((item, index) => {
+          const src = item.kind === "url" ? imageView(item.url, 500) : item.preview;
+          return `
+            <div class="thumb group" data-key="${escapeHtml(item.key)}">
+              <img src="${escapeHtml(src)}" alt="Vehicle image ${index + 1}" referrerpolicy="no-referrer">
+              <div class="absolute left-2 bottom-2 bg-black/70 text-white text-[9px] font-extrabold rounded-full px-2 py-1">${index + 1}</div>
+              <button type="button" class="thumb-remove" data-remove-image="${escapeHtml(item.key)}"><i class='bx bx-x'></i></button>
+            </div>
+          `;
+        }).join("");
+        $("#vehicleImageCount").textContent = `${state.vehicleImages.length} / ${CONFIG.MAX_VEHICLE_IMAGES}`;
+      }
+
+      function syncVehicleImageOrderFromDom() {
+        const order = $$("#vehicleImageGrid .thumb").map(el => el.dataset.key);
+        state.vehicleImages.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+        state.vehicleImagesTouched = true;
+        renderVehicleImages();
+      }
+
+      async function compressImage(file, maxDimension = 1500, quality = 0.8, targetBytes = 950000) {
+        if (!file || !file.type.startsWith("image/")) throw new Error("Only image files are allowed.");
+        if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name} is too large.`);
+
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(new Error("Could not read image."));
+          reader.onload = e => resolve(e.target.result);
+          reader.readAsDataURL(file);
+        });
+
+        const image = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onerror = () => reject(new Error("Could not decode image."));
+          img.onload = () => resolve(img);
+          img.src = dataUrl;
+        });
+
+        let width = image.naturalWidth;
+        let height = image.naturalHeight;
+        const initialScale = Math.min(1, maxDimension / Math.max(width, height));
+        width = Math.max(1, Math.round(width * initialScale));
+        height = Math.max(1, Math.round(height * initialScale));
+
+        let encoded = "";
+        let currentQuality = quality;
+
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d", { alpha: false });
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(image, 0, 0, width, height);
+
+          encoded = canvas.toDataURL("image/jpeg", currentQuality);
+          const estimatedBytes = Math.ceil((encoded.length - encoded.indexOf(",") - 1) * 0.75);
+
+          if (estimatedBytes <= targetBytes || attempt === 4) break;
+
+          currentQuality = Math.max(0.58, currentQuality - 0.07);
+          width = Math.max(720, Math.round(width * 0.88));
+          height = Math.max(480, Math.round(height * 0.88));
+        }
+
+        return {
+          name: (file.name || "image").replace(/\.[^.]+$/, "") + ".jpg",
+          mimeType: "image/jpeg",
+          data: encoded
+        };
+      }
+
+      async function serializeVehicleImages() {
+        const output = [];
+        for (const item of state.vehicleImages) {
+          if (item.kind === "url") output.push(item.url);
+          else output.push(await compressImage(item.file, 1600, 0.82));
+        }
+        return output;
+      }
+
+      function resetVehicleForm() {
+        state.vehicleEditingId = "";
+        state.vehicleImages = [];
+        state.vehicleImagesTouched = false;
+        $("#vehicleForm").reset();
+        $("#vehicleForm [name=id]").value = "";
+        $("#vehicleFormTitle").textContent = "Add new vehicle";
+        $("#cancelVehicleEdit").classList.add("hidden");
+        $("#vehicleSubmitBtn").innerHTML = "<i class='bx bx-cloud-upload'></i> Save vehicle";
+        renderVehicleImages();
+      }
+
+      function editVehicle(id) {
+        const car = state.vehicles.find(v => String(v.id) === String(id));
+        if (!car) return;
+
+        state.vehicleEditingId = String(car.id);
+        state.vehicleImages = (car.images || []).map(url => ({
+          key: makeImageKey(),
+          kind: "url",
+          url
+        }));
+        state.vehicleImagesTouched = false;
+
+        const form = $("#vehicleForm");
+        const fields = ["brand","model","grade","type","year","mileage","fuel","transmission","color","engine","condition","price","location","description","availability"];
+        fields.forEach(name => {
+          if (form.elements[name]) form.elements[name].value = car[name] ?? "";
+        });
+        form.elements.id.value = car.id;
+
+        $("#vehicleFormTitle").textContent = `Edit ${car.brand || ""} ${car.model || ""}`.trim();
+        $("#cancelVehicleEdit").classList.remove("hidden");
+        $("#vehicleSubmitBtn").innerHTML = "<i class='bx bx-save'></i> Save changes";
+        renderVehicleImages();
+        switchSection("vehicles");
+        setVehiclePanel("form");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function renderVehicles() {
+        const query = ($("#vehicleSearch")?.value || "").trim().toLowerCase();
+        const list = $("#vehicleList");
+        if (!list) return;
+
+        const rows = state.vehicles.filter(car => {
+          if (!query) return true;
+          return [
+            car.brand, car.model, car.year, car.availability,
+            car.condition, car.location, car.price
+          ].join(" ").toLowerCase().includes(query);
+        });
+
+        if (!rows.length) {
+          list.innerHTML = `<div class="surface p-12 text-center text-sm text-slate-400">No vehicles found.</div>`;
+          return;
+        }
+
+        list.innerHTML = rows.map(car => {
+          const img = imageView(car.image1 || car.images?.[0] || "", 420);
+          return `
+            <article class="list-card p-3 sm:p-4 flex items-center gap-4">
+              <div class="w-24 sm:w-28 aspect-[4/3] rounded-xl bg-slate-100 overflow-hidden flex-none">
+                ${img ? `<img src="${escapeHtml(img)}" class="w-full h-full object-cover" referrerpolicy="no-referrer" onerror="this.style.opacity='.15'">` : ""}
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <h4 class="font-extrabold truncate">${escapeHtml(`${car.brand || ""} ${car.model || ""}`.trim())}</h4>
+                    <p class="text-xs text-slate-500 mt-1 truncate">${escapeHtml(car.year || "—")} · ${escapeHtml(formatPrice(car.price))}</p>
+                  </div>
+                  <span class="${statusClass(car.availability)}">${escapeHtml(car.availability || "Available")}</span>
+                </div>
+                <div class="flex gap-2 mt-3">
+                  <button class="btn btn-light min-h-[36px] px-3" data-edit-vehicle="${escapeHtml(car.id)}"><i class='bx bx-edit'></i> Edit</button>
+                  <button class="btn btn-danger min-h-[36px] px-3" data-delete-resource="vehicles" data-delete-id="${escapeHtml(car.id)}"><i class='bx bx-trash'></i></button>
+                </div>
+              </div>
+            </article>
+          `;
+        }).join("");
+      }
+
+      function renderCustomerPreview() {
+        const wrap = $("#customerPreview");
+        if (!state.customerImage) {
+          wrap.innerHTML = "";
+          return;
+        }
+        const src = state.customerImage.kind === "url"
+          ? imageView(state.customerImage.url, 700)
+          : state.customerImage.preview;
+        wrap.innerHTML = `
+          <div class="relative rounded-2xl overflow-hidden bg-slate-100 aspect-[16/10]">
+            <img src="${escapeHtml(src)}" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+            <button type="button" id="removeCustomerImage" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-red-500 text-white grid place-items-center shadow-lg"><i class='bx bx-x text-xl'></i></button>
+          </div>
+        `;
+      }
+
+      function resetCustomerForm() {
+        state.customerEditingId = "";
+        state.customerImage = null;
+        state.customerImageTouched = false;
+        $("#customerForm").reset();
+        $("#customerForm [name=id]").value = "";
+        $("#customerForm [name=display_order]").value = "0";
+        $("#customerForm [name=status]").value = "Active";
+        $("#customerFormTitle").textContent = "Add happy customer";
+        $("#cancelCustomerEdit").classList.add("hidden");
+        $("#customerSubmitBtn").textContent = "Save customer story";
+        renderCustomerPreview();
+      }
+
+      function editCustomer(id) {
+        const item = state.customers.find(x => String(x.id) === String(id));
+        if (!item) return;
+        state.customerEditingId = String(item.id);
+        state.customerImage = item.image_url
+          ? { kind: "url", url: item.image_url }
+          : null;
+        state.customerImageTouched = false;
+
+        const form = $("#customerForm");
+        ["headline","description","customer_name","location","display_order","status"].forEach(name => {
+          if (form.elements[name]) form.elements[name].value = item[name] ?? "";
+        });
+        form.elements.id.value = item.id;
+
+        $("#customerFormTitle").textContent = "Edit customer story";
+        $("#cancelCustomerEdit").classList.remove("hidden");
+        $("#customerSubmitBtn").textContent = "Save changes";
+        renderCustomerPreview();
+        switchSection("customers");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function renderCustomers() {
+        const list = $("#customerList");
+        if (!list) return;
+        if (!state.customers.length) {
+          list.innerHTML = `<div class="surface p-12 text-center text-sm text-slate-400 sm:col-span-2">No happy customer stories yet.</div>`;
+          return;
+        }
+
+        list.innerHTML = state.customers.map(item => {
+          const img = imageView(item.image_url, 700);
+          return `
+            <article class="list-card overflow-hidden">
+              <div class="aspect-[16/10] bg-slate-100 overflow-hidden">
+                ${img ? `<img src="${escapeHtml(img)}" class="w-full h-full object-cover" referrerpolicy="no-referrer">` : ""}
+              </div>
+              <div class="p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <h4 class="font-extrabold leading-5">${escapeHtml(item.headline || "")}</h4>
+                  <span class="${statusClass(item.status)}">${escapeHtml(item.status || "Active")}</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-2 line-clamp-3">${escapeHtml(item.description || "")}</p>
+                <div class="text-[10px] text-slate-400 font-semibold mt-3">${escapeHtml(item.customer_name || "")}${item.location ? ` · ${escapeHtml(item.location)}` : ""}</div>
+                <div class="flex gap-2 mt-4">
+                  <button class="btn btn-light min-h-[36px] px-3" data-edit-customer="${escapeHtml(item.id)}"><i class='bx bx-edit'></i> Edit</button>
+                  <button class="btn btn-danger min-h-[36px] px-3" data-delete-resource="customers" data-delete-id="${escapeHtml(item.id)}"><i class='bx bx-trash'></i></button>
+                </div>
+              </div>
+            </article>
+          `;
+        }).join("");
+      }
+
+      function resetVideoForm() {
+        state.videoEditingId = "";
+        $("#videoForm").reset();
+        $("#videoForm [name=id]").value = "";
+        $("#videoForm [name=display_order]").value = "0";
+        $("#videoForm [name=status]").value = "Active";
+        $("#videoFormTitle").textContent = "Add video";
+        $("#cancelVideoEdit").classList.add("hidden");
+        $("#videoSubmitBtn").textContent = "Save video";
+        $("#videoLinkPreview")?.classList.add("hidden");
+      }
+
+      function editVideo(id) {
+        const item = state.videos.find(x => String(x.id) === String(id));
+        if (!item) return;
+        state.videoEditingId = String(item.id);
+        const form = $("#videoForm");
+        ["headline","description","video_url","thumbnail_url","display_order","status"].forEach(name => {
+          if (form.elements[name]) form.elements[name].value = item[name] ?? "";
+        });
+        form.elements.id.value = item.id;
+        $("#videoFormTitle").textContent = "Edit video";
+        $("#cancelVideoEdit").classList.remove("hidden");
+        $("#videoSubmitBtn").textContent = "Save changes";
+        updateVideoLinkPreview();
+        switchSection("videos");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function renderVideos() {
+        const list = $("#videoList");
+        if (!list) return;
+        if (!state.videos.length) {
+          list.innerHTML = `<div class="surface p-12 text-center text-sm text-slate-400">No videos yet.</div>`;
+          return;
+        }
+
+        list.innerHTML = state.videos.map(item => {
+          const thumb = videoThumb(item.video_url, item.thumbnail_url, 900);
+          const platform = detectVideoPlatformClient(item.video_url) || item.platform || "Video";
+          return `
+            <article class="list-card p-4 flex gap-4 items-start">
+              <div class="w-28 sm:w-40 aspect-video rounded-xl bg-slate-100 overflow-hidden flex-none grid place-items-center">
+                ${thumb
+                  ? `<img src="${escapeHtml(thumb)}" class="w-full h-full object-cover" referrerpolicy="no-referrer">`
+                  : `<i class='bx bx-video text-3xl text-slate-300'></i>`}
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <h4 class="font-extrabold leading-5">${escapeHtml(item.headline || "")}</h4>
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-thimadu mt-1">${escapeHtml(platform)}</p>
+                  </div>
+                  <span class="${statusClass(item.status)}">${escapeHtml(item.status || "Active")}</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-2 line-clamp-3 leading-5">${escapeHtml(item.description || "")}</p>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-[10px] text-slate-400 font-semibold">
+                  <span>Order ${escapeHtml(item.display_order ?? 0)}</span>
+                  <span>${escapeHtml(item.posted_date || "")}</span>
+                  ${driveId(item.video_url) ? `<span class="text-thimadu">Drive hosted</span>` : ``}
+                </div>
+                <div class="flex flex-wrap gap-2 mt-4">
+                  <a href="${escapeHtml(safeUrl(item.video_url))}" target="_blank" class="btn btn-light min-h-[36px] px-3"><i class='bx bx-play'></i> Open</a>
+                  <button class="btn btn-light min-h-[36px] px-3" data-edit-video="${escapeHtml(item.id)}"><i class='bx bx-edit'></i> Edit</button>
+                  <button class="btn btn-danger min-h-[36px] px-3" data-delete-resource="videos" data-delete-id="${escapeHtml(item.id)}"><i class='bx bx-trash'></i></button>
+                </div>
+              </div>
+            </article>
+          `;
+        }).join("");
+      }
+
+      async function deleteResource(resource, id) {
+        const labels = { vehicles: "vehicle", customers: "customer story", videos: "video" };
+        if (!confirm(`Delete this ${labels[resource] || "item"}? This removes the database record.`)) return;
+
+        setBusy(true, "Deleting", "Updating the database...");
+        try {
+          await apiPost({
+            action: "delete",
+            resource,
+            id,
+            token: state.token
+          });
+          showToast("Deleted successfully");
+          await loadAllData(false);
+        } catch (err) {
+          showToast(err.message, true);
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      // ------------------------------------------------------------
+      // Events
+      // ------------------------------------------------------------
+
+      $("#togglePassword").addEventListener("click", () => {
+        const input = $("#passwordInput");
+        input.type = input.type === "password" ? "text" : "password";
+        $("#togglePassword i").className = input.type === "password" ? "bx bx-show text-xl" : "bx bx-hide text-xl";
+      });
+
+      $("#loginForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const token = $("#passwordInput").value.trim();
+        if (!token) return;
+
+        $("#loginBtn").disabled = true;
+        $("#loginError").classList.add("hidden");
+
+        try {
+          await authenticate(token);
+          state.token = token;
+          sessionStorage.setItem("thimadu_admin_token", token);
+          loginOverlay.classList.add("hidden");
+          app.classList.remove("hidden");
+          await loadAllData(true);
+        } catch (err) {
+          $("#loginError").textContent = err.message;
+          $("#loginError").classList.remove("hidden");
+        } finally {
+          $("#loginBtn").disabled = false;
+        }
+      });
+
+      $("#logoutBtn").addEventListener("click", () => {
+        sessionStorage.removeItem("thimadu_admin_token");
+        location.reload();
+      });
+
+      $$("[data-section-link]").forEach(btn => {
+        btn.addEventListener("click", () => switchSection(btn.dataset.sectionLink));
+      });
+
+      $$("[data-quick]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const type = btn.dataset.quick;
+          if (type === "vehicle") {
+            switchSection("vehicles");
+            resetVehicleForm();
+            setVehiclePanel("form");
+          } else if (type === "customer") {
+            switchSection("customers");
+            resetCustomerForm();
+          } else {
+            switchSection("videos");
+            resetVideoForm();
+          }
+        });
+      });
+
+      $("#refreshAllBtn").addEventListener("click", () => loadAllData(true));
+      $("#vehicleRefreshBtn").addEventListener("click", () => loadAllData(true));
+      $("#customerRefreshBtn").addEventListener("click", () => loadAllData(true));
+      $("#videoRefreshBtn").addEventListener("click", () => loadAllData(true));
+
+      $("#vehicleTabForm").addEventListener("click", () => setVehiclePanel("form"));
+      $("#vehicleTabManage").addEventListener("click", () => setVehiclePanel("manage"));
+
+      $("#vehicleSearch").addEventListener("input", renderVehicles);
+
+      $("#vehicleUploadZone").addEventListener("click", () => $("#vehicleFiles").click());
+      $("#vehicleFiles").addEventListener("change", e => {
+        const files = Array.from(e.target.files || []);
+        const remaining = CONFIG.MAX_VEHICLE_IMAGES - state.vehicleImages.length;
+        if (remaining <= 0) {
+          showToast("Maximum 20 images allowed", true);
+          e.target.value = "";
+          return;
+        }
+
+        files.slice(0, remaining).forEach(file => {
+          state.vehicleImages.push({
+            key: makeImageKey(),
+            kind: "file",
+            file,
+            preview: URL.createObjectURL(file)
+          });
+        });
+
+        state.vehicleImagesTouched = true;
+        renderVehicleImages();
+        e.target.value = "";
+      });
+
+      $("#vehicleImageGrid").addEventListener("click", e => {
+        const btn = e.target.closest("[data-remove-image]");
+        if (!btn) return;
+        const key = btn.dataset.removeImage;
+        const item = state.vehicleImages.find(x => x.key === key);
+        if (item?.kind === "file" && item.preview) URL.revokeObjectURL(item.preview);
+        state.vehicleImages = state.vehicleImages.filter(x => x.key !== key);
+        state.vehicleImagesTouched = true;
+        renderVehicleImages();
+      });
+
+      new Sortable($("#vehicleImageGrid"), {
+        animation: 160,
+        ghostClass: "sortable-ghost",
+        onEnd: syncVehicleImageOrderFromDom
+      });
+
+      $("#cancelVehicleEdit").addEventListener("click", resetVehicleForm);
+
+      $("#vehicleForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const fd = new FormData(form);
+        const isEdit = !!state.vehicleEditingId;
+
+        if (!isEdit && state.vehicleImages.length === 0) {
+          showToast("Please add at least one vehicle image", true);
+          return;
+        }
+
+        setBusy(true, isEdit ? "Saving changes" : "Adding vehicle", "Compressing images and updating Google Drive...");
+        try {
+          const images = await serializeVehicleImages();
+          const payload = {
+            action: isEdit ? "update" : "create",
+            resource: "vehicles",
+            token: state.token,
+            id: state.vehicleEditingId || "",
+            images,
+            imagesTouched: isEdit ? state.vehicleImagesTouched : true,
+            brand: fd.get("brand"),
+            model: fd.get("model"),
+            grade: fd.get("grade"),
+            type: fd.get("type"),
+            year: fd.get("year"),
+            mileage: fd.get("mileage"),
+            fuel: fd.get("fuel"),
+            transmission: fd.get("transmission"),
+            color: fd.get("color"),
+            engine: fd.get("engine"),
+            condition: fd.get("condition"),
+            price: fd.get("price"),
+            location: fd.get("location"),
+            description: fd.get("description"),
+            availability: fd.get("availability")
+          };
+
+          const res = await apiPost(payload, 180000);
+          showToast(res.message || "Vehicle saved");
+          resetVehicleForm();
+          await loadAllData(false);
+          setVehiclePanel("manage");
+        } catch (err) {
+          showToast(err.message, true);
+        } finally {
+          setBusy(false);
+        }
+      });
+
+      $("#customerUploadZone").addEventListener("click", () => $("#customerFile").click());
+      $("#customerFile").addEventListener("change", e => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (state.customerImage?.kind === "file" && state.customerImage.preview) {
+          URL.revokeObjectURL(state.customerImage.preview);
+        }
+        state.customerImage = {
+          kind: "file",
+          file,
+          preview: URL.createObjectURL(file)
+        };
+        state.customerImageTouched = true;
+        renderCustomerPreview();
+        e.target.value = "";
+      });
+
+      $("#customerPreview").addEventListener("click", e => {
+        if (!e.target.closest("#removeCustomerImage")) return;
+        if (state.customerImage?.kind === "file" && state.customerImage.preview) {
+          URL.revokeObjectURL(state.customerImage.preview);
+        }
+        state.customerImage = null;
+        state.customerImageTouched = true;
+        renderCustomerPreview();
+      });
+
+      $("#cancelCustomerEdit").addEventListener("click", resetCustomerForm);
+
+      $("#customerForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        const isEdit = !!state.customerEditingId;
+
+        if (!state.customerImage) {
+          showToast("Please add a customer image", true);
+          return;
+        }
+
+        setBusy(true, isEdit ? "Saving customer story" : "Adding customer story", "Uploading image and updating the database...");
+        try {
+          let imagePayload = null;
+          let imageUrl = "";
+
+          if (state.customerImage.kind === "file") {
+            imagePayload = await compressImage(state.customerImage.file, 1500, .84);
+          } else {
+            imageUrl = state.customerImage.url;
+          }
+
+          const res = await apiPost({
+            action: isEdit ? "update" : "create",
+            resource: "customers",
+            token: state.token,
+            id: state.customerEditingId || "",
+            headline: fd.get("headline"),
+            description: fd.get("description"),
+            customer_name: fd.get("customer_name"),
+            location: fd.get("location"),
+            display_order: fd.get("display_order"),
+            status: fd.get("status"),
+            image: imagePayload,
+            image_url: imageUrl,
+            imageTouched: isEdit ? state.customerImageTouched : true
+          }, 150000);
+
+          showToast(res.message || "Customer story saved");
+          resetCustomerForm();
+          await loadAllData(false);
+        } catch (err) {
+          showToast(err.message, true);
+        } finally {
+          setBusy(false);
+        }
+      });
+
+      const videoInfoOverlay = $("#videoInfoOverlay");
+      const setVideoInfo = open => {
+        if (!videoInfoOverlay) return;
+        videoInfoOverlay.classList.toggle("open", !!open);
+        videoInfoOverlay.setAttribute("aria-hidden", open ? "false" : "true");
+        document.body.style.overflow = open ? "hidden" : "";
+      };
+      $("#videoInfoBtn")?.addEventListener("click", () => setVideoInfo(true));
+      $("#videoInfoClose")?.addEventListener("click", () => setVideoInfo(false));
+      $("#videoInfoDone")?.addEventListener("click", () => setVideoInfo(false));
+      videoInfoOverlay?.addEventListener("click", e => { if (e.target === videoInfoOverlay) setVideoInfo(false); });
+      document.addEventListener("keydown", e => { if (e.key === "Escape" && videoInfoOverlay?.classList.contains("open")) setVideoInfo(false); });
+
+      function updateVideoLinkPreview() {
+        const input = $("#videoForm [name=video_url]");
+        const custom = $("#videoForm [name=thumbnail_url]");
+        const box = $("#videoLinkPreview");
+        if (!input || !box) return;
+        const url = input.value.trim();
+        if (!url) { box.classList.add("hidden"); return; }
+        box.classList.remove("hidden");
+        const platform = detectVideoPlatformClient(url);
+        $("#videoPreviewPlatform").textContent = platform;
+        $("#videoPreviewText").textContent = platform === "Google Drive"
+          ? "Drive link detected. Reviews will use the Drive preview player and a generated thumbnail."
+          : `${platform} link detected. The public reviews page will choose the best supported playback method.`;
+        const img = $("#videoPreviewImg"), icon = $("#videoPreviewIcon");
+        const thumb = videoThumb(url, custom?.value || "", 700);
+        if (thumb) {
+          img.src = thumb; img.classList.remove("hidden"); icon.classList.add("hidden");
+          img.onerror = () => { img.classList.add("hidden"); icon.classList.remove("hidden"); };
+        } else { img.classList.add("hidden"); icon.classList.remove("hidden"); }
+      }
+      $("#videoForm [name=video_url]")?.addEventListener("input", updateVideoLinkPreview);
+      $("#videoForm [name=thumbnail_url]")?.addEventListener("input", updateVideoLinkPreview);
+
+      $("#cancelVideoEdit").addEventListener("click", resetVideoForm);
+
+      $("#videoForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        const isEdit = !!state.videoEditingId;
+
+        setBusy(true, isEdit ? "Saving video" : "Adding video", "Updating the video library...");
+        try {
+          const res = await apiPost({
+            action: isEdit ? "update" : "create",
+            resource: "videos",
+            token: state.token,
+            id: state.videoEditingId || "",
+            headline: fd.get("headline"),
+            description: fd.get("description"),
+            video_url: fd.get("video_url"),
+            thumbnail_url: fd.get("thumbnail_url"),
+            display_order: fd.get("display_order"),
+            status: fd.get("status")
+          });
+
+          showToast(res.message || "Video saved");
+          resetVideoForm();
+          await loadAllData(false);
+        } catch (err) {
+          showToast(err.message, true);
+        } finally {
+          setBusy(false);
+        }
+      });
+
+      document.addEventListener("click", e => {
+        const editVehicleBtn = e.target.closest("[data-edit-vehicle]");
+        if (editVehicleBtn) return editVehicle(editVehicleBtn.dataset.editVehicle);
+
+        const editCustomerBtn = e.target.closest("[data-edit-customer]");
+        if (editCustomerBtn) return editCustomer(editCustomerBtn.dataset.editCustomer);
+
+        const editVideoBtn = e.target.closest("[data-edit-video]");
+        if (editVideoBtn) return editVideo(editVideoBtn.dataset.editVideo);
+
+        const deleteBtn = e.target.closest("[data-delete-resource]");
+        if (deleteBtn) return deleteResource(deleteBtn.dataset.deleteResource, deleteBtn.dataset.deleteId);
+      });
+
+      // ------------------------------------------------------------
+      // Session restore
+      // ------------------------------------------------------------
+      async function boot() {
+        resetVehicleForm();
+        resetCustomerForm();
+        resetVideoForm();
+
+        if (!state.token) return;
+
+        try {
+          await authenticate(state.token);
+          loginOverlay.classList.add("hidden");
+          app.classList.remove("hidden");
+          await loadAllData(true);
+        } catch (_) {
+          sessionStorage.removeItem("thimadu_admin_token");
+          state.token = "";
+        }
+      }
+
+      boot();
+    })();
+  </script>
+</body>
+</html>

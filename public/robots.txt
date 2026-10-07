@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /ADMIN-THIMADU.html
+Disallow: /Code.gs
+
+# Add an absolute Sitemap: URL here after the production domain is known.

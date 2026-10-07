@@ -1,0 +1,114 @@
+/* Shared art direction: quiet surfaces, sharp typography, intentional motion. */
+:root{--font-heading:Inter,system-ui,sans-serif;--ink:#101e33;--muted:#68768a;--ease:cubic-bezier(.22,1,.36,1)}
+body{background:#fbfcff}h1,h2,h3,h4{font-family:var(--font-heading)}.container{max-width:1320px}.eyebrow{letter-spacing:.19em;font-weight:650}.btn{font-family:var(--font-body);border-radius:100px;font-weight:600;min-height:52px;font-size:12px;transition:background .3s,transform .4s var(--ease),box-shadow .3s}.btn:hover{transform:translateY(-3px);box-shadow:0 10px 28px #175cff25}.btn:hover svg{transform:translateX(4px)}.btn-secondary{background:#edf3ff;color:var(--blue);border-color:#d3e1fa}.text-link{font-size:12px;letter-spacing:.005em}.brand{gap:12px}.brand-logo{object-fit:contain;width:96px;height:50px;background:#fff;border-radius:5px;flex-shrink:0}.brand>span{font-family:Inter,sans-serif;font-size:19px;letter-spacing:-.6px;font-weight:650}.brand small{font-size:6px;letter-spacing:2px}.brand-footer .brand-logo{padding:6px;width:114px;height:62px;border-radius:9px}.brand-footer>span{font-size:24px}.route-content{animation:none}
+.page-hero{background:#edf2f8;padding-top:178px;padding-bottom:78px;border-radius:0 0 32px 32px}.page-hero h1{color:#101e33;font-weight:550;font-size:clamp(48px,6.3vw,90px);letter-spacing:-.065em;line-height:1.06;animation:interior-title-in .85s var(--ease) both}.page-hero h1 em,.page-hero h1>span{color:#175cff}.page-hero-description{color:#617087;animation:interior-title-in .9s .06s var(--ease) both}.page-hero .eyebrow{animation:interior-title-in .8s var(--ease) both}.page-hero-orbit{width:650px;height:650px;right:-300px;top:-150px;border-color:#afc6ec;box-shadow:0 0 0 70px #d8e5f133,0 0 0 140px #d8e5f133}.reveal-ready{transform:translateY(30px);transition:opacity .9s var(--ease) var(--reveal-delay,0ms),transform .9s var(--ease) var(--reveal-delay,0ms)}
+@keyframes interior-title-in{from{opacity:0;transform:translateY(26px);filter:blur(4px)}to{opacity:1;transform:none;filter:blur(0)}}
+/* A two-layer curtain keeps route changes continuous, including browser history. */
+.page-curtain{position:fixed;inset:0;z-index:200;pointer-events:none;visibility:hidden;overflow:hidden}.page-curtain-panel,.page-curtain-accent{position:absolute;inset:0;transform:translateY(101%)}.page-curtain-panel{background:#0b192e;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden;color:#fff}.page-curtain-accent{background:#246cff}.curtain-covering,.curtain-revealing{visibility:visible;pointer-events:auto}.curtain-covering .page-curtain-accent{animation:curtain-cover .23s cubic-bezier(.65,0,.35,1) both}.curtain-covering .page-curtain-panel{animation:curtain-cover .23s .025s cubic-bezier(.65,0,.35,1) both}.curtain-revealing .page-curtain-panel{animation:curtain-reveal .5s cubic-bezier(.65,0,.2,1) both}.curtain-revealing .page-curtain-accent{animation:curtain-reveal .5s .035s cubic-bezier(.65,0,.2,1) both}.page-curtain-brand{display:flex;align-items:center;gap:24px;position:relative;z-index:1}.page-curtain-brand img{background:#fff;border-radius:8px;padding:7px}.page-curtain-brand>span{font-size:12px;font-weight:600;letter-spacing:.18em}.page-curtain-label{display:flex;align-items:center;gap:12px;margin-top:25px;color:#98b2d4;font-size:9px;letter-spacing:.22em}.page-curtain-label>span{width:22px;height:1px;background:#4c8fff}.page-curtain-road{width:75vw;height:75vw;border:1px solid #ffffff07;position:absolute;right:-30vw;bottom:-48vw;border-radius:50%;box-shadow:0 0 0 90px #ffffff02,0 0 0 180px #ffffff02}.transition-revealing .route-content{animation:route-settle .6s var(--ease) both}.transition-covering .page-transition-view{pointer-events:none}@keyframes curtain-cover{from{transform:translateY(101%)}to{transform:translateY(0)}}@keyframes curtain-reveal{from{transform:translateY(0)}to{transform:translateY(-101%)}}@keyframes route-settle{from{opacity:.5;transform:translateY(18px)}to{opacity:1;transform:none}}
+/* Collection and editorial sections share a more restrained visual rhythm. */
+.inv-search{margin-left:0}.vehicle-card{border-radius:17px}.vehicle-card h3{font-family:Inter,sans-serif;font-weight:550;font-size:23px;letter-spacing:-.04em}.vehicle-card-media{aspect-ratio:1.5}.vehicle-card-overline{font-size:8px;letter-spacing:.13em}.vehicle-card-bottom strong{font-size:14px}.inv-empty{background:#f3f6fa;border:1px solid #e2e9f2;border-radius:18px}.inv-empty h3{font-family:Inter,sans-serif;letter-spacing:-.04em;font-weight:500}
+.home-inventory{padding:105px 0;background:#fff}.collection-heading h2,.home-faq h2{font-size:clamp(38px,4.4vw,64px);color:#101e33;font-weight:550;letter-spacing:-.055em}.collection-heading h2 span,.home-faq h2 span{color:#175cff}.collection-heading>div:last-child p{font-size:13px;line-height:1.8}.home-search{border-radius:14px;background:#f4f7fb;border-color:#e5ebf3}.home-search button{border-radius:9px;font-family:Inter,sans-serif;font-size:12px}.home-faq{background:#f5f7fa;padding:100px 0}.faq-grid{grid-template-columns:1fr 1.1fr;gap:80px}.faq-list summary{font-family:Inter,sans-serif;font-size:15px;font-weight:500;color:#22344e;padding:27px 0}.faq-number{color:#175cff}.faq-list details>p{color:#66768b;font-size:13px}.faq-list details[open] summary{color:#175cff}.ex-stories h2,.ex-guides h2{font-family:Inter,sans-serif!important;font-weight:550!important;letter-spacing:-.05em!important}.ex-stories{background:#f5f7fa!important}.ex-guides{padding-top:90px;padding-bottom:90px}.ex-guide-card{border-radius:22px!important}.ex-guide-card h3{font-family:Inter,sans-serif!important;font-weight:550!important;letter-spacing:-.045em!important}.ex-conversation-caption h2{font-weight:550!important;letter-spacing:-.05em!important}.ex-finale{padding:10px 0!important}.ex-finale-card{background:radial-gradient(ellipse at 70% 40%,#153668,#0c1b33 68%)!important;border-radius:26px!important}.ex-finale-copy h2{font-weight:500!important;letter-spacing:-.065em!important}.ex-finale-copy h2>span{color:#7aaaff!important}.ex-finale-copy .ex-kicker{color:#8badd9!important}.ex-finale-dial{filter:drop-shadow(0 20px 45px #0003)}
+/* The final invitation is an editorial spread rather than another tall panel. */
+.site-footer{padding:10px 10px 10px;background:#fbfcff}.footer-enquiry{padding:80px max(40px,6vw);border-radius:26px;background:#175cff;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}.footer-wordmark{font-family:Inter,sans-serif;grid-column:1;font-size:clamp(64px,8.9vw,154px);text-align:left;letter-spacing:-.08em;line-height:1;margin:0;color:#fff;-webkit-text-stroke:0;position:relative;align-self:center}.footer-wordmark:after{content:'AUTO TRADERS / SRI LANKA';display:block;font-size:9px;font-family:Inter,sans-serif;font-weight:500;letter-spacing:.27em;color:#c5d7ff;margin-top:24px}.footer-enquiry-inner{grid-column:2;width:100%;max-width:440px;text-align:left}.footer-enquiry h2{font-size:clamp(23px,2.4vw,34px);font-weight:550;letter-spacing:-.045em}.footer-enquiry p{font-size:12px}.footer-enquiry-form label{font-family:Inter,sans-serif;font-size:11px}.footer-enquiry-form button{font-family:Inter,sans-serif;font-size:12px;font-weight:600;min-height:48px}.footer-enquiry-form input{font-size:12px}.footer-enquiry-form small{font-size:9px;text-align:left}.footer-links-panel{background:#0c1b30;border-radius:26px;padding-top:62px}.footer-top h3{font-family:Inter,sans-serif;font-size:12px;font-weight:550;letter-spacing:0}.footer-top>div>p{font-family:Inter,sans-serif;font-size:17px;color:#95a8c3;font-weight:400}.footer-top>div>a:not(.brand){font-size:11px;color:#b9c6da}.footer-top>div>span{color:#95a8c3}.footer-bottom{border-top-color:#ffffff18;color:#7d92b0}.contact-banner{background:radial-gradient(ellipse at 85% 0,#19488c,#0d2343 70%);border-radius:26px}.contact-banner h2{font-weight:500;letter-spacing:-.055em}
+@media(max-width:1000px){.brand>span{display:none}.footer-enquiry{padding:65px 35px;gap:30px}.footer-enquiry h2{font-size:25px}.faq-grid{gap:42px}.footer-links-panel{padding-inline:32px}.page-hero{padding-top:160px}}
+@media(max-width:767px){.page-hero{padding-top:134px;padding-bottom:58px;border-radius:0 0 24px 24px}.page-hero h1{font-size:clamp(40px,10.5vw,64px)}.page-hero-description{font-size:13px}.brand-logo{width:80px;height:42px}.home-inventory,.home-faq{padding:70px 0}.collection-heading h2,.home-faq h2{font-size:39px}.faq-grid{grid-template-columns:1fr;gap:34px}.faq-list summary{font-size:14px}.ex-finale-card{border-radius:20px!important}.footer-enquiry{display:block;padding:48px 25px;border-radius:22px}.footer-wordmark{font-size:17vw;margin-bottom:40px}.footer-wordmark:after{font-size:8px;margin-top:15px}.footer-enquiry-inner{text-align:left;max-width:none}.footer-enquiry h2{font-size:27px}.footer-enquiry-form input{font-size:12px}.footer-links-panel{padding-inline:25px;border-radius:22px}.footer-top .brand>span{display:block}.footer-top .brand-logo{width:96px;height:50px}.footer-top .brand>span{font-size:21px}.page-curtain-brand{gap:15px}.page-curtain-brand>span{font-size:9px;letter-spacing:.13em}.page-curtain-brand img{width:80px;height:auto}.page-curtain-label{font-size:8px}.ex-guides{padding-top:65px;padding-bottom:65px}.contact-banner{border-radius:22px}}
+@media(prefers-reduced-motion:reduce){.page-curtain{display:none!important}.page-hero h1,.page-hero-description,.page-hero .eyebrow,.transition-revealing .route-content{animation:none!important}.reveal-ready{opacity:1;transform:none}}
+
+/* Finishing details shared across the public experience. */
+html { scrollbar-gutter: stable; }
+body { text-rendering: optimizeLegibility; }
+button, a, summary { touch-action: manipulation; }
+input, select, textarea { accent-color: var(--blue); }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 5px; }
+.skip-link { z-index: 220; }
+h1, h2, h3 { text-wrap: balance; }
+.page-breadcrumb { display: flex; align-items: center; gap: 12px; margin: 0 0 32px; color: #64738a; font-size: 10px; }
+.page-breadcrumb a { padding-block: 4px; border-bottom: 1px solid #c5cfdc; }
+.page-breadcrumb a:hover { color: var(--blue); }
+.page-breadcrumb > span:last-child { font-size: 9px; letter-spacing: .09em; }
+.page-hero .eyebrow { margin-bottom: 20px; }
+.section-rule { display: inline-block; width: 25px; height: 1px; background: currentColor; vertical-align: middle; margin-right: 10px; }
+.home-inventory { padding-block: 110px 85px; }
+.collection-heading { margin-bottom: 44px; }
+.collection-heading > div:last-child { padding-bottom: 6px; }
+.collection-heading > div:last-child p { color: #647187; font-size: 14px; line-height: 1.85; margin-bottom: 24px; }
+.home-inventory .text-link, .home-faq .text-link { font-size: 12px; font-weight: 550; gap: 28px; padding-bottom: 10px; }
+.collection-search-panel { margin-bottom: 35px; }
+.collection-search-panel .home-search { margin: 0; padding: 8px 8px 8px 24px; min-height: 76px; border-radius: 16px; background: #f5f7fa; }
+.collection-search-panel .home-search input { font-size: 14px; }
+.collection-search-panel .home-search button { min-height: 56px; padding-inline: 28px; border-radius: 11px; }
+.collection-discovery { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; padding: 17px 0 0; }
+.collection-discovery > span { font-size: 8px; letter-spacing: .13em; color: #637188; font-weight: 600; }
+.collection-discovery nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.collection-discovery a { min-height: 35px; display: inline-flex; align-items: center; gap: 18px; border: 1px solid #e3e8ef; border-radius: 100px; padding: 6px 13px; font-size: 11px; color: #465773; transition: border-color .2s, background .2s, color .2s; }
+.collection-discovery a:hover { background: #edf3ff; border-color: #a8c2f5; color: var(--blue); }
+.collection-tail { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; border-top: 1px solid #e4e9f0; margin-top: 32px; padding-top: 24px; color: #68768a; font-size: 11px; }
+.collection-tail > span, .collection-tail > a { display: inline-flex; align-items: center; gap: 10px; }
+.collection-tail > a { color: var(--blue); font-weight: 550; gap: 18px; padding-block: 7px; }
+.collection-tail > a:hover { text-decoration: underline; text-underline-offset: 5px; }
+.vehicle-card { border-color: #e5e9ef; background: #fff; transition: transform .4s var(--ease), box-shadow .4s, border-color .4s; }
+.vehicle-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px #0c244312; border-color: #b7c9e3; }
+.vehicle-card-media img { transition: transform .8s var(--ease); }
+.vehicle-card:hover .vehicle-card-media img { transform: scale(1.035); }
+.vehicle-card:focus-visible { outline-offset: 6px; }
+.faq-introduction { color: #637187; font-size: 13px; line-height: 1.9; margin: -12px 0 24px; }
+.faq-list details { transition: border-color .25s; }
+.faq-list details[open] { border-bottom-color: #175cff; }
+.faq-list summary { min-height: 80px; }
+.ex-stories-intro h2 { color: #101e33; font-size: clamp(40px, 4.5vw, 64px); }
+.ex-stories-intro h2 > span { color: #175cff; }
+.ex-stories-intro > p { color: #66758a; font-size: 15px; line-height: 1.8; letter-spacing: 0; }
+.ex-stories-intro > p:first-of-type { font-size: 18px; line-height: 1.65; color: #233a58; }
+.ex-underlined:after { border-top-width: 1px; bottom: -9px; }
+.ex-guide-card h3 { text-wrap: pretty; }
+.footer-brand-invitation { align-self: stretch; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.footer-kicker { display: flex; align-items: center; gap: 10px; font-size: 9px !important; letter-spacing: .12em; margin: 0 0 35px !important; }
+.footer-kicker > span { width: 5px; height: 5px; border-radius: 50%; background: #c8dcff; }
+.footer-brand-invitation .footer-wordmark { align-self: flex-start; font-size: clamp(64px, 8.9vw, 144px); }
+.footer-invitation-copy { font-size: clamp(22px, 2.3vw, 33px) !important; line-height: 1.25 !important; letter-spacing: -.045em; color: #fff !important; margin: 34px 0 !important; }
+.footer-direct-link { display: inline-flex; align-items: center; gap: 22px; font-size: 11px; width: fit-content; padding-block: 10px; border-bottom: 1px solid #ffffff60; }
+.footer-direct-link:hover { border-color: #fff; }
+.footer-enquiry-inner { padding-left: 25px; }
+.footer-enquiry-form input { min-height: 51px; border-color: #ffffff60; background: #ffffff0c; }
+.footer-enquiry-form button { border-radius: 100px; margin-top: 16px; }
+.footer-enquiry-form small { min-height: 16px; }
+.footer-links-panel .footer-top h3 { font-size: 13px; }
+.footer-links-panel .footer-top > div > a:not(.brand) { font-size: 12px; }
+.footer-bottom { font-size: 11px; }
+@media (hover: none) { .btn:hover, .vehicle-card:hover { transform: none; } }
+@media (max-width: 1000px) {
+  .footer-enquiry-inner { padding-left: 0; }
+  .footer-direct-link { gap: 12px; font-size: 10px; }
+}
+@media (max-width: 767px) {
+  html { scrollbar-gutter: auto; }
+  .page-breadcrumb { margin-bottom: 28px; font-size: 10px; }
+  .page-breadcrumb > span:last-child { font-size: 8px; }
+  .home-inventory { padding-block: 72px 55px; }
+  .collection-heading { gap: 24px; margin-bottom: 28px; }
+  .collection-heading > div:last-child p { font-size: 13px; margin-bottom: 20px; }
+  .collection-search-panel .home-search { padding: 6px 6px 6px 15px; min-height: 66px; gap: 10px; }
+  .collection-search-panel .home-search input { font-size: 16px; }
+  .collection-search-panel .home-search input::placeholder { font-size: 12px; }
+  .collection-search-panel .home-search button { min-width: 48px; min-height: 50px; padding-inline: 14px; }
+  .collection-discovery { gap: 10px; padding-top: 15px; }
+  .collection-discovery > span { width: 100%; }
+  .collection-discovery nav { gap: 6px; }
+  .collection-discovery a { min-height: 39px; font-size: 11px; padding-inline: 11px; gap: 11px; }
+  .collection-tail { font-size: 11px; gap: 9px; padding-top: 19px; }
+  .collection-tail > span { font-size: 10px; }
+  .faq-introduction { font-size: 13px; margin-top: 0; }
+  .faq-list summary { min-height: 78px; line-height: 1.5; }
+  .ex-stories-intro > p { font-size: 14px; }
+  .ex-stories-intro > p:first-of-type { font-size: 17px; }
+  .footer-brand-invitation { padding-bottom: 35px; margin-bottom: 35px; border-bottom: 1px solid #ffffff30; }
+  .footer-kicker { margin-bottom: 23px !important; font-size: 8px !important; }
+  .footer-brand-invitation .footer-wordmark { font-size: 17vw; margin-bottom: 0; }
+  .footer-invitation-copy { margin-block: 25px !important; font-size: 27px !important; }
+  .footer-enquiry-form input, .inv-search input, .nav-search-input input, .service-form input, .service-form select, .service-form textarea { font-size: 16px; }
+  .footer-enquiry-form input::placeholder { font-size: 12px; }
+  .footer-bottom { font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vehicle-card:hover, .vehicle-card:hover .vehicle-card-media img { transform: none; }
+}

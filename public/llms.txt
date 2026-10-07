@@ -1,0 +1,22 @@
+# Thimadu Auto Traders
+
+Thimadu Auto Traders is a Sri Lankan vehicle business website focused on current vehicle discovery, vehicle-selling enquiries, specific-model sourcing requests, vehicle information and direct customer support.
+
+## Primary pages
+- /index.html — business overview and current services
+- /all-vehicles.html — live vehicle catalogue and cars for sale in Sri Lanka
+- /car-details.html — exact vehicle details, photos, price and availability
+- /services.html — vehicle service overview
+- /sell-your-vehicle-sri-lanka.html — vehicle selling support
+- /vehicle-sourcing-sri-lanka.html — specific vehicle sourcing requests
+- /vehicle-information-support.html — vehicle information and supporting-document enquiries
+- /reviews.html — published customer stories and videos
+- /aboutus.html — detailed company approach, processes and information standards
+
+## Contact
+Phone / WhatsApp: +94 77 181 3928
+Facebook: https://www.facebook.com/thimaducar
+Service area: Sri Lanka
+
+## Data accuracy
+Vehicle availability, pricing and supporting records can change. The live catalogue helps customers shortlist; decision-critical details should be confirmed with the Thimadu vehicle desk for the exact stock item. Customer stories and videos are displayed only from published Active database records.

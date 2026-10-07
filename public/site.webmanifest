@@ -1,0 +1,16 @@
+{
+  "name": "Thimadu Auto Traders",
+  "short_name": "Thimadu",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0e55e8",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
