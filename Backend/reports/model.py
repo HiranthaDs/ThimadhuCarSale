@@ -28,3 +28,5 @@ class InspectionReport(Base):
     url: Mapped[str] = mapped_column(String(1000), nullable=False)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default=STATUS_PENDING, server_default=STATUS_PENDING)
     form_data: Mapped[dict | None] = mapped_column(JSONB().with_variant(JSON(), "sqlite"), nullable=True)
+    # Approvals of the current version before the owner checks it: {"role", "name", "at"}.
+    role_approvals: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default="[]")

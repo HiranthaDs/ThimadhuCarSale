@@ -28,7 +28,9 @@ class Department(str, enum.Enum):
 
 
 class ClientProfileStatus(str, enum.Enum):
-    pending_accountant = "pending_accountant"
+    # Waiting for every role the owner gave the Approve tick (see role_approvals).
+    # The value keeps its historical name; it no longer means just the CEO.
+    pending_ceo = "pending_ceo"
     pending_owner = "pending_owner"
     approved = "approved"
 
@@ -42,8 +44,10 @@ class ClientProfile(Base):
     status: Mapped[ClientProfileStatus] = mapped_column(
         Enum(ClientProfileStatus, name="client_profile_status"),
         nullable=False,
-        default=ClientProfileStatus.pending_accountant,
+        default=ClientProfileStatus.pending_ceo,
     )
+    # Approvals of the current version: {"role", "name", "at"} (see core.approvals).
+    role_approvals: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
 
     # ---- Local client details ----
     has_local_client: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -90,6 +94,7 @@ class ClientProfile(Base):
     vehicle_number: Mapped[str | None] = mapped_column(String(60), nullable=True)
 
     # ---- Previous owner details ----
+    previous_owner_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     previous_owner_nic: Mapped[str | None] = mapped_column(String(60), nullable=True)
     previous_owner_selfie_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     in_writing_letter_image: Mapped[str | None] = mapped_column(Text, nullable=True)

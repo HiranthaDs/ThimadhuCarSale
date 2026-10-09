@@ -16,7 +16,7 @@ def _check_images(images: list[str]) -> list[str]:
 
 class VehicleBlacklistCreate(BaseModel):
     vehicle_number: str | None = None
-    chassis_number: str | None = None
+    mileage: str | None = None
     remarks: str | None = None
     images: list[str] = Field(default_factory=list)
 
@@ -28,7 +28,7 @@ class VehicleBlacklistCreate(BaseModel):
 
 class VehicleBlacklistUpdate(BaseModel):
     vehicle_number: str | None = None
-    chassis_number: str | None = None
+    mileage: str | None = None
     remarks: str | None = None
     # The full list of images to keep; existing ones are sent back as-is.
     images: list[str] = Field(default_factory=list)
@@ -52,6 +52,6 @@ class VehicleBlacklistOut(BaseModel):
     id: uuid.UUID
     created_at: datetime
     vehicle_number: str | None
-    chassis_number: str | None
+    mileage: str | None
     remarks: str | None
     images: list[VehicleBlacklistImageOut]

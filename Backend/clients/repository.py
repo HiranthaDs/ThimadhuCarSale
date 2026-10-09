@@ -15,6 +15,7 @@ SEARCHABLE_COLUMNS = [
     "vehicle_type",
     "chassis_number",
     "vehicle_number",
+    "previous_owner_name",
     "previous_owner_nic",
     "previous_owner_phone",
     "other_notes",
@@ -45,7 +46,9 @@ class ClientProfileRepository:
 
     def list_all(self, q: str | None = None, limit=100, offset=0, status_filter=None) -> list[ClientProfile]:
         from clients.schema import ClientProfileSummary
-        stmt = select(ClientProfile).options(load_only(*(getattr(ClientProfile, key) for key in ClientProfileSummary.model_fields)))
+        columns = ClientProfile.__table__.columns.keys()
+        stmt = select(ClientProfile).options(load_only(
+            *(getattr(ClientProfile, key) for key in ClientProfileSummary.model_fields if key in columns)))
         if status_filter:
             stmt = stmt.where(ClientProfile.status == status_filter)
         if q:
@@ -53,7 +56,12 @@ class ClientProfileRepository:
             conditions = [getattr(ClientProfile, col).ilike(pattern) for col in SEARCHABLE_COLUMNS]
             stmt = stmt.where(or_(*conditions))
         stmt = stmt.order_by(ClientProfile.created_at.desc(), ClientProfile.id.desc())
-        return list(self.db.scalars(stmt.limit(limit).offset(offset)))
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset)
+        return list(self.db.scalars(stmt))
+
+    def list_by_status(self, status) -> list[ClientProfile]:
+        return list(self.db.scalars(select(ClientProfile).where(ClientProfile.status == status).with_for_update()))
 
     def update(self, profile: ClientProfile, **fields) -> ClientProfile:
         for key, value in fields.items():

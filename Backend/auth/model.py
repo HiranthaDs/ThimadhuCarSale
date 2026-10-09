@@ -13,11 +13,15 @@ class UserRole(str, enum.Enum):
     owner = "owner"
     ceo = "ceo"
     accountant = "accountant"
+    admin = "admin"
     technician = "technician"
 
 
-# The CEO has the same access as the owner; use this instead of comparing to
-# UserRole.owner wherever "owner access" is required.
+ROLE_LABELS = {"owner": "Owner", "ceo": "CEO", "admin": "Admin", "accountant": "Accountant", "technician": "Technician"}
+
+
+# Roles that may edit a client profile after final approval. Everything else
+# the CEO can do is set by the owner in Customize (see permissions.catalog).
 OWNER_LEVEL_ROLES = (UserRole.owner, UserRole.ceo)
 
 

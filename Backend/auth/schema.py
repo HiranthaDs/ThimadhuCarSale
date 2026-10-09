@@ -25,7 +25,7 @@ class LoginRequest(BaseModel):
 
 
 class UserCreateRequest(BaseModel):
-    """Used by an owner to open an account for a ceo, accountant, or technician member."""
+    """Used by an owner to open an account for a ceo, admin, accountant, or technician member."""
 
     email: EmailStr
     full_name: str = Field(min_length=1, max_length=255)
@@ -99,5 +99,11 @@ class PasswordResetResponse(BaseModel):
     message: str
 
 
+class SessionUserOut(UserOut):
+    """The signed-in user, with the permission keys their role currently has."""
+
+    permissions: list[str] = []
+
+
 class BrowserSessionResponse(BaseModel):
-    user: UserOut
+    user: SessionUserOut

@@ -1,22 +1,15 @@
 import { useState } from "react"
 import { createBlacklistEntry, updateBlacklistEntry } from "../../../api/blacklist"
+import CameraButton from "../../../components/CameraCapture"
+import { compressImage } from "../../../utils/image"
 
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
-const initialForm = { vehicle_number: "", chassis_number: "", remarks: "", images: [] }
+const initialForm = { vehicle_number: "", mileage: "", remarks: "", images: [] }
 
 function formFromEntry(entry) {
   if (!entry) return initialForm
   return {
     vehicle_number: entry.vehicle_number || "",
-    chassis_number: entry.chassis_number || "",
+    mileage: entry.mileage || "",
     remarks: entry.remarks || "",
     images: entry.images.map((img) => img.image),
   }
@@ -33,6 +26,10 @@ export default function VehicleBlacklistForm({ token, entry, onClose, onCreated,
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
+  function addImages(urls) {
+    setForm((prev) => ({ ...prev, images: [...prev.images, ...urls] }))
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError("")
@@ -40,7 +37,7 @@ export default function VehicleBlacklistForm({ token, entry, onClose, onCreated,
     try {
       const payload = {
         vehicle_number: form.vehicle_number || null,
-        chassis_number: form.chassis_number || null,
+        mileage: form.mileage || null,
         remarks: form.remarks || null,
         images: form.images,
       }
@@ -76,16 +73,16 @@ export default function VehicleBlacklistForm({ token, entry, onClose, onCreated,
             />
           </label>
           <label className="tp-form-group">
-            <span>Chassis Number</span>
+            <span>Mileage (km)</span>
             <input
               type="text"
-              value={form.chassis_number}
-              onChange={(e) => set("chassis_number", e.target.value)}
+              value={form.mileage}
+              onChange={(e) => set("mileage", e.target.value)}
             />
           </label>
         </div>
 
-        <label className="tp-form-group tp-form-group-full">
+        <div className="tp-form-group tp-form-group-full">
           <span>Images</span>
           <input
             type="file"
@@ -93,11 +90,11 @@ export default function VehicleBlacklistForm({ token, entry, onClose, onCreated,
             multiple
             onChange={async (e) => {
               const files = Array.from(e.target.files || [])
-              const urls = await Promise.all(files.map(fileToDataUrl))
-              setForm((prev) => ({ ...prev, images: [...prev.images, ...urls] }))
               e.target.value = ""
+              addImages(await Promise.all(files.map(compressImage)))
             }}
           />
+          <CameraButton onCapture={addImages} onFiles={async (files) => addImages(await Promise.all(files.map(compressImage)))} />
           {form.images.length > 0 && (
             <div className="tp-form-photo-strip">
               {form.images.map((src, i) => (
@@ -114,7 +111,7 @@ export default function VehicleBlacklistForm({ token, entry, onClose, onCreated,
               ))}
             </div>
           )}
-        </label>
+        </div>
 
         <label className="tp-form-group tp-form-group-full">
           <span>Remarks</span>

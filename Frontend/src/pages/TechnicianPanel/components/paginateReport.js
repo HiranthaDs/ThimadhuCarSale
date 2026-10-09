@@ -1,24 +1,22 @@
 // Page layout for the report PDF.
 //
-// html2pdf's own page-break handling inserts padding <div>s before the
-// "avoid" elements; inside a <table> those render as empty bordered gaps and
-// it cannot keep a row, photo or title whole. So the PDF export turns that off
-// and calls paginateForPdf() instead, on the exact DOM html2canvas is about to
-// draw: every row / paragraph / title that would straddle a page boundary is
-// moved, whole, to the top of the next page (tables are split between rows,
-// and a long photo row is split between lines of photos).
+// renderReportPdf() lays the report out off-screen and calls paginateForPdf()
+// on it before drawing each page: every row / paragraph / title that would
+// straddle a page boundary is moved, whole, to the top of the next page
+// (tables are split between rows, and a long photo row is split between lines
+// of photos).
 
 const PAGE_TOP_INSET = 4 // px of air under the header line on a fresh page
 const PAGE_BOTTOM_SLACK = 3 // px kept free at the bottom of a page
 const CELL_PADDING = 10 // td padding + border below a row's last photo line
 
 export const PDF_SCALE = 2
-// jsPDF A4 portrait minus the margins html2pdf is given, in mm: [top, left, bottom, right].
+// Page margins in mm, [top, left, bottom, right]; the header and footer are drawn in them.
 export const PDF_MARGIN = [30, 10, 16, 10]
 const A4 = { width: 210, height: 297 }
 
-// Container width (integer css px) and page height (css px) matching how
-// html2pdf slices the canvas: pages are floor(canvasWidth * ratio) canvas px tall.
+// Content width (integer css px) and page height (css px); page height times
+// PDF_SCALE is a whole number of canvas px.
 export function pdfPageGeometry() {
   const innerWidth = A4.width - PDF_MARGIN[1] - PDF_MARGIN[3]
   const innerHeight = A4.height - PDF_MARGIN[0] - PDF_MARGIN[2]
@@ -148,6 +146,14 @@ export function paginateForPdf(root, pageH) {
         if (fit >= 1 && fit < lines.length) {
           atoms.splice(i + 1, 0, splitPhotoRow(el, lines, fit))
           i-- // re-check the shortened row, then the new tail row
+          continue
+        }
+        // Not even one line of photos fits here. A row with many photos can be
+        // taller than a page, which the height check below would leave cut
+        // through a photo: move it to the next page and split it there.
+        if (fit === 0 && m.top > startOf(page) + 1) {
+          pushRow(el, startOf(page + 1))
+          i--
           continue
         }
       }

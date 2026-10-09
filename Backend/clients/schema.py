@@ -5,6 +5,8 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from clients.model import ClientProfileStatus, RegistrationType
+from core.approvals import ApprovalOut
+from core.media import MULTI_IMAGE_LIMITS, split_images
 from core.security import is_safe_media_url
 
 IMAGE_FIELDS = (
@@ -76,6 +78,7 @@ class ClientProfileCreate(BaseModel):
     vehicle_number: str | None = None
 
     # Previous owner details
+    previous_owner_name: str | None = None
     previous_owner_nic: str | None = None
     previous_owner_selfie_image: str | None = None
     in_writing_letter_image: str | None = None
@@ -113,8 +116,12 @@ class ClientProfileCreate(BaseModel):
 
     @field_validator(*IMAGE_FIELDS)
     @classmethod
-    def images_are_safe(cls, value: str | None) -> str | None:
-        if value and not is_safe_media_url(value):
+    def images_are_safe(cls, value: str | None, info) -> str | None:
+        images = split_images(value)
+        limit = MULTI_IMAGE_LIMITS.get(info.field_name, 1)
+        if len(images) > limit:
+            raise ValueError(f"At most {limit} image{'s' if limit != 1 else ''} can be uploaded here.")
+        if any(not is_safe_media_url(image) for image in images):
             raise ValueError("Images must be an uploaded photo or an https link.")
         return value
 
@@ -140,6 +147,7 @@ class ClientProfileCreate(BaseModel):
             "vehicle_type",
             "chassis_number",
             "vehicle_number",
+            "previous_owner_name",
             "previous_owner_nic",
             "previous_owner_phone",
             "other_notes",
@@ -163,6 +171,9 @@ class ClientProfileOut(PrivateMediaResponse):
     id: uuid.UUID
     created_at: datetime
     status: ClientProfileStatus
+    role_approvals: list[ApprovalOut] = []
+    # Roles that still need to approve before the owner (only while pending_ceo).
+    waiting_for: list[str] = []
 
     has_local_client: bool
     local_client_name: str | None
@@ -195,6 +206,7 @@ class ClientProfileOut(PrivateMediaResponse):
     chassis_number: str | None
     vehicle_number: str | None
 
+    previous_owner_name: str | None
     previous_owner_nic: str | None
     previous_owner_selfie_image: str | None
     in_writing_letter_image: str | None
@@ -248,6 +260,9 @@ class ClientProfileSummary(BaseModel):
     id: uuid.UUID
     created_at: datetime
     status: ClientProfileStatus
+    role_approvals: list[ApprovalOut] = []
+    # Roles that still need to approve before the owner (only while pending_ceo).
+    waiting_for: list[str] = []
     has_local_client: bool
     local_client_name: str | None
     local_client_phone: str | None

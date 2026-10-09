@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { createScan2Report, getReport, listReportPairs, reportViewUrl } from "../../../api/reports"
-import { ReportStatusBadge } from "../../TechnicianPanel/components/reportStatus"
+import { ApproveReportButton, ReportStatusBadge } from "../../TechnicianPanel/components/reportStatus"
+import ApprovedBy from "../../../components/ApprovedBy"
 import InspectionForm from "../../TechnicianPanel/components/InspectionForm"
 import InspectionReport from "../../TechnicianPanel/components/InspectionReport"
 
@@ -12,15 +13,11 @@ import InspectionReport from "../../TechnicianPanel/components/InspectionReport"
 // report named "CBE-1245-Inspection Report 2". Only that copy is edited; it goes back to
 // the owner for approval and is locked in turn once approved.
 
-const SCAN2_SUFFIX = "-inspection report 2"
-
-function isScan2(report) {
-  return (report.registration_number || "").toLowerCase().match(/-(inspection report 2|scan2)$/)
-}
-
-function scan2Key(registrationNumber) {
-  return `${(registrationNumber || "").trim().toLowerCase()}${SCAN2_SUFFIX}`
-}
+const VIEWS = [
+  { value: "all", label: "All" },
+  { value: "report1", label: "Inspection Report" },
+  { value: "report2", label: "Inspection Report 2" },
+]
 
 function formatDate(value) {
   return new Date(value).toLocaleString("en-US", {
@@ -32,11 +29,13 @@ function formatDate(value) {
   })
 }
 
-export default function InspectionReports2({ token }) {
+export default function InspectionReports2({ token, canCreate = true }) {
   const requestNumber = useRef(0)
   const [page, setPage] = useState(0)
-  const [reports, setReports] = useState([])
+  const [pairs, setPairs] = useState([])
   const [query, setQuery] = useState("")
+  // all: each report with its copy; report1: original reports only; report2: copies only.
+  const [view, setView] = useState("all")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [actionError, setActionError] = useState("")
@@ -48,17 +47,11 @@ export default function InspectionReports2({ token }) {
   const [reportData, setReportData] = useState(null)
 
   function loadReports() {
-    if (!query.trim()) {
-      setReports([])
-      setError(null)
-      setLoading(false)
-      return
-    }
     setLoading(true)
     setError(null)
     const requestId = ++requestNumber.current
-    listReportPairs(token, query.trim(), page)
-      .then(data => { if (requestId === requestNumber.current) setReports(data) })
+    listReportPairs(token, query.trim(), page, { copiesOnly: view === "report2" })
+      .then(data => { if (requestId === requestNumber.current) setPairs(data) })
       .catch((err) => { if (requestId === requestNumber.current) setError(err.message || "Failed to load inspection reports.") })
       .finally(() => { if (requestId === requestNumber.current) setLoading(false) })
   }
@@ -67,7 +60,7 @@ export default function InspectionReports2({ token }) {
     const handle = setTimeout(loadReports, 300)
     return () => { clearTimeout(handle); requestNumber.current += 1 }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, query, page])
+  }, [token, query, page, view])
 
   async function openScan2(scan2Id) {
     const detail = await getReport(token, scan2Id)
@@ -131,8 +124,90 @@ export default function InspectionReports2({ token }) {
     )
   }
 
-  const scan2ByReg = new Map(reports.filter(isScan2).map((r) => [r.registration_number.toLowerCase().replace(/-scan2$/, SCAN2_SUFFIX), r]))
-  const originals = reports.filter((r) => !isScan2(r) && r.registration_number)
+  function originalRow(report) {
+    return (
+      <div className="tp-reports-item-top">
+        <div className="tp-reports-item-main">
+          <span className="tp-inspections-name">{report.registration_number}</span>
+          <span className="tp-inspections-meta">
+            {report.vehicle_title}
+            {report.buyer_name ? ` — ${report.buyer_name}` : ""}
+            {report.technician_name ? ` · Submitted by ${report.technician_name}` : ""}
+          </span>
+        </div>
+
+        <div className="tp-reports-item-side">
+          <ReportStatusBadge status={report.status} waitingFor={report.waiting_for} />
+          <span className="tp-inspections-date-link">
+            <span className="tp-inspections-date">{formatDate(report.created_at)}</span>
+            <a className="tp-inspections-link" href={reportViewUrl(report.id)} target="_blank" rel="noreferrer">
+              View Inspection Report 1 PDF
+            </a>
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  function copyRow(scan2) {
+    return (
+      <div className="tp-reports-item-top">
+        <div className="tp-reports-item-main">
+          <span className="tp-inspections-name">{scan2.registration_number}</span>
+          <span className="tp-inspections-meta">
+            {scan2.technician_name ? `Inspection Report 2 by ${scan2.technician_name}` : "Inspection Report 2"}
+          </span>
+          <ApprovedBy approvals={scan2.role_approvals} />
+        </div>
+        <div className="tp-reports-item-side">
+          {canCreate && scan2.editable && (
+            <button
+              type="button"
+              className="tp-reports-btn"
+              disabled={busyId === scan2.id}
+              onClick={() => handleEditScan2(scan2)}
+            >
+              {busyId === scan2.id ? "Loading…" : "Edit Inspection Report 2"}
+            </button>
+          )}
+          <ApproveReportButton
+            token={token}
+            report={scan2}
+            onApproved={() => loadReports()}
+            onError={setActionError}
+          />
+          <ReportStatusBadge status={scan2.status} waitingFor={scan2.waiting_for} />
+          <span className="tp-inspections-date-link">
+            <span className="tp-inspections-date">{formatDate(scan2.created_at)}</span>
+            <a className="tp-inspections-link" href={reportViewUrl(scan2.id)} target="_blank" rel="noreferrer">
+              View Inspection Report 2 PDF
+            </a>
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  function createCopyActions(report) {
+    if (!canCreate) return null
+    const approved = report.status === "checked"
+    return (
+      <div className="tp-reports-actions">
+        <button
+          type="button"
+          className="tp-reports-btn"
+          disabled={!approved || busyId === report.id}
+          title={approved ? "" : "The owner must approve this report before an Inspection Report 2 copy can be made."}
+          onClick={() => handleCreateCopy(report)}
+        >
+          {busyId === report.id ? "Creating…" : "Create a Copy"}
+        </button>
+        {!approved && (
+          <span className="tp-inspections-meta">Waiting for owner approval before an Inspection Report 2 can be made.</span>
+        )}
+      </div>
+    )
+  }
 
   return (
     <section className="tp-inspections">
@@ -141,99 +216,55 @@ export default function InspectionReports2({ token }) {
         <input
           type="text"
           className="tp-inspections-search"
-          placeholder="Search by registration number, e.g. CBE-1245"
+          placeholder="Search by registration number, vehicle, buyer..."
           value={query}
           onChange={(e) => { setPage(0); setQuery(e.target.value) }}
         />
       </div>
 
+      <div className="tp-status-filter">
+        {VIEWS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            className={`tp-status-filter-btn${view === opt.value ? " tp-status-filter-btn-active" : ""}`}
+            onClick={() => { setPage(0); setView(opt.value) }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       {actionError && <p className="tp-inspections-status tp-inspections-error">{actionError}</p>}
-      {!query.trim() && (
-        <p className="tp-inspections-status">
-          Search for a vehicle's registration number to create or edit its Inspection Report 2.
-        </p>
-      )}
       {loading && <p className="tp-inspections-status">Loading…</p>}
       {!loading && error && <p className="tp-inspections-status tp-inspections-error">{error}</p>}
-      {!loading && !error && query.trim() && originals.length === 0 && (
-        <p className="tp-inspections-status">No inspection reports found.</p>
+      {!loading && !error && pairs.length === 0 && (
+        <p className="tp-inspections-status">
+          {view === "report2" ? "No Inspection Report 2 copies found." : "No inspection reports found."}
+        </p>
       )}
 
-      {!loading && !error && originals.length > 0 && (
+      {!loading && !error && pairs.length > 0 && (
         <ul className="tp-reports-list">
-          {originals.map((report) => {
-            const scan2 = scan2ByReg.get(scan2Key(report.registration_number))
-            const approved = report.status === "checked"
-            return (
-              <li key={report.id} className="tp-reports-item">
-                <div className="tp-reports-item-top">
-                  <div className="tp-reports-item-main">
-                    <span className="tp-inspections-name">{report.registration_number}</span>
-                    <span className="tp-inspections-meta">
-                      {report.vehicle_title}
-                      {report.buyer_name ? ` — ${report.buyer_name}` : ""}
-                      {report.technician_name ? ` · Submitted by ${report.technician_name}` : ""}
-                    </span>
-                  </div>
-
-                  <div className="tp-reports-item-side">
-                    <ReportStatusBadge status={report.status} />
-                    <span className="tp-inspections-date-link">
-                      <span className="tp-inspections-date">{formatDate(report.created_at)}</span>
-                      <a className="tp-inspections-link" href={reportViewUrl(report.id)} target="_blank" rel="noreferrer">
-                        View Inspection Report 1 PDF
-                      </a>
-                    </span>
-                  </div>
-                </div>
-
-                {scan2 ? (
-                  <div className="tp-reports-item-top">
-                    <div className="tp-reports-item-main">
-                      <span className="tp-inspections-name">{scan2.registration_number}</span>
-                      <span className="tp-inspections-meta">
-                        {scan2.technician_name ? `Inspection Report 2 by ${scan2.technician_name}` : "Inspection Report 2"}
-                      </span>
-                    </div>
-                    <div className="tp-reports-item-side">
-                      {scan2.editable && (
-                        <button
-                          type="button"
-                          className="tp-reports-btn"
-                          disabled={busyId === scan2.id}
-                          onClick={() => handleEditScan2(scan2)}
-                        >
-                          {busyId === scan2.id ? "Loading…" : "Edit Inspection Report 2"}
-                        </button>
-                      )}
-                      <ReportStatusBadge status={scan2.status} />
-                      <span className="tp-inspections-date-link">
-                        <span className="tp-inspections-date">{formatDate(scan2.created_at)}</span>
-                        <a className="tp-inspections-link" href={reportViewUrl(scan2.id)} target="_blank" rel="noreferrer">
-                          View Inspection Report 2 PDF
-                        </a>
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="tp-reports-actions">
-                    <button
-                      type="button"
-                      className="tp-reports-btn"
-                      disabled={!approved || busyId === report.id}
-                      title={approved ? "" : "The owner must approve this report before an Inspection Report 2 copy can be made."}
-                      onClick={() => handleCreateCopy(report)}
-                    >
-                      {busyId === report.id ? "Creating…" : "Create a Copy"}
-                    </button>
-                    {!approved && (
-                      <span className="tp-inspections-meta">Waiting for owner approval before an Inspection Report 2 can be made.</span>
-                    )}
-                  </div>
-                )}
-              </li>
-            )
-          })}
+          {pairs.map(({ original, copy }) => (
+            <li key={original.id} className="tp-reports-item">
+              {view === "report2" ? (
+                copy && copyRow(copy)
+              ) : view === "report1" ? (
+                <>
+                  {originalRow(original)}
+                  {copy ? (
+                    <span className="tp-inspections-meta">Inspection Report 2 already created.</span>
+                  ) : createCopyActions(original)}
+                </>
+              ) : (
+                <>
+                  {originalRow(original)}
+                  {copy ? copyRow(copy) : createCopyActions(original)}
+                </>
+              )}
+            </li>
+          ))}
         </ul>
       )}
     </section>

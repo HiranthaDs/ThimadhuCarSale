@@ -7,11 +7,32 @@
   align-items: flex-start;
   justify-content: center;
   padding: 32px 16px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .vb-form-card { max-width: 780px; width: 100%; margin-bottom: 0; }
 .vb-viewer { max-width: 900px; width: 100%; margin-bottom: 0; }
+/* The card scrolls, not the backdrop; scrolling past its end must not move the page. */
+.vb-form-card,
+.vb-viewer {
+  max-height: calc(100vh - 64px);
+  max-height: calc(100dvh - 64px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.vb-form-card::-webkit-scrollbar,
+.vb-viewer::-webkit-scrollbar { display: none; }
+/* Title and close button stay in view while the card scrolls (covering the card's 20px top padding). */
+.vb-form-card .tp-card-head,
+.vb-viewer .tp-card-head {
+  position: sticky;
+  top: -20px;
+  margin-top: -20px;
+  padding: 20px 0 12px;
+  background: var(--tp-card-bg, #fff);
+  z-index: 1;
+}
 
 .vb-details {
   display: grid;

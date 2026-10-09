@@ -5,8 +5,11 @@ import VehicleBlacklistForm from "./VehicleBlacklistForm"
 import VehicleBlacklistViewer from "./VehicleBlacklistViewer"
 import "./VehicleBlacklist.css"
 
-// Everyone with blacklist access can view and edit entries; only the owner can delete.
-export default function VehicleBlacklist({ token, role }) {
+// `can(permission)` says which actions the signed-in role may use; the owner
+// panel leaves it out, giving full access.
+const allowAll = () => true
+
+export default function VehicleBlacklist({ token, can = allowAll }) {
   const requestNumber = useRef(0)
   const [page, setPage] = useState(0)
   const [entries, setEntries] = useState([])
@@ -18,7 +21,6 @@ export default function VehicleBlacklist({ token, role }) {
   const [editing, setEditing] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [actionError, setActionError] = useState("")
-  const isOwner = role === "owner"
 
   async function refresh(q) {
     setLoading(true)
@@ -54,7 +56,7 @@ export default function VehicleBlacklist({ token, role }) {
   async function handleDelete(entry) {
     const confirmed = await confirmDialog({
       title: "Delete blacklist entry?",
-      message: `${entry.vehicle_number || entry.chassis_number || "This vehicle"} will be removed from the blacklist. This cannot be undone.`,
+      message: `${entry.vehicle_number || "This vehicle"} will be removed from the blacklist. This cannot be undone.`,
       confirmLabel: "Delete",
       danger: true,
     })
@@ -73,7 +75,7 @@ export default function VehicleBlacklist({ token, role }) {
 
   return (
     <div>
-      {!showForm && (
+      {!showForm && can("blacklist.create") && (
         <button type="button" className="tp-inspection-btn" onClick={() => setShowForm(true)}>
           + Add Blacklisted Vehicle
         </button>
@@ -115,7 +117,7 @@ export default function VehicleBlacklist({ token, role }) {
           </svg>
           <input
             type="text"
-            placeholder="Search by vehicle number, chassis number, remarks…"
+            placeholder="Search by vehicle number, mileage, remarks…"
             aria-label="Search blacklist"
             value={search}
             onChange={(e) => { setPage(0); setSearch(e.target.value) }}
@@ -135,7 +137,7 @@ export default function VehicleBlacklist({ token, role }) {
             <thead>
               <tr>
                 <th>Vehicle Number</th>
-                <th>Chassis Number</th>
+                <th>Mileage</th>
                 <th>Remarks</th>
                 <th>Images</th>
                 <th>Added</th>
@@ -153,7 +155,7 @@ export default function VehicleBlacklist({ token, role }) {
               {entries.map((entry) => (
                 <tr key={entry.id}>
                   <td>{entry.vehicle_number || "—"}</td>
-                  <td className="tp-muted">{entry.chassis_number || "—"}</td>
+                  <td className="tp-muted">{entry.mileage || "—"}</td>
                   <td className="tp-muted">{entry.remarks || "—"}</td>
                   <td>
                     {entry.images.length > 0 ? (
@@ -178,10 +180,12 @@ export default function VehicleBlacklist({ token, role }) {
                       <button type="button" className="tp-reports-btn" onClick={() => setViewing({ entry, index: 0 })}>
                         View
                       </button>
-                      <button type="button" className="tp-reports-btn" onClick={() => setEditing(entry)}>
-                        Edit
-                      </button>
-                      {isOwner && (
+                      {can("blacklist.edit") && (
+                        <button type="button" className="tp-reports-btn" onClick={() => setEditing(entry)}>
+                          Edit
+                        </button>
+                      )}
+                      {can("blacklist.delete") && (
                         <button
                           type="button"
                           className="tp-reports-btn tp-reports-btn-danger"

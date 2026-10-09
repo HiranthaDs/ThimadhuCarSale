@@ -1,16 +1,21 @@
+import hashlib
+import hmac
 import re
+import time
 import uuid
 from typing import Any
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from activity.model import ActivityLog
-from auth.model import UserRole, is_owner_level
 from core.r2_client import existing_reference, canonical_url
 
 from core.media import decode_data_url, validate_file
-from core.r2_client import delete_form_attachment, delete_report_pdf, get_report_pdf_bytes, upload_form_attachment, upload_report_pdf
-from reports.model import STATUS_CHECKED, STATUS_PENDING
+from core.config import get_settings
+from core.r2_client import FORM_ATTACHMENT_PREFIX, delete_form_attachment, delete_report_pdf, get_report_pdf_bytes, upload_form_attachment, upload_report_pdf
+from auth.model import ROLE_LABELS, UserRole
+from core.approvals import approved_roles
+from reports.model import STATUS_CHECKED, STATUS_NEEDS_MODIFICATIONS, STATUS_PENDING
 from reports.repository import ReportRepository
 
 
@@ -23,7 +28,37 @@ def _safe_filename(name: str | None, fallback: str) -> str:
     return name
 
 
-def _offload_form_data(value, allowed=(), depth=0):
+# Photos are uploaded ahead of the report (POST /reports/attachments) so the
+# final save carries only short references instead of every photo again. Each
+# reference comes back signed for the uploading user, "r2://...#<expires>.<sig>",
+# which is what lets a brand-new report point at an object it did not upload
+# itself without allowing references to arbitrary objects in the bucket.
+ATTACHMENT_TICKET_SECONDS = 24 * 3600
+
+
+def _attachment_signature(user_id, ref: str, expires: int) -> str:
+    message = f"{user_id}:{ref}:{expires}".encode()
+    return hmac.new(get_settings().jwt_secret_key.encode(), message, hashlib.sha256).hexdigest()
+
+
+def sign_attachment(user_id, ref: str) -> str:
+    expires = int(time.time()) + ATTACHMENT_TICKET_SECONDS
+    return f"{ref}#{expires}.{_attachment_signature(user_id, ref, expires)}"
+
+
+def _verified_attachment(value: str, user_id) -> str | None:
+    ref, _, ticket = value.partition("#")
+    expires, _, signature = ticket.partition(".")
+    if user_id is None or not expires.isdigit() or int(expires) < time.time():
+        return None
+    if not ref.startswith(f"r2://reports/{FORM_ATTACHMENT_PREFIX}/"):
+        return None
+    if not hmac.compare_digest(signature, _attachment_signature(user_id, ref, int(expires))):
+        return None
+    return ref
+
+
+def _offload_form_data(value, allowed=(), depth=0, user_id=None):
     """Recursively replace base64 data URLs in a form_data payload with R2 URLs.
 
     Inspection photos (and the odd attached PDF) arrive as data: URLs inside
@@ -35,15 +70,20 @@ def _offload_form_data(value, allowed=(), depth=0):
     if isinstance(value, str):
         decoded = decode_data_url(value)
         if not decoded:
+            if value.startswith("r2://") and "#" in value:
+                ref = _verified_attachment(value, user_id)
+                if not ref:
+                    raise HTTPException(400, "A photo upload has expired. Save the report again.")
+                return ref
             if value.startswith(("https://", "http://", "r2://", "javascript:", "data:")):
                 return existing_reference(value, allowed)
             return value
         content_type, content = decoded
         return upload_form_attachment(content, content_type)
     if isinstance(value, list):
-        return [_offload_form_data(v, allowed, depth + 1) for v in value]
+        return [_offload_form_data(v, allowed, depth + 1, user_id) for v in value]
     if isinstance(value, dict):
-        return {k: _offload_form_data(v, allowed, depth + 1) for k, v in value.items()}
+        return {k: _offload_form_data(v, allowed, depth + 1, user_id) for k, v in value.items()}
     return value
 
 
@@ -77,16 +117,39 @@ def scan2_name(registration_number: str) -> str:
     return f"{base}{SCAN2_SUFFIX}"
 
 
+def approval_permission(report) -> str:
+    """Which Approve tick applies: Inspection Report 2 copies have their own."""
+    return "reports2.approve" if is_scan2(report.registration_number) else "reports.approve"
+
+
 class ReportService:
     def __init__(self, db: Session, actor=None):
         self.db = db
+        self._approver_cache: dict[str, list[str]] = {}
         self.repository = ReportRepository(db)
         self.repository.actor = actor
 
-    @staticmethod
-    def require_editor(report, user):
-        if user is None or (not is_owner_level(user) and report.created_by != user.id):
-            raise HTTPException(403, "Only the report creator or owner can edit this report.")
+    def _actor_id(self):
+        return self.repository.actor.id if self.repository.actor else None
+
+    def upload_attachments(self, files: list[str]) -> list[str]:
+        """Store report photos ahead of the report itself; returns signed references."""
+        user_id = self._actor_id()
+        refs = []
+        for value in files:
+            decoded = decode_data_url(value)
+            if not decoded:
+                raise HTTPException(400, "Each attachment must be an image or PDF file.")
+            content_type, content = decoded
+            refs.append(sign_attachment(user_id, upload_form_attachment(content, content_type)))
+        return refs
+
+    def require_editor(self, report, user):
+        from permissions.service import PermissionService
+
+        if user is None or (report.created_by != user.id
+                            and "reports.review" not in PermissionService(self.db).for_user(user)):
+            raise HTTPException(403, "Only the report creator or a reviewer can edit this report.")
 
 
     def upload_pdf(
@@ -100,10 +163,10 @@ class ReportService:
         technician_name: str | None = None,
         form_data: dict[str, Any] | None = None,
     ):
-        content = validate_file(content, "application/pdf")
+        content = validate_file(content, "application/pdf", get_settings().max_report_pdf_bytes)
         public_id = str(uuid.uuid4())
         url = upload_report_pdf(content, public_id)
-        form_data = _offload_form_data(form_data) if form_data else form_data
+        form_data = _offload_form_data(form_data, user_id=self._actor_id()) if form_data else form_data
 
         report = self.repository.create(
             created_by=created_by,
@@ -141,10 +204,10 @@ class ReportService:
         old_form_urls: set[str] = set()
         _collect_urls(report.form_data, old_form_urls)
 
-        content = validate_file(content, "application/pdf")
+        content = validate_file(content, "application/pdf", get_settings().max_report_pdf_bytes)
         public_id = str(uuid.uuid4())
         url = upload_report_pdf(content, public_id)
-        form_data = _offload_form_data(form_data, old_form_urls) if form_data else form_data
+        form_data = _offload_form_data(form_data, old_form_urls, user_id=self._actor_id()) if form_data else form_data
 
         if old_url and old_url != url:
             delete_report_pdf(old_url)
@@ -163,6 +226,8 @@ class ReportService:
             url=url,
             form_data=form_data,
             status=STATUS_PENDING,
+            # New content: everyone approves again.
+            role_approvals=[],
         )
 
     def create_scan2(self, report, *, created_by: uuid.UUID | None, technician_name: str | None = None):
@@ -221,7 +286,7 @@ class ReportService:
             path = root / name
             if path.is_symlink() or not path.is_file():
                 return b""
-            if path.stat().st_size > get_settings().max_file_bytes:
+            if path.stat().st_size > get_settings().max_report_pdf_bytes:
                 raise HTTPException(413, "Document exceeds the file limit.")
             return path.read_bytes()
         return get_report_pdf_bytes(report.url)
@@ -236,8 +301,41 @@ class ReportService:
             buyer_name=buyer_name,
         )
 
+    # ---- Approvals: every role with the Approve tick, then the owner checks it ----
+
+    def _approver_roles(self, permission: str) -> list[str]:
+        if permission not in self._approver_cache:
+            from permissions.service import PermissionService
+
+            self._approver_cache[permission] = PermissionService(self.db).approver_roles(permission)
+        return self._approver_cache[permission]
+
+    def annotate(self, report):
+        """Set `waiting_for`: roles that still need to approve before the owner."""
+        if report.status == STATUS_PENDING:
+            done = approved_roles(report.role_approvals)
+            report.waiting_for = [r for r in self._approver_roles(approval_permission(report)) if r not in done]
+        else:
+            report.waiting_for = []
+        return report
+
+    def approve(self, report, user, permissions: set[str]):
+        if user.role == UserRole.owner:
+            raise ValueError("The owner approves a report by marking it checked.")
+        if approval_permission(report) not in permissions:
+            raise PermissionError("You can't approve this type of report.")
+        if user.role.value not in self.annotate(report).waiting_for:
+            raise ValueError("This report isn't waiting for your approval.")
+        return self.annotate(self.repository.add_role_approval(report, user))
+
     def set_status(self, report, status: str):
-        return self.repository.set_status(report, status)
+        if status == STATUS_CHECKED:
+            waiting = self.annotate(report).waiting_for
+            if waiting:
+                labels = ", ".join(ROLE_LABELS.get(r, r) for r in waiting)
+                raise ValueError(f"This report is still waiting for approval from: {labels}.")
+        # Sent back for changes: the revised report goes through every approval again.
+        return self.repository.set_status(report, status, clear_approvals=status == STATUS_NEEDS_MODIFICATIONS)
 
     def delete(self, report):
         delete_report_pdf(report.url)

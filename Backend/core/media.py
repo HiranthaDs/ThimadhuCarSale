@@ -1,3 +1,4 @@
+import json
 import base64
 import binascii
 import io
@@ -13,14 +14,16 @@ from core.config import get_settings
 
 _DATA_URL_RE = re.compile(r"^data:([\w.+-]+/[\w.+-]+);base64,(.+)$", re.DOTALL)
 Image.MAX_IMAGE_PIXELS = 20_000_000
+MAX_IMAGE_SIDE = 2400
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
 PDF_FORBIDDEN = {"/JavaScript", "/JS", "/Launch", "/AA", "/EmbeddedFiles",
                  "/EmbeddedFile", "/RichMedia", "/XFA", "/SubmitForm", "/ImportData", "/GoToR"}
 
 
-def validate_file(content: bytes, content_type: str) -> bytes:
-    if not content or len(content) > get_settings().max_file_bytes:
-        raise HTTPException(413, "File is empty or exceeds the 10 MB limit.")
+def validate_file(content: bytes, content_type: str, max_bytes: int | None = None) -> bytes:
+    max_bytes = max_bytes or get_settings().max_file_bytes
+    if not content or len(content) > max_bytes:
+        raise HTTPException(413, f"File is empty or exceeds the {max_bytes // (1024 * 1024)} MB limit.")
     if content_type not in ALLOWED_TYPES:
         raise HTTPException(400, "Only JPEG, PNG, WebP images and PDF documents are supported.")
     if content_type == "application/pdf":
@@ -69,6 +72,8 @@ def validate_file(content: bytes, content_type: str) -> bytes:
                 image.load()
                 output = io.BytesIO()
                 image = ImageOps.exif_transpose(image)
+                # The frontend already shrinks photos; this catches anything sent around it.
+                image.thumbnail((MAX_IMAGE_SIDE, MAX_IMAGE_SIDE))
                 image.info.clear()
                 image.save(output, format=expected)
                 if output.tell() > get_settings().max_file_bytes:
@@ -92,3 +97,39 @@ def decode_data_url(value: str) -> tuple[str, bytes] | None:
     except (ValueError, binascii.Error):
         raise HTTPException(400, "Invalid file encoding.") from None
     return content_type, validate_file(content, content_type)
+
+
+# A document field can hold several images: one image is stored as a plain string
+# (so older records keep working), several as a JSON array string.
+MULTI_IMAGE_LIMITS = {
+    "local_client_nic_image": 2,
+    "foreign_client_nic_image": 2,
+    "local_client_passport_image": 5,
+    "foreign_client_passport_image": 5,
+    "local_client_other_image": 10,
+    "foreign_client_other_image": 10,
+    "cr_document_image": 2,
+    "revenue_license_image": 2,
+    "garage_bill_image": 10,
+    "modification_image": 10,
+}
+
+
+def split_images(value):
+    if not isinstance(value, str) or not value:
+        return []
+    if value.startswith("["):
+        try:
+            items = json.loads(value)
+        except ValueError:
+            return [value]
+        if isinstance(items, list) and all(isinstance(i, str) for i in items):
+            return [i for i in items if i]
+    return [value]
+
+
+def join_images(items):
+    items = [i for i in items if i]
+    if not items:
+        return None
+    return items[0] if len(items) == 1 else json.dumps(items)

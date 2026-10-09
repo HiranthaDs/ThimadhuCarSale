@@ -21,6 +21,7 @@ import "./Login.css"
 const roles = [
   { key: "owner", label: "Owner", icon: UsersIcon },
   { key: "ceo", label: "CEO", icon: StaffIcon },
+  { key: "admin", label: "Admin", icon: ShieldIcon },
   { key: "accountant", label: "Accountant", icon: ShieldIcon },
   { key: "technician", label: "Technician", icon: WrenchIcon },
 ]
@@ -60,7 +61,7 @@ export default function Login({ onLogin }) {
       if (user.role !== role) {
         setError(`This account is registered as "${user.role}", not "${role}". Logging you in to the correct portal.`)
       }
-      onLogin({ role: user.role, username: user.email, fullName: user.full_name })
+      onLogin(user)
     } catch (err) {
       setError(err.message || "Login failed. Please check your credentials.")
     } finally {

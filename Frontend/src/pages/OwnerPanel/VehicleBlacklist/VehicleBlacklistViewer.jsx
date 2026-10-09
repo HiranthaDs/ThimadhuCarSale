@@ -29,7 +29,7 @@ export default function VehicleBlacklistViewer({ entry, startIndex = 0, onClose 
     <div className="vb-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="tp-card vb-viewer">
         <div className="tp-card-head">
-          <div className="tp-card-title">Blacklisted Vehicle — {entry.vehicle_number || entry.chassis_number || "Details"}</div>
+          <div className="tp-card-title">Blacklisted Vehicle — {entry.vehicle_number || "Details"}</div>
           <button type="button" className="tp-form-close" onClick={onClose} aria-label="Close">
             ×
           </button>
@@ -41,8 +41,8 @@ export default function VehicleBlacklistViewer({ entry, startIndex = 0, onClose 
             <dd>{entry.vehicle_number || "—"}</dd>
           </div>
           <div>
-            <dt>Chassis Number</dt>
-            <dd>{entry.chassis_number || "—"}</dd>
+            <dt>Mileage</dt>
+            <dd>{entry.mileage || "—"}</dd>
           </div>
           <div>
             <dt>Added</dt>

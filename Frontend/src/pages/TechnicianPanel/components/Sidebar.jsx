@@ -6,45 +6,47 @@ import {
   ReportsIcon,
   UsersIcon,
   SettingsIcon,
+  SlidersIcon,
   ChevronIcon,
   LogoutIcon,
 } from "../Icons"
 import logo from "../../../assets/logo.png"
 
-const navByRole = {
-  owner: [
-    { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
-    { label: "Client Profiles", icon: ClipboardIcon, view: "clients" },
-    { label: "Profile Approvals", icon: CheckBadgeIcon, view: "approvals" },
-    { label: "Inspection Reports", icon: ReportsIcon, view: "reports" },
-    { label: "Inspection Report 2", icon: ReportsIcon, view: "reports2" },
-    { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist" },
-    { label: "Activity Log", icon: ReportsIcon, view: "activity" },
-    { label: "Settings", icon: SettingsIcon, view: "settings" },
-  ],
-  technician: [
-    { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
-    { label: "Inspections", icon: ClipboardIcon, view: "inspections" },
-    { label: "Inspection Report 2", icon: ReportsIcon, view: "reports2" },
-    { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist" },
-    { label: "Settings", icon: SettingsIcon, view: "settings" },
-  ],
-  ceo: [
-    { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
-    { label: "Client Profiles", icon: ClipboardIcon, view: "clients" },
-    { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist" },
-    { label: "Settings", icon: SettingsIcon, view: "settings" },
-  ],
-  accountant: [
-    { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
-    { label: "Client Profiles", icon: ClipboardIcon, view: "clients" },
-    { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist" },
-    { label: "Settings", icon: SettingsIcon, view: "settings" },
-  ],
+// The owner sees everything; the CEO uses the same panel but only sees what
+// the owner allowed them in Customize, and never Customize itself.
+const ownerNav = [
+  { label: "Dashboard", icon: DashboardIcon, view: "dashboard", permission: "accounts.manage" },
+  { label: "Client Profiles", icon: ClipboardIcon, view: "clients", permission: "clients.view" },
+  { label: "Profile Approvals", icon: CheckBadgeIcon, view: "approvals", permission: "clients.approve" },
+  { label: "Inspection Reports", icon: ReportsIcon, view: "reports", permission: "reports.view" },
+  { label: "Inspection Report 2", icon: ReportsIcon, view: "reports2", permission: "reports2.view" },
+  { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist", permission: "blacklist.view" },
+  { label: "Activity Log", icon: ReportsIcon, view: "activity", permission: "activity.view" },
+  { label: "Customize", icon: SlidersIcon, view: "customize", ownerOnly: true },
+  { label: "Settings", icon: SettingsIcon, view: "settings" },
+]
+
+// Admins, accountants and technicians see the sections the owner ticked for
+// their role in Customize; `permission` is the key that unlocks each item.
+const staffNav = [
+  { label: "Dashboard", icon: DashboardIcon, view: "dashboard", permission: "reports.create" },
+  { label: "Inspections", icon: ClipboardIcon, view: "inspections", permission: "reports.view" },
+  { label: "Inspection Report 2", icon: ReportsIcon, view: "reports2", permission: "reports2.view" },
+  { label: "Client Profiles", icon: ClipboardIcon, view: "clients", permission: "clients.view" },
+  { label: "Profile Approvals", icon: CheckBadgeIcon, view: "approvals", permission: "clients.approve" },
+  { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist", permission: "blacklist.view" },
+  { label: "Activity Log", icon: ReportsIcon, view: "activity", permission: "activity.view" },
+  { label: "Settings", icon: SettingsIcon, view: "settings" },
+]
+
+export function navItemsFor(role, permissions = []) {
+  if (role === "owner") return ownerNav
+  const items = role === "ceo" ? ownerNav.filter((item) => !item.ownerOnly) : staffNav
+  return items.filter((item) => !item.permission || permissions.includes(item.permission))
 }
 
-export default function Sidebar({ role = "technician", username, onLogout, activeView, onNavigate, mobileOpen: mobileOpenProp, onMobileOpenChange }) {
-  const navItems = navByRole[role] ?? navByRole.technician
+export default function Sidebar({ role = "technician", permissions, username, onLogout, activeView, onNavigate, mobileOpen: mobileOpenProp, onMobileOpenChange }) {
+  const navItems = navItemsFor(role, permissions)
   const [mobileOpenState, setMobileOpenState] = useState(false)
   const mobileOpen = mobileOpenProp ?? mobileOpenState
   const setMobileOpen = onMobileOpenChange ?? setMobileOpenState

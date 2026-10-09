@@ -22,8 +22,13 @@
   width: 100%;
   margin-bottom: 0;
   max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
   overflow-y: auto;
+  /* Scrolling past the end of the form must not scroll the page behind it. */
+  overscroll-behavior: contain;
+  scrollbar-width: none;
 }
+.cp-form-card::-webkit-scrollbar { display: none; }
 .cp-form-card .tp-inspection-form {
   max-width: none;
 }
@@ -39,7 +44,10 @@
 
 .cp-form-card .tp-card-head {
   position: sticky;
-  top: 0;
+  /* Stick over the card's 20px top padding too, so scrolled content can't show above it. */
+  top: -20px;
+  margin-top: -20px;
+  padding-top: 20px;
   background: var(--tp-card-bg);
   z-index: 1;
   padding-bottom: 12px;

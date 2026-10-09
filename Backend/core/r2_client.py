@@ -1,3 +1,4 @@
+import json
 import uuid
 from urllib.parse import unquote, urlsplit
 from fastapi import HTTPException
@@ -68,8 +69,8 @@ def get_report_pdf_bytes(url: str | None) -> bytes:
         return b""
     response = _client.get_object(Bucket=REPORTS_BUCKET, Key=key)
     with response["Body"] as body:
-        content = body.read(_settings.max_file_bytes + 1)
-    if len(content) > _settings.max_file_bytes:
+        content = body.read(_settings.max_report_pdf_bytes + 1)
+    if len(content) > _settings.max_report_pdf_bytes:
         raise HTTPException(413, "Document exceeds the file limit.")
     return content
 
@@ -166,6 +167,13 @@ def private_url(value):
 
 def private_values(value):
     if isinstance(value, str):
+        if value.startswith("[\""):
+            try:
+                items = json.loads(value)
+            except ValueError:
+                items = None
+            if isinstance(items, list) and all(isinstance(i, str) for i in items):
+                return json.dumps([private_url(i) for i in items])
         return private_url(value)
     if isinstance(value, dict):
         return {k: private_values(v) for k, v in value.items()}

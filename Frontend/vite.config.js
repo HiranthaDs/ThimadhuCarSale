@@ -31,7 +31,7 @@ export default defineConfig({
         // origin and carry private data, so there is deliberately no runtime
         // caching rule for them: they always hit the network.
         globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
-        // html2pdf is ~1MB; allow it into the precache.
+        // The PDF libraries (jsPDF, html2canvas) are large; allow them into the precache.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],

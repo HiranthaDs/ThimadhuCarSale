@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react"
-import { deleteReport, downloadReportPdf, listReports, reportViewUrl, updateReport, updateReportStatus } from "../../../api/reports"
-import { ReportStatusBadge, ReportStatusFilter } from "../../TechnicianPanel/components/reportStatus"
+import { deleteReport, downloadReportPdf, getReport, listReports, reportViewUrl, updateReport, updateReportStatus } from "../../../api/reports"
+import { ApproveReportButton, ReportStatusBadge, ReportStatusFilter } from "../../TechnicianPanel/components/reportStatus"
 import { confirmDialog } from "../../../components/ConfirmDialog"
+import ApprovedBy from "../../../components/ApprovedBy"
 import { DownloadIcon } from "../../TechnicianPanel/Icons"
+import InspectionForm from "../../TechnicianPanel/components/InspectionForm"
+import InspectionReport from "../../TechnicianPanel/components/InspectionReport"
 
-export default function InspectionReports({ token }) {
+// canReview: may edit, mark checked / needs modifications, and delete any report.
+export default function InspectionReports({ token, canReview = true }) {
   const requestNumber = useRef(0)
   const [page, setPage] = useState(0)
   const [reports, setReports] = useState([])
@@ -19,6 +23,12 @@ export default function InspectionReports({ token }) {
   const [busyId, setBusyId] = useState(null)
   const [busyAction, setBusyAction] = useState(null)
   const [downloadingId, setDownloadingId] = useState(null)
+
+  // Full edit: the saved report reopened in the inspection form, then rebuilt
+  // as a new PDF that replaces the old one.
+  const [fullEditId, setFullEditId] = useState(null)
+  const [formData, setFormData] = useState(null)
+  const [reportData, setReportData] = useState(null)
 
   function loadReports() {
     setLoading(true)
@@ -71,8 +81,28 @@ export default function InspectionReports({ token }) {
     }
   }
 
-  function startEdit(report) {
+  async function startEdit(report) {
     setActionError("")
+    setBusyId(report.id)
+    setBusyAction("edit")
+    try {
+      const detail = await getReport(token, report.id)
+      if (detail.form_data && Object.keys(detail.form_data).length > 0) {
+        setEditingId(null)
+        setFullEditId(report.id)
+        setFormData(detail.form_data)
+        setReportData(null)
+        return
+      }
+    } catch (err) {
+      setActionError(err.message || "Failed to load report for editing.")
+      return
+    } finally {
+      setBusyId(null)
+    }
+    // Reports saved before the form data was stored can't be reopened in the
+    // form (it would start empty and overwrite them), so only their details
+    // can be changed.
     setEditingId(report.id)
     setEditForm({
       registrationNumber: report.registration_number || "",
@@ -99,6 +129,12 @@ export default function InspectionReports({ token }) {
     }
   }
 
+  function closeFullEdit() {
+    setFullEditId(null)
+    setFormData(null)
+    setReportData(null)
+  }
+
   async function handleDownload(report) {
     setActionError("")
     setDownloadingId(report.id)
@@ -118,6 +154,28 @@ export default function InspectionReports({ token }) {
     } finally {
       setDownloadingId(null)
     }
+  }
+
+  if (fullEditId && formData && !reportData) {
+    return <InspectionForm initialData={formData} onClose={closeFullEdit} onSubmit={setReportData} />
+  }
+
+  if (fullEditId && reportData) {
+    const vehicleTitle = [reportData.year, reportData.make, reportData.model].filter(Boolean).join(" ")
+    return (
+      <InspectionReport
+        data={reportData}
+        vehicleTitle={vehicleTitle}
+        token={token}
+        reportId={fullEditId}
+        onSaved={loadReports}
+        onClose={() => {
+          closeFullEdit()
+          loadReports()
+        }}
+        onPrint={() => window.print()}
+      />
+    )
   }
 
   return (
@@ -156,10 +214,17 @@ export default function InspectionReports({ token }) {
                     {report.buyer_name ? ` — ${report.buyer_name}` : ""}
                     {report.technician_name ? ` · Submitted by ${report.technician_name}` : ""}
                   </span>
+                  <ApprovedBy approvals={report.role_approvals} />
                 </div>
 
                 <div className="tp-reports-item-side">
-                  <ReportStatusBadge status={report.status} />
+                  <ApproveReportButton
+                    token={token}
+                    report={report}
+                    onApproved={(updated) => setReports((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))}
+                    onError={setActionError}
+                  />
+                  <ReportStatusBadge status={report.status} waitingFor={report.waiting_for} />
                   <span className="tp-inspections-date-link">
                     <span className="tp-inspections-date">
                       {new Date(report.created_at).toLocaleString("en-US", {
@@ -188,18 +253,31 @@ export default function InspectionReports({ token }) {
                 </div>
               </div>
 
+              {canReview && (
               <div className="tp-reports-actions">
                 <button
                   type="button"
                   className="tp-reports-btn"
+                  disabled={busyId === report.id || (report.status === "checked" && editingId !== report.id)}
+                  title={report.status === "checked" ? "Approved reports are locked. Use Inspection Report 2 to make changes." : undefined}
                   onClick={() => (editingId === report.id ? cancelEdit() : startEdit(report))}
                 >
-                  {editingId === report.id ? "Cancel Edit" : "Edit"}
+                  {busyId === report.id && busyAction === "edit" ? (
+                    <>
+                      <span className="tp-btn-spinner" aria-hidden="true" />
+                      Opening…
+                    </>
+                  ) : editingId === report.id ? (
+                    "Cancel Edit"
+                  ) : (
+                    "Edit"
+                  )}
                 </button>
                 <button
                   type="button"
                   className="tp-reports-btn tp-reports-btn-checked"
-                  disabled={busyId === report.id || report.status === "checked"}
+                  disabled={busyId === report.id || report.status === "checked" || report.waiting_for?.length > 0}
+                  title={report.waiting_for?.length ? "Every role with the Approve tick has to approve this report first." : undefined}
                   onClick={() => handleStatusChange(report, "checked")}
                 >
                   {busyId === report.id && busyAction === "checked" ? (
@@ -242,6 +320,7 @@ export default function InspectionReports({ token }) {
                   )}
                 </button>
               </div>
+              )}
 
               {editingId === report.id && (
                 <div className="tp-reports-edit-form">

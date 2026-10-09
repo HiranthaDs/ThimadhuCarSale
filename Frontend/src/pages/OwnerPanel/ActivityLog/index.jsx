@@ -5,6 +5,7 @@ import DatePicker from "../../../components/DatePicker"
 const ROLE_LABELS = {
   owner: "Owner",
   ceo: "CEO",
+  admin: "Admin",
   accountant: "Accountant",
   technician: "Technician",
 }

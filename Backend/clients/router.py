@@ -3,8 +3,8 @@ import uuid
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from auth.dependencies import require_owner, require_owner_ceo_accountant, require_roles
-from auth.model import User, UserRole
+from auth.dependencies import require_permission
+from auth.model import User
 from clients.schema import (
     ClientProfileCreate,
     ClientProfileOut,
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/clients", tags=["clients"])
 def create_client_profile(
     payload: ClientProfileCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_owner_ceo_accountant),
+    current_user: User = Depends(require_permission("clients.create")),
 ):
     return ClientProfileService(db).create(payload, current_user)
 
@@ -38,17 +38,18 @@ def list_client_profiles(
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0, le=100000),
     q: str | None = Query(default=None, max_length=120, description="Search across name, phone, NIC, vehicle number, etc."),
+    awaiting_me: bool = Query(default=False, description="Only profiles waiting for the caller's approval"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_owner_ceo_accountant),
+    current_user: User = Depends(require_permission("clients.view")),
 ):
-    return ClientProfileService(db).list_all(q, limit, offset, status_filter)
+    return ClientProfileService(db).list_all(q, limit, offset, status_filter, current_user if awaiting_me else None)
 
 
 @router.get("/scan-reports/lookup", response_model=ScanReportLookup)
 def lookup_scan_reports(
     vehicle_number: str = Query(..., min_length=1, max_length=60),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_owner_ceo_accountant),
+    current_user: User = Depends(require_permission("clients.create", "clients.edit")),
 ):
     repository = ReportRepository(db)
     first = repository.find_by_registration(vehicle_number.strip())
@@ -63,7 +64,7 @@ def list_all_scan_reports(
     db: Session = Depends(get_db),
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0, le=100000),
-    current_user: User = Depends(require_owner_ceo_accountant),
+    current_user: User = Depends(require_permission("clients.create", "clients.edit")),
 ):
     reports = ReportRepository(db).list_all(q, limit=limit, offset=offset)
     return [{"public_id": str(r.id), "filename": (r.registration_number or str(r.id)) + ".pdf", "secure_url": r.url} for r in reports]
@@ -71,7 +72,7 @@ def list_all_scan_reports(
 
 @router.get("/{profile_id}", response_model=ClientProfileOut)
 def get_client_profile(
-    profile_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_owner_ceo_accountant)
+    profile_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_permission("clients.view"))
 ):
     return ClientProfileService(db).get(profile_id)
 
@@ -81,7 +82,7 @@ def update_client_profile(
     profile_id: uuid.UUID,
     payload: ClientProfileUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_owner_ceo_accountant),
+    current_user: User = Depends(require_permission("clients.edit")),
 ):
     return ClientProfileService(db).update(profile_id, payload, current_user)
 
@@ -90,13 +91,13 @@ def update_client_profile(
 def approve_client_profile(
     profile_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(UserRole.owner, UserRole.ceo, UserRole.accountant)),
+    current_user: User = Depends(require_permission("clients.approve")),
 ):
     return ClientProfileService(db).approve(profile_id, current_user)
 
 
 @router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_client_profile(
-    profile_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_owner)
+    profile_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_permission("clients.delete"))
 ):
     ClientProfileService(db).delete(profile_id, current_user)

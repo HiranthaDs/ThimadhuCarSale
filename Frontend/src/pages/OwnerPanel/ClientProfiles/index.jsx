@@ -2,15 +2,20 @@ import { useEffect, useRef, useState } from "react"
 import { approveClientProfile, deleteClientProfile, getClientProfile, listClientProfiles } from "../../../api/clients"
 import ClientProfileForm from "./ClientProfileForm"
 import { confirmDialog } from "../../../components/ConfirmDialog"
+import ApprovedBy from "../../../components/ApprovedBy"
 
-const STATUS_LABELS = {
-  pending_accountant: "Awaiting Accountant",
-  pending_owner: "Awaiting Owner",
-  approved: "Approved",
+const ROLE_LABELS = { ceo: "CEO", admin: "Admin", accountant: "Accountant", technician: "Technician" }
+
+// pending_ceo now means "waiting for every role with the Approve tick";
+// waiting_for lists the roles still to approve.
+function statusLabel(p) {
+  if (p.status === "approved") return "Approved"
+  if (p.status === "pending_owner" || !p.waiting_for?.length) return "Awaiting Owner"
+  return `Awaiting ${p.waiting_for.map((r) => ROLE_LABELS[r] || r).join(", ")}`
 }
 
 const STATUS_CLASSES = {
-  pending_accountant: "tp-report-status-pending",
+  pending_ceo: "tp-report-status-pending",
   pending_owner: "tp-report-status-modifications",
   approved: "tp-report-status-checked",
 }
@@ -23,7 +28,12 @@ function departmentPeople(p) {
   ].filter(([, name]) => name && name !== "N/A")
 }
 
-export default function ClientProfiles({ token, role, statusFilter, title = "Client Profiles", emptyLabel }) {
+// `can(permission)` says which actions the signed-in role may use; the owner
+// panel leaves it out, giving full access.
+const allowAll = () => true
+
+// awaitingMe: the Profile Approvals view — only profiles waiting for this user's approval.
+export default function ClientProfiles({ token, role, can = allowAll, awaitingMe = false, title = "Client Profiles", emptyLabel }) {
   const requestNumber = useRef(0)
   const [page, setPage] = useState(0)
   const [profiles, setProfiles] = useState([])
@@ -44,7 +54,7 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
     const requestId = ++requestNumber.current
     setError("")
     try {
-      const data = await listClientProfiles(token, q, page, statusFilter)
+      const data = await listClientProfiles(token, q, page, { awaitingMe })
       if (requestId === requestNumber.current) setProfiles(data)
     } catch (err) {
       if (requestId === requestNumber.current) setError(err.message || "Could not load client profiles.")
@@ -58,7 +68,7 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
     const timer = setTimeout(() => refresh(search), 300)
     return () => { clearTimeout(timer); requestNumber.current += 1 }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, search, page, statusFilter])
+  }, [token, search, page, awaitingMe])
 
   function handleCreated() {
     setShowForm(false)
@@ -84,12 +94,9 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
     setActionError("")
     setBusy({ id, action: "approve" })
     try {
-      const updated = await approveClientProfile(token, id)
-      if (updated?.id) {
-        setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)))
-      } else {
-        await refresh(search, { silent: true })
-      }
+      await approveClientProfile(token, id)
+      // Reload: the profile may now wait on someone else, or leave the approvals list.
+      await refresh(search, { silent: true })
     } catch (err) {
       setActionError(err.message || "Could not approve client profile.")
     } finally {
@@ -117,11 +124,9 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
     }
   }
 
-  const visibleProfiles = statusFilter ? profiles.filter((p) => p.status === statusFilter) : profiles
-
   return (
     <div>
-      {!statusFilter && !showForm && (
+      {!awaitingMe && !showForm && can("clients.create") && (
         <button type="button" className="tp-inspection-btn" onClick={() => setShowForm(true)}>
           + Create Client Profile
         </button>
@@ -132,13 +137,13 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
       {openLoadError && <div className="tp-form-error">{openLoadError}</div>}
 
       {showForm && (
-        <div className="cp-form-overlay" onMouseDown={(e) => e.target === e.currentTarget && setShowForm(false)}>
+        <div className="cp-form-overlay">
           <ClientProfileForm token={token} onClose={() => setShowForm(false)} onCreated={handleCreated} />
         </div>
       )}
 
       {openProfile && (
-        <div className="cp-form-overlay" onMouseDown={(e) => e.target === e.currentTarget && setOpenProfile(null)}>
+        <div className="cp-form-overlay">
           <ClientProfileForm
             token={token}
             profile={openProfile}
@@ -186,7 +191,7 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
               </tr>
             </thead>
             <tbody>
-              {visibleProfiles.length === 0 && (
+              {profiles.length === 0 && (
                 <tr>
                   <td colSpan={9} className="tp-muted">
                     {search
@@ -195,11 +200,12 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
                   </td>
                 </tr>
               )}
-              {visibleProfiles.map((p) => {
-                const canEdit = role === "owner" || p.status !== "approved"
+              {profiles.map((p) => {
+                const canEdit = can("clients.edit") && (role === "owner" || role === "ceo" || p.status !== "approved")
+                // Every role with the Approve tick approves first; the owner gives the final approval.
                 const canApprove =
-                  (role === "accountant" && p.status === "pending_accountant") ||
-                  (role === "owner" && p.status === "pending_owner")
+                  can("clients.approve") &&
+                  (role === "owner" ? p.status === "pending_owner" : (p.waiting_for || []).includes(role))
                 return (
                   <tr key={p.id}>
                     <td>
@@ -236,8 +242,9 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
                     </td>
                     <td>
                       <span className={`tp-report-status ${STATUS_CLASSES[p.status] || ""}`}>
-                        {STATUS_LABELS[p.status] || p.status}
+                        {statusLabel(p)}
                       </span>
+                      <ApprovedBy approvals={p.role_approvals} />
                     </td>
                     <td className="tp-muted">{new Date(p.created_at).toLocaleDateString()}</td>
                     <td>
@@ -267,7 +274,7 @@ export default function ClientProfiles({ token, role, statusFilter, title = "Cli
                             )}
                           </button>
                         )}
-                        {role === "owner" && (
+                        {can("clients.delete") && (
                           <button
                             type="button"
                             className="tp-reports-btn tp-reports-btn-danger"

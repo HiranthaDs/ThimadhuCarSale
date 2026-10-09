@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from core.approvals import ApprovalOut
 from reports.model import REPORT_STATUSES, STATUS_CHECKED
 
 
@@ -19,8 +20,13 @@ class InspectionReportOut(PrivateMediaResponse):
     technician_name: str | None
     url: str
     status: str
+    role_approvals: list[ApprovalOut] = []
+    # Roles that still need to approve before the owner can mark it checked.
+    waiting_for: list[str] = []
 
     editable: bool = False
+    # Whether the signed-in user can give their role's approval now.
+    can_approve: bool = False
 
 
 class InspectionReportDetail(InspectionReportOut):
@@ -47,3 +53,11 @@ class InspectionReportStatusUpdate(BaseModel):
 class InspectionReportPair(BaseModel):
     original: InspectionReportOut
     copy_report: InspectionReportOut | None = Field(default=None, alias="copy")
+
+
+class ReportAttachmentUpload(BaseModel):
+    files: list[str] = Field(min_length=1, max_length=20)
+
+
+class ReportAttachmentRefs(BaseModel):
+    refs: list[str]

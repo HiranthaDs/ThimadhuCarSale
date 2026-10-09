@@ -6,19 +6,28 @@ from core.config import get_settings
 from core.rate_limit import consume
 from sqlalchemy.orm import Session
 
-from auth.dependencies import get_current_user, require_owner, require_origin, rate_auth
+from auth.dependencies import get_current_user, require_origin, require_permission, rate_auth
 from auth.model import User, AuthSession
 from auth.schema import ChangePasswordRequest, LoginRequest, TokenResponse, UserCreateRequest, UserOut
 from auth.service import AuthService
 from auth.password_reset import PasswordResetService, challenge_response, deliver_challenge
-from auth.schema import BrowserSessionResponse
+from auth.schema import BrowserSessionResponse, SessionUserOut
 from auth.schema import (
     ForgotPasswordRequest, ForgotPasswordResetRequest, ResetPasswordRequest,
     OtpSentResponse, PasswordResetResponse,
 )
 from core.database import get_db
+from permissions.service import PermissionService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+can_manage_accounts = require_permission("accounts.manage")
+
+
+def _session_user(db: Session, user) -> SessionUserOut:
+    out = SessionUserOut.model_validate(user)
+    out.permissions = sorted(PermissionService(db).for_user(user))
+    return out
 
 
 @router.post("/login", response_model=BrowserSessionResponse, dependencies=[Depends(rate_auth), Depends(require_origin)])
@@ -32,7 +41,7 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
                         secure=settings.cookie_secure, samesite=settings.cookie_samesite,
                         max_age=settings.access_token_expire_minutes * 60, path="/")
     response.headers["Cache-Control"] = "no-store"
-    return BrowserSessionResponse(user=result.user)
+    return BrowserSessionResponse(user=_session_user(db, result.user))
 
 
 @router.post("/logout", status_code=204)
@@ -45,9 +54,9 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db),
 
 
 
-@router.get("/me", response_model=UserOut)
-def me(current_user: User = Depends(get_current_user)):
-    return current_user
+@router.get("/me", response_model=SessionUserOut)
+def me(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return _session_user(db, current_user)
 
 
 @router.patch("/change-password", response_model=UserOut)
@@ -63,29 +72,29 @@ def change_password(
 def create_user(
     payload: UserCreateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_owner),
+    current_user: User = Depends(can_manage_accounts),
 ):
-    """Owner-only: open an account (ceo, accountant, or technician) with an email + password."""
+    """Open an account (ceo, admin, accountant, or technician) with an email + password."""
     return AuthService(db).create_staff_or_technician(payload, current_user)
 
 
 @router.get("/users", response_model=list[UserOut])
-def list_users(db: Session = Depends(get_db), current_user: User = Depends(require_owner)):
+def list_users(db: Session = Depends(get_db), current_user: User = Depends(can_manage_accounts)):
     return AuthService(db).list_users(current_user)
 
 
 @router.patch("/users/{user_id}/activate", response_model=UserOut)
-def activate_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_owner)):
+def activate_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(can_manage_accounts)):
     return AuthService(db).set_account_active(user_id, True, current_user)
 
 
 @router.patch("/users/{user_id}/deactivate", response_model=UserOut)
-def deactivate_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_owner)):
+def deactivate_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(can_manage_accounts)):
     return AuthService(db).set_account_active(user_id, False, current_user)
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_owner)):
+def delete_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(can_manage_accounts)):
     AuthService(db).delete_account(user_id, current_user)
 
 

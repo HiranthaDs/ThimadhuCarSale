@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from blacklist.model import VehicleBlacklist, VehicleBlacklistImage
 
-SEARCHABLE_COLUMNS = ["vehicle_number", "chassis_number", "remarks"]
+SEARCHABLE_COLUMNS = ["vehicle_number", "mileage", "remarks"]
 
 
 class VehicleBlacklistRepository:

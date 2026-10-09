@@ -21,3 +21,9 @@ body {
 #root {
   min-height: 100svh;
 }
+
+/* While a pop-up form is open, only the form scrolls, not the page behind it. */
+html:has(.cp-form-overlay, .vb-overlay, .tp-edit-panel),
+html:has(.cp-form-overlay, .vb-overlay, .tp-edit-panel) body {
+  overflow: hidden;
+}

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react"
 import { deleteReport, downloadReportPdf, listReports, reportViewUrl } from "../../../api/reports"
-import { ReportStatusBadge, ReportStatusFilter } from "./reportStatus"
+import { ApproveReportButton, ReportStatusBadge, ReportStatusFilter } from "./reportStatus"
 import { confirmDialog } from "../../../components/ConfirmDialog"
+import ApprovedBy from "../../../components/ApprovedBy"
 import { DownloadIcon } from "../Icons"
 
-export default function Inspections({ token, onEdit }) {
+export default function Inspections({ token, canEdit = true, onEdit }) {
   const requestNumber = useRef(0)
   const [page, setPage] = useState(0)
   const [reports, setReports] = useState([])
@@ -105,9 +106,10 @@ export default function Inspections({ token, onEdit }) {
                     {report.vehicle_title}
                     {report.buyer_name ? ` — ${report.buyer_name}` : ""}
                   </span>
+                  <ApprovedBy approvals={report.role_approvals} />
                 </div>
                 <div className="tp-reports-item-side">
-                  {report.status !== "checked" && (
+                  {canEdit && report.status !== "checked" && (
                     <button
                       type="button"
                       className="tp-reports-btn"
@@ -116,7 +118,7 @@ export default function Inspections({ token, onEdit }) {
                       Edit
                     </button>
                   )}
-                  {report.status === "pending" && (
+                  {canEdit && report.status === "pending" && (
                     <button
                       type="button"
                       className="tp-reports-btn tp-reports-btn-danger"
@@ -126,7 +128,13 @@ export default function Inspections({ token, onEdit }) {
                       {busyId === report.id ? "Deleting…" : "Delete"}
                     </button>
                   )}
-                  <ReportStatusBadge status={report.status} />
+                  <ApproveReportButton
+                    token={token}
+                    report={report}
+                    onApproved={(updated) => setReports((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))}
+                    onError={setActionError}
+                  />
+                  <ReportStatusBadge status={report.status} waitingFor={report.waiting_for} />
                   <span className="tp-inspections-date-link">
                     <span className="tp-inspections-date">
                       {new Date(report.created_at).toLocaleString("en-US", {

@@ -21,6 +21,99 @@ async function parseResponse(response, fallbackMessage) {
   return data
 }
 
+// Photos are uploaded ahead of the report in small batches and replaced by
+// the signed references the server returns, so the final save request holds
+// only the PDF and short strings, however many photos the report has.
+// Uploaded photos are remembered, so "Retry Save" does not send them again.
+const ATTACHMENT_BATCH_CHARS = 8 * 1024 * 1024
+const ATTACHMENT_BATCH_COUNT = 20
+const uploadedAttachments = new Map()
+
+function collectDataUrls(value, into) {
+  if (typeof value === "string") {
+    if (value.startsWith("data:")) into.add(value)
+  } else if (Array.isArray(value)) {
+    value.forEach((v) => collectDataUrls(v, into))
+  } else if (value && typeof value === "object") {
+    Object.values(value).forEach((v) => collectDataUrls(v, into))
+  }
+}
+
+function replaceDataUrls(value) {
+  if (typeof value === "string") return uploadedAttachments.get(value) ?? value
+  if (Array.isArray(value)) return value.map(replaceDataUrls)
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, replaceDataUrls(v)]))
+  }
+  return value
+}
+
+function pendingAttachments(formData) {
+  const found = new Set()
+  collectDataUrls(formData, found)
+  return [...found].filter((v) => !uploadedAttachments.has(v))
+}
+
+async function offloadAttachments(token, formData, onSent) {
+  const pending = pendingAttachments(formData)
+  let batch = []
+  let batchChars = 0
+  async function flush() {
+    if (batch.length === 0) return
+    const { refs } = await apiRequest("/reports/attachments", { method: "POST", token, body: { files: batch } })
+    batch.forEach((v, i) => uploadedAttachments.set(v, refs[i]))
+    onSent?.(batchChars)
+    batch = []
+    batchChars = 0
+  }
+  for (const value of pending) {
+    if (batch.length && (batchChars + value.length > ATTACHMENT_BATCH_CHARS || batch.length >= ATTACHMENT_BATCH_COUNT)) await flush()
+    batch.push(value)
+    batchChars += value.length
+  }
+  await flush()
+  return replaceDataUrls(formData)
+}
+
+// Sends a multipart request with XMLHttpRequest, which (unlike fetch) reports
+// upload progress, and returns a fetch Response for parseResponse.
+function sendWithProgress(method, url, body, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open(method, url)
+    xhr.withCredentials = true
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded, e.total)
+    xhr.onload = () => {
+      const noBody = xhr.status === 204 || xhr.status === 205
+      resolve(new Response(noBody ? null : xhr.responseText, {
+        status: xhr.status,
+        headers: { "content-type": xhr.getResponseHeader("content-type") || "" },
+      }))
+    }
+    xhr.onerror = () => reject(new Error("Could not reach the server. Is the backend running?"))
+    xhr.send(body)
+  })
+}
+
+// Uploads the photos, then the PDF, calling onProgress(0..1) over both.
+async function sendReport(token, method, url, file, meta, onProgress, fallbackMessage) {
+  const photoChars = meta.formData ? pendingAttachments(meta.formData).reduce((sum, v) => sum + v.length, 0) : 0
+  const total = photoChars + file.size || 1
+  let sentPhotos = 0
+  onProgress?.(0)
+  if (meta.formData) {
+    const formData = await offloadAttachments(token, meta.formData, (chars) => {
+      sentPhotos += chars
+      onProgress?.(sentPhotos / total)
+    })
+    meta = { ...meta, formData }
+  }
+  const response = await sendWithProgress(method, url, buildReportFormData(file, meta), (loaded, size) => {
+    onProgress?.((sentPhotos + (loaded / size) * file.size) / total)
+  })
+  return parseResponse(response, fallbackMessage)
+}
+
 function buildReportFormData(file, meta = {}) {
   const formData = new FormData()
   formData.append("file", file)
@@ -36,32 +129,13 @@ function buildReportFormData(file, meta = {}) {
   return formData
 }
 
-export async function uploadReportPdf(token, file, meta = {}) {
-  let response
-  try {
-    response = await fetch(`${BASE_URL}/reports/pdf`, {
-      method: "POST",
-      credentials: "include",
-      body: buildReportFormData(file, meta),
-    })
-  } catch {
-    throw new Error("Could not reach the server. Is the backend running?")
-  }
-  return parseResponse(response, "Upload failed")
+// onProgress, if given, is called with the fraction uploaded (0..1).
+export function uploadReportPdf(token, file, meta = {}, onProgress) {
+  return sendReport(token, "POST", `${BASE_URL}/reports/pdf`, file, meta, onProgress, "Upload failed")
 }
 
-export async function replaceReportPdf(token, reportId, file, meta = {}) {
-  let response
-  try {
-    response = await fetch(`${BASE_URL}/reports/${reportId}/pdf`, {
-      method: "PUT",
-      credentials: "include",
-      body: buildReportFormData(file, meta),
-    })
-  } catch {
-    throw new Error("Could not reach the server. Is the backend running?")
-  }
-  return parseResponse(response, "Failed to update report")
+export function replaceReportPdf(token, reportId, file, meta = {}, onProgress) {
+  return sendReport(token, "PUT", `${BASE_URL}/reports/${reportId}/pdf`, file, meta, onProgress, "Failed to update report")
 }
 
 export async function getReport(token, reportId) {
@@ -186,12 +260,19 @@ export async function listReports(token, q, status, page = 0) {
   return parseResponse(response, "Failed to load reports")
 }
 
-export async function listReportPairs(token, q, page = 0) {
-  const pairs = await apiRequest(`/reports/copies?limit=100&offset=${page * 100}&q=${encodeURIComponent(q || "")}`)
-  return pairs.flatMap(pair => pair.copy ? [pair.original, pair.copy] : [pair.original])
+// [{ original, copy }] — each report with its Inspection Report 2 copy (or null),
+// newest first. copiesOnly: only reports that have a copy, newest copy first.
+export function listReportPairs(token, q, page = 0, { copiesOnly = false } = {}) {
+  const query = `limit=100&offset=${page * 100}&q=${encodeURIComponent(q || "")}${copiesOnly ? "&copies_only=true" : ""}`
+  return apiRequest(`/reports/copies?${query}`, { token })
 }
 
 // Opens the PDF in the browser's viewer (a normal link, authenticated by the session cookie).
 export function reportViewUrl(reportId) {
   return `${BASE_URL}/reports/${reportId}/view`
+}
+
+// A role with the Approve tick approves a pending report before the owner checks it.
+export function approveReport(token, reportId) {
+  return apiRequest(`/reports/${reportId}/approve`, { method: "PATCH", token })
 }

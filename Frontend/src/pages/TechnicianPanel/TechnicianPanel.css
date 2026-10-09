@@ -457,6 +457,39 @@
   width: 100%;
 }
 
+/* Editing a report: the form covers the content area (not the sidebar) and
+   scrolls by itself; the page behind doesn't scroll. */
+.tp-edit-panel {
+  position: fixed;
+  inset: 0;
+  left: 250px;
+  /* Above the sticky hero (50), below the mobile sidebar and its backdrop (55, 60). */
+  z-index: 52;
+  background: var(--tp-page-bg);
+  padding: 20px 24px;
+  display: flex;
+}
+.tp-edit-panel .tp-inspection-form {
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-bottom: 0;
+}
+.tp-edit-panel .tp-inspection-form > .tp-card-head {
+  position: sticky;
+  top: -20px;
+  margin-top: -20px;
+  padding: 20px 0 12px;
+  background: var(--tp-card-bg);
+  z-index: 2;
+}
+@media (max-width: 1300px) {
+  .tp-edit-panel { left: 230px; }
+}
+@media (max-width: 900px) {
+  .tp-edit-panel { left: 0; padding: 12px; }
+}
+
 .tp-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -571,6 +604,8 @@
   line-height: 1;
 }
 .tp-form-close:hover { color: var(--tp-text-1); }
+.tp-form-head-actions { display: flex; align-items: center; gap: 14px; }
+.tp-form-head-submit { padding: 8px 16px; font-size: 13.5px; }
 
 .tp-form-section {
   margin-bottom: 20px;
@@ -1267,3 +1302,53 @@ input[type="file"]:disabled::file-selector-button {
 @media (max-width: 640px) {
   .rc-panel { top: 10px; right: 10px; bottom: 10px; }
 }
+
+/* ---------- Pass/Fail radios (phone + tablet) ---------- */
+.tp-status-radios { display: none; }
+@media (max-width: 1024px) {
+  .tp-status-select { display: none; }
+  .tp-status-radios { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tp-status-radio {
+    flex: 1 1 0;
+    min-width: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--tp-border, #d1d5db);
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .tp-status-radio input { width: auto; margin: 0; accent-color: #3b43f0; }
+  .tp-status-radio.is-checked { border-color: #3b43f0; background: rgba(59, 67, 240, 0.08); }
+}
+
+/* ---------- Vehicle condition diagram editor ---------- */
+.tp-diagram-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.tp-diagram-swatch {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+  border: 1px solid var(--tp-border); border-radius: 999px; background: #fff;
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+.tp-diagram-swatch i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+.tp-diagram-swatch input[type="color"] { width: 22px; height: 22px; padding: 0; border: none; background: none; }
+.tp-diagram-swatch.is-active { border-color: #3b43f0; box-shadow: 0 0 0 2px rgba(59, 67, 240, 0.25); }
+.tp-diagram-size { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.tp-diagram-size input { width: 90px; padding: 0; }
+.tp-diagram-stage { position: relative; width: 100%; max-width: 900px; aspect-ratio: 1000 / 637; border: 1px solid var(--tp-border); border-radius: 12px; background: #fff; overflow: hidden; }
+.tp-diagram-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tp-diagram-stage canvas:last-child { touch-action: none; cursor: crosshair; }
+
+.tp-reference-image { display: block; width: 100%; max-width: 420px; border-radius: 8px; border: 1px solid var(--tp-border); }
+
+/* "Approved by: CEO – name · Accountant – name" under a report or client profile. */
+.tp-approved-by {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--tp-green);
+}
+.tp-approved-by-label { font-weight: 700; }

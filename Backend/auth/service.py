@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from activity.service import ActivityLogService
-from auth.model import AuthSession, ResetChallenge, PasswordReset, User, UserRole, is_owner_level
+from auth.model import AuthSession, ResetChallenge, PasswordReset, User, UserRole
 from core.rate_limit import consume
 from auth.repository import UserRepository
 from auth.schema import ChangePasswordRequest, LoginRequest, TokenResponse, UserCreateRequest
@@ -49,12 +49,14 @@ class AuthService:
         token = create_access_token(subject=str(user.id), extra_claims={"role": user.role.value, "pwd": password_version(user.hashed_password), "sid": str(session.id)})
         return TokenResponse(access_token=token, user=user)
 
+    def _require_account_manager(self, current_user: User) -> None:
+        from permissions.service import PermissionService
+
+        if "accounts.manage" not in PermissionService(self.db).for_user(current_user):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have access to manage accounts.")
+
     def create_staff_or_technician(self, payload: UserCreateRequest, current_user: User) -> User:
-        if not is_owner_level(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the owner or CEO can create accounts.",
-            )
+        self._require_account_manager(current_user)
         if payload.role == UserRole.owner:
             raise HTTPException(400, "Owner accounts cannot be created through this endpoint.")
 
@@ -80,19 +82,11 @@ class AuthService:
         return new_user
 
     def list_users(self, current_user: User) -> list[User]:
-        if not is_owner_level(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the owner or CEO can view all accounts.",
-            )
+        self._require_account_manager(current_user)
         return self.repository.list_all()
 
     def set_account_active(self, user_id, is_active: bool, current_user: User) -> User:
-        if not is_owner_level(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the owner or CEO can update account status.",
-            )
+        self._require_account_manager(current_user)
         target = self.db.scalar(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))
         if not target:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found.")
@@ -111,14 +105,11 @@ class AuthService:
             entity_id=updated.id,
             description=f"{'Activated' if is_active else 'Deactivated'} account for {updated.full_name} ({updated.email})",
         )
+        self._advance_client_profiles()
         return updated
 
     def delete_account(self, user_id, current_user: User) -> None:
-        if not is_owner_level(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the owner or CEO can delete accounts.",
-            )
+        self._require_account_manager(current_user)
         target = self.db.scalar(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))
         if not target:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found.")
@@ -143,6 +134,14 @@ class AuthService:
             entity_id=user_id,
             description=description,
         )
+        self._advance_client_profiles()
+
+    def _advance_client_profiles(self):
+        # A deactivated or deleted approver may have been the last one for their
+        # role; profiles waiting only on that role move on to the owner.
+        from clients.service import ClientProfileService
+
+        ClientProfileService(self.db).advance_ready_profiles()
 
     def change_password(self, payload: ChangePasswordRequest, current_user: User) -> User:
         consume(self.db, "password-change-user", str(current_user.id), 5, 300)

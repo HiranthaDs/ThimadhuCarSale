@@ -1,7 +1,27 @@
+import batteryVoltageChart from "../../../assets/battery-voltage-chart.png"
+
 // Schema describing every section/field of the Thimadu Vehicle Inspection Report.
-// Field types: text, number, date, textarea, status (Pass/Fail/N/A), yesno, select,
+// Field types: reference (a fixed picture shown for the technician, nothing to enter), diagram (editable car drawing, stored as a PNG data URL plus a `<key>Marks` layer), text, number, date, datetime (calendar + time, stored as "YYYY-MM-DDTHH:mm"), textarea, status (Pass/Fail/N/A), yesno, select,
 // multiphoto (up to MAX_PHOTOS_PER_FIELD images), file (a single image/PDF attachment)
 const STATUS_OPTS = ["Pass", "Fail", "N/A"]
+
+// Paint thickness used to be eleven separate photo fields, one per panel.
+// They are now a single bulk upload; reports saved before that are merged
+// into it (in this panel order) when they are opened.
+const PAINT_THICKNESS_MAX_PHOTOS = 150
+const LEGACY_PAINT_THICKNESS_KEYS = [
+  "hoodPaintThickness",
+  "roofPaintThickness",
+  "leftFrontFenderPaint",
+  "leftFrontDoorPaint",
+  "leftRearDoorPaint",
+  "leftBackFenderPaint",
+  "trunkDoorPaint",
+  "rightFrontFenderPaint",
+  "rightFrontDoorPaint",
+  "rightRearDoorPaint",
+  "rightRearFenderPaint",
+]
 
 export const SECTIONS = [
   {
@@ -23,7 +43,7 @@ export const SECTIONS = [
       { key: "fuelType", label: "Fuel Type", type: "select", options: ["Petrol", "Diesel", "Hybrid", "Electric"] },
       { key: "color", label: "Color", type: "text" },
       { key: "mileage", label: "Mileage", type: "number" },
-      { key: "vehiclePhoto", label: "Vehicle Photo", type: "multiphoto" },
+      { key: "vehiclePhoto", label: "Mileage Photo", type: "multiphoto" },
       { key: "vin", label: "Vehicle Identification Number (VIN)", type: "text" },
       { key: "engineNumber", label: "Engine Number", type: "text" },
       { key: "engineCapacity", label: "Engine Capacity", type: "text" },
@@ -42,8 +62,9 @@ export const SECTIONS = [
       { key: "vehicleBook", label: "Vehicle Book", type: "status" },
       { key: "vehicleBookPhoto", label: "Vehicle Book Photo", type: "multiphoto" },
       { key: "vehicleBookSignature", label: "Vehicle Book Commissioners True Signature", type: "status" },
-      { key: "vehicleRevenueLicense", label: "Vehicle Revenue License", type: "text" },
-      { key: "vehicleInsurance", label: "Vehicle Insurance", type: "text" },
+      { key: "vehicleRevenueLicense", label: "Vehicle Revenue License", type: "status" },
+      { key: "vehicleRevenueLicensePhoto", label: "Vehicle Revenue License Photo", type: "multiphoto" },
+      { key: "vehicleInsurance", label: "Vehicle Insurance", type: "status" },
       { key: "owners", label: "Owners", type: "number" },
       { key: "numberOfSeats", label: "Number of Seats", type: "number" },
       { key: "numberOfDoors", label: "Number of Doors", type: "number" },
@@ -57,8 +78,7 @@ export const SECTIONS = [
     fields: [
       { key: "vinMatch", label: "Vehicle Identification Number (VIN) Match", type: "status" },
       { key: "vinMatchPhoto", label: "VIN Match Photo", type: "multiphoto" },
-      { key: "scheduledMaintenance", label: "Scheduled Maintenance Performed", type: "text" },
-      { key: "vehicleEmissionTest", label: "Vehicle Emission Test", type: "text" },
+      { key: "scheduledMaintenance", label: "Scheduled Maintenance Performed", type: "status" },
     ],
   },
   {
@@ -66,7 +86,7 @@ export const SECTIONS = [
     fields: [
       { key: "exteriorInstructions", label: "Instructions", type: "textarea" },
       { key: "hasDamages", label: "Was there any damages on the vehicle?", type: "yesno" },
-      { key: "vehicleConditionDiagram", label: "Vehicle Condition Diagram", type: "multiphoto" },
+      { key: "vehicleConditionDiagram", label: "Vehicle Condition Diagram", type: "diagram" },
       { key: "damageDiagramNote", label: "Repainted/Faded/Scratches/Chips/Dents (areas)", type: "textarea" },
       { key: "damagePhotos", label: "Repainted/Faded/Scratches/Chips/Dents Photos", type: "multiphoto" },
       { key: "frontEndLights", label: "Front-End Exterior Lights", type: "status" },
@@ -94,17 +114,8 @@ export const SECTIONS = [
       { key: "tailgateInspection", label: "Tailgate Inspection/Alignment", type: "status" },
       { key: "roofInspection", label: "Roof Inspection", type: "status" },
       { key: "hasPaintGauge", label: "Inspector has a gauge for measuring paint thickness?", type: "yesno" },
-      { key: "hoodPaintThickness", label: "Hood Paint Thickness", type: "multiphoto" },
-      { key: "roofPaintThickness", label: "Roof Paint Thickness", type: "multiphoto" },
-      { key: "leftFrontFenderPaint", label: "Left Front Fender Paint Thickness", type: "multiphoto" },
-      { key: "leftFrontDoorPaint", label: "Left Front Door Paint Thickness", type: "multiphoto" },
-      { key: "leftRearDoorPaint", label: "Left Rear Door Paint Thickness", type: "multiphoto" },
-      { key: "leftBackFenderPaint", label: "Left Back Fender Paint Thickness", type: "multiphoto" },
-      { key: "trunkDoorPaint", label: "Trunk Door Paint Thickness", type: "multiphoto" },
-      { key: "rightFrontFenderPaint", label: "Right Front Fender Paint Thickness", type: "multiphoto" },
-      { key: "rightFrontDoorPaint", label: "Right Front Door Paint Thickness", type: "multiphoto" },
-      { key: "rightRearDoorPaint", label: "Right Rear Door Paint Thickness", type: "multiphoto" },
-      { key: "rightRearFenderPaint", label: "Right Rear Fender Paint Thickness", type: "multiphoto" },
+      // One bulk upload for every panel (hood, roof, fenders, doors, trunk).
+      { key: "paintThicknessPhotos", label: "Paint Thickness Photos", type: "multiphoto", max: PAINT_THICKNESS_MAX_PHOTOS, hiddenWhen: { key: "hasPaintGauge", equals: "No" } },
       { key: "hoodReleaseMechanism", label: "Hood Release Mechanisms Operate Properly", type: "status" },
       { key: "hoodHinges", label: "Hood Hinges Operate Properly", type: "status" },
       { key: "hoodPropRod", label: "Hood Prop Rod/Gas Struts Operate Properly", type: "status" },
@@ -113,6 +124,8 @@ export const SECTIONS = [
       { key: "powerLiftgate", label: "Power Liftgate Operation", type: "status" },
       { key: "trimInspection", label: "Trim Inspection", type: "status" },
       { key: "roofRackInspection", label: "Roof Rack Inspection", type: "status" },
+      { key: "windscreenGlassInspection", label: "Windscreen Glass Inspection", type: "status" },
+      { key: "windscreenGlassPhotos", label: "Windscreen Glass Photos", type: "multiphoto" },
       { key: "sideGlassInspection", label: "Side Glass Inspection", type: "status" },
       { key: "rearWindowGlassInspection", label: "Rear Window/Tailgate Glass Inspection", type: "status" },
       { key: "rearWindowGlassPhoto", label: "Rear Window/Tailgate Glass Photo", type: "multiphoto" },
@@ -197,7 +210,7 @@ export const SECTIONS = [
     title: "Vehicle Diagnostics (Scanning)",
     fields: [
       { key: "diagnosticSelfTest", label: "Perform Self Test For All Continuous Memory Diagnostic Trouble Code", type: "status" },
-      { key: "diagnosticDate", label: "Diagnostic Date/Time", type: "text" },
+      { key: "diagnosticDate", label: "Diagnostic Date/Time", type: "datetime" },
       { key: "scanPhotos", label: "Vehicle Scanning Photos", type: "multiphoto" },
       { key: "scanReportFile", label: "Scan Report PDF", type: "file" },
       { key: "errorCodesReasons", label: "Error Codes & Reasons", type: "text" },
@@ -225,8 +238,6 @@ export const SECTIONS = [
     fields: [
       { key: "engineCondition", label: "Engine Condition", type: "status" },
       { key: "engineBayPhoto", label: "Engine Bay Photo", type: "multiphoto" },
-      { key: "engineCombustionLeakTest", label: "Engine Combustion Leak Test", type: "status" },
-      { key: "engineCombustionLeakTestPhotos", label: "Engine Combustion Leak Test Photos", type: "multiphoto" },
       { key: "engineOilCondition", label: "Engine Oil Condition", type: "status" },
       { key: "engineOilPhoto", label: "Engine Oil Dipstick Photo", type: "multiphoto" },
       { key: "engineSludgeCoolant", label: "Engine Sludge, Water or Engine Coolant in Oil", type: "status" },
@@ -236,11 +247,12 @@ export const SECTIONS = [
       { key: "brakeFluidCondition", label: "Brake Fluid Condition", type: "status" },
       { key: "brakeFluidPhoto", label: "Brake Fluid Tester Photo", type: "multiphoto" },
       { key: "airFilter", label: "Air Filter", type: "status" },
-      { key: "cabinFilter", label: "Cabin Filter", type: "text" },
+      { key: "cabinFilter", label: "Cabin Filter", type: "status" },
       { key: "autoTransmissionFluid", label: "Automatic Transmission Fluid", type: "status" },
       { key: "powerSteeringFluid", label: "Power Steering Fluid", type: "status" },
       { key: "washerFluid", label: "Washer Fluid", type: "status" },
       { key: "fluidLeaks", label: "Fluid Leaks", type: "status" },
+      { key: "fluidLeaksPhotos", label: "Fluid Leaks Photos", type: "multiphoto", shownWhen: { key: "fluidLeaks", equals: "Fail" } },
       { key: "hosesLinesFittings", label: "Hoses, Lines and Fittings", type: "status" },
       { key: "belts", label: "Belts", type: "status" },
       { key: "wiring", label: "Wiring", type: "status" },
@@ -254,7 +266,7 @@ export const SECTIONS = [
       { key: "fuelPumpNoise", label: "Fuel Pump Noise/Pressure Normal", type: "status" },
       { key: "starterMotorOperation", label: "Starter Motor Operation", type: "status" },
       { key: "ignitionSystem", label: "Ignition System", type: "status" },
-      { key: "batteryVoltageChart", label: "Battery Voltage Chart", type: "multiphoto" },
+      { key: "batteryVoltageChart", label: "Battery Voltage Chart", type: "reference", image: batteryVoltageChart },
       { key: "batteryCondition", label: "12V Battery Condition", type: "status" },
       { key: "batteryPhoto", label: "12V Battery Photo", type: "multiphoto" },
       { key: "batteryTerminals", label: "Battery Terminals", type: "status" },
@@ -326,10 +338,7 @@ export const SECTIONS = [
     title: "Technician Comment",
     fields: [
       { key: "technicianComments", label: "Technicians Comments", type: "textarea" },
-      { key: "damagesMissingComponents", label: "Damages & Missing Components", type: "textarea" },
-      { key: "damagesPhotos", label: "Damages & Missing Components Photos", type: "multiphoto" },
       { key: "recommendations", label: "Recommendations", type: "textarea" },
-      { key: "note", label: "Note", type: "textarea" },
       { key: "marketPriceValuation", label: "Market Price Valuation", type: "text" },
     ],
   },
@@ -362,6 +371,13 @@ export const STATUS_OPTIONS = STATUS_OPTS
 export const MAX_PHOTOS_PER_FIELD = 60
 
 // Older reports stored some photo fields as a single data URL string.
+// A field with `hiddenWhen` is left out of the form and report while another answer matches;
+// one with `shownWhen` only appears while another answer matches.
+export function isFieldVisible(field, data) {
+  if (field.shownWhen && data?.[field.shownWhen.key] !== field.shownWhen.equals) return false
+  return !field.hiddenWhen || data?.[field.hiddenWhen.key] !== field.hiddenWhen.equals
+}
+
 export function toPhotoList(value) {
   if (Array.isArray(value)) return value
   return value ? [value] : []
@@ -370,9 +386,15 @@ export function toPhotoList(value) {
 // Merge saved form data over a blank form, upgrading old single-photo values to lists.
 export function withDefaults(saved) {
   const data = { ...buildInitialData(), ...(saved || {}) }
+  const legacyPaint = LEGACY_PAINT_THICKNESS_KEYS.flatMap((key) => toPhotoList(data[key]))
+  LEGACY_PAINT_THICKNESS_KEYS.forEach((key) => delete data[key])
+  // Every older photo is kept, even past the limit (more just can't be added).
+  if (legacyPaint.length) data.paintThicknessPhotos = [...toPhotoList(data.paintThicknessPhotos), ...legacyPaint]
   SECTIONS.forEach((section) => {
     section.fields.forEach((field) => {
       if (field.type === "multiphoto") data[field.key] = toPhotoList(data[field.key])
+      // Diagrams used to be uploaded photos (lists); keep the first one as the picture.
+      if (field.type === "diagram" && Array.isArray(data[field.key])) data[field.key] = data[field.key][0] || ""
     })
   })
   return data
@@ -385,6 +407,7 @@ export function buildInitialData() {
       if (field.type === "multiphoto") data[field.key] = []
       else data[field.key] = field.default ?? ""
       if (field.type === "status") data[`${field.key}Reason`] = ""
+      if (field.type === "diagram") data[`${field.key}Marks`] = ""
     })
   })
   return data

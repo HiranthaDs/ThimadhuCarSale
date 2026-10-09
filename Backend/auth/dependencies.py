@@ -8,7 +8,7 @@ from core.rate_limit import consume
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from auth.model import AuthSession, User, UserRole, is_owner_level
+from auth.model import AuthSession, User, UserRole
 from auth.repository import UserRepository
 from core.database import get_db
 from core.security import decode_access_token, password_version
@@ -55,22 +55,28 @@ def get_current_user(
 
 
 def require_owner(current_user: User = Depends(get_current_user)) -> User:
-    # The CEO has the same access as the owner.
-    if not is_owner_level(current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Owner or CEO access required.")
+    # Only the owner — the CEO's access is set by the owner in Customize.
+    if current_user.role != UserRole.owner:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Owner access required.")
     return current_user
 
 
-def require_roles(*roles: UserRole):
-    def dependency(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.role not in roles:
+def require_permission(*keys: str):
+    """Allow the request if the user has any of `keys` (see permissions.catalog).
+    The owner always passes; everyone else gets what the owner ticked in Customize.
+    The user's full permission set is kept on request.state.permissions."""
+    def dependency(request: Request = None, current_user: User = Depends(get_current_user),
+                   db: Session = Depends(get_db)) -> User:
+        from permissions.service import PermissionService
+
+        permissions = PermissionService(db).for_user(current_user)
+        if request is not None:
+            request.state.permissions = permissions
+        if not permissions & set(keys):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have access to this resource.")
         return current_user
 
     return dependency
-
-
-require_owner_ceo_accountant = require_roles(UserRole.owner, UserRole.ceo, UserRole.accountant)
 
 
 def require_origin(request: Request):

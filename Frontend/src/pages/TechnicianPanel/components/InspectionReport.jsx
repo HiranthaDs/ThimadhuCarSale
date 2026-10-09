@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react"
-import { SECTIONS, toPhotoList } from "./inspectionSchema"
+import { SECTIONS, isFieldVisible, toPhotoList } from "./inspectionSchema"
 import { replaceReportPdf, reportViewUrl, uploadReportPdf } from "../../../api/reports"
-import { PDF_MARGIN, PDF_SCALE, imagesLoaded, paginateForPdf, pdfPageGeometry } from "./paginateReport"
+import { renderReportPdf } from "./renderReportPdf"
 import reportLogo from "../../../assets/logo-light.png"
 
 function FieldValue({ field, value }) {
@@ -16,6 +16,13 @@ function FieldValue({ field, value }) {
     }
     return <img className="ir-photo" src={value} alt={field.label} />
   }
+  if (field.type === "reference") {
+    return <img className="ir-photo" src={field.image} alt={field.label} />
+  }
+  if (field.type === "diagram") {
+    if (!value) return <span className="ir-empty">—</span>
+    return <img className="ir-photo" src={value} alt={field.label} />
+  }
   if (field.type === "multiphoto") {
     const photos = toPhotoList(value)
     if (photos.length === 0) return <span className="ir-empty">—</span>
@@ -28,6 +35,10 @@ function FieldValue({ field, value }) {
     )
   }
   if (!value) return <span className="ir-empty">—</span>
+  if (field.type === "datetime") {
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/.exec(value)
+    return <span>{m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}` : value}</span>
+  }
   return <span>{value}</span>
 }
 
@@ -37,6 +48,7 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
   const [uploading, setUploading] = useState(false)
   const [uploadedUrl, setUploadedUrl] = useState(null)
   const [uploadError, setUploadError] = useState(null)
+  const [progress, setProgress] = useState("")
 
   const today = new Date().toLocaleString("en-US", {
     year: "numeric",
@@ -61,6 +73,7 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
     if (!pageRef.current) return
     setUploading(true)
     setUploadError(null)
+    setProgress("")
     try {
       if (document.fonts?.ready) {
         await document.fonts.ready
@@ -75,63 +88,11 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
         })
       }
 
-      // Reserve room at the top/bottom of every page for the header and
-      // footer band drawn below; the in-DOM .ir-header is only there for
-      // on-screen viewing and browser Print, so it's hidden for this capture.
-      const { default: html2pdf } = await import("html2pdf.js")
-      const pdf = await html2pdf()
-        .set({
-          margin: PDF_MARGIN,
-          filename: "inspection-report.pdf",
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: {
-            scale: PDF_SCALE,
-            useCORS: true,
-            // html2canvas renders the page inside its own cloned iframe, which
-            // doesn't inherit the live document's CSS custom properties
-            // (var(--tp-navy) etc.) reliably and has to re-fetch the Inter
-            // webfont on its own — so without forcing plain values here it
-            // silently falls back to the browser's default serif font and
-            // black headings, unlike the on-screen report.
-            onclone: async (clonedDoc) => {
-              const style = clonedDoc.createElement("style")
-              style.textContent = `
-                .ir-page, .ir-page * {
-                  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-                }
-                .ir-header { display: none !important; }
-                .ir-title { color: #141c2e !important; margin-top: 0 !important; }
-                .ir-section-title { color: #1a56db !important; }
-                .ir-table, .ir-table th, .ir-table td {
-                  border: 1px solid #c7cbd6 !important;
-                  border-collapse: collapse !important;
-                }
-                .ir-table th { background: #fafafa !important; }
-              `
-              clonedDoc.head.appendChild(style)
-              if (clonedDoc.fonts?.ready) {
-                await clonedDoc.fonts.ready
-              }
-
-              // Lay the pages out here, on the very DOM that is about to be
-              // drawn (html2pdf's own page-break pass is switched off below):
-              // rows, photos and titles that would straddle a page boundary
-              // move whole to the next page.
-              const container = clonedDoc.querySelector(".html2pdf__container")
-              if (container) {
-                const { widthPx, pagePx } = pdfPageGeometry()
-                container.style.width = `${widthPx}px`
-                await imagesLoaded(container)
-                paginateForPdf(container, pagePx)
-              }
-            },
-          },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak: { mode: [] },
-        })
-        .from(pageRef.current)
-        .toPdf()
-        .get("pdf")
+      // Margins leave room for the header and footer drawn on every page
+      // below; the in-DOM .ir-header is only for on-screen viewing and Print.
+      const pdf = await renderReportPdf(pageRef.current, {
+        onProgress: (page, total) => setProgress(`preparing PDF, page ${page} of ${total} — ${Math.round((page / total) * 100)}%`),
+      })
 
       const pageWidth = pdf.internal.pageSize.getWidth()
       const pageHeight = pdf.internal.pageSize.getHeight()
@@ -172,9 +133,10 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
       const file = new File([blob], fileName, { type: "application/pdf" })
       const buyerName = [data.buyerFirstName, data.buyerLastName].filter(Boolean).join(" ")
       const meta = { registrationNumber, vehicleTitle, buyerName, formData: data }
+      const onUploadProgress = (fraction) => setProgress(`uploading ${Math.min(100, Math.round(fraction * 100))}%`)
       const result = reportId
-        ? await replaceReportPdf(token, reportId, file, meta)
-        : await uploadReportPdf(token, file, meta)
+        ? await replaceReportPdf(token, reportId, file, meta, onUploadProgress)
+        : await uploadReportPdf(token, file, meta, onUploadProgress)
       setUploadedUrl(reportViewUrl(result.id))
       onSaved?.(result)
     } catch (err) {
@@ -201,7 +163,7 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
           Print / Save as PDF
         </button>
 
-        {uploading && <span className="ir-cloud-status">Saving to cloud…</span>}
+        {uploading && <span className="ir-cloud-status">Saving to cloud…{progress && ` (${progress})`}</span>}
 
         {!uploading && uploadedUrl && (
           <a className="ir-cloud-link" href={uploadedUrl} target="_blank" rel="noreferrer">
@@ -239,7 +201,7 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
             <table className="ir-table">
               <tbody>
                 {section.fields
-                  .filter((field) => field.key !== "legalText")
+                  .filter((field) => field.key !== "legalText" && isFieldVisible(field, data))
                   .map((field) => (
                   <Fragment key={field.key}>
                     <tr>

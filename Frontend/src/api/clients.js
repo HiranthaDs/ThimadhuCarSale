@@ -4,8 +4,9 @@ export function createClientProfile(token, payload) {
   return apiRequest("/clients/", { method: "POST", token, body: payload })
 }
 
-export function listClientProfiles(token, q, page = 0, status) {
-  const query = `?limit=200&offset=${page * 200}&q=${encodeURIComponent(q || "")}${status ? `&status=${encodeURIComponent(status)}` : ""}`
+// awaitingMe: only the profiles waiting for the signed-in user's approval.
+export function listClientProfiles(token, q, page = 0, { awaitingMe = false } = {}) {
+  const query = `?limit=200&offset=${page * 200}&q=${encodeURIComponent(q || "")}${awaitingMe ? "&awaiting_me=true" : ""}`
   return apiRequest(`/clients/${query}`, { token })
 }
 

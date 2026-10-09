@@ -1,0 +1,67 @@
+.cz-card { max-width: 780px; }
+.cz-sub { font-size: 12.5px; margin-top: 4px; }
+.cz-table th.cz-role { text-align: center; }
+.cz-section td {
+  background: #e8effd;
+  border-left: 3px solid var(--tp-red);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tp-red);
+  padding: 9px 10px;
+}
+.cz-check { text-align: center; }
+.cz-check input {
+  width: 17px;
+  height: 17px;
+  cursor: pointer;
+  accent-color: var(--tp-red);
+}
+.cz-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+.cz-actions .tp-form-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+@media (max-width: 700px) {
+  .cz-actions { flex-direction: column-reverse; }
+}
+.cz-row-action { text-align: right; white-space: nowrap; }
+.cz-back {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tp-red);
+  cursor: pointer;
+}
+.cz-back:hover { text-decoration: underline; }
+.cz-reset { margin-right: auto; }
+@media (max-width: 700px) {
+  .cz-reset { margin-right: 0; }
+}
+.cz-unlock-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #d9dde5;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  color: #141c2e;
+  background: #fff;
+}
+.cz-unlock-input:focus {
+  outline: none;
+  border-color: #1a56db;
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+}
+.cz-unlock-msg { margin: 0 0 12px; text-align: left; }
+.cz-unlock-input + .cz-unlock-msg { margin: 12px 0 0; }
+.cz-unlock-actions { margin-top: 18px; }
+.cz-unlock-actions .cd-btn:disabled { opacity: 0.6; cursor: not-allowed; }

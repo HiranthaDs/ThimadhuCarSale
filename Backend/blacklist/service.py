@@ -42,7 +42,7 @@ class VehicleBlacklistService:
             action="blacklist.create",
             entity_type="vehicle_blacklist",
             entity_id=entry.id,
-            description=f"Added vehicle {entry.vehicle_number or entry.chassis_number} to the blacklist",
+            description=f"Added vehicle {entry.vehicle_number or "vehicle"} to the blacklist",
         )
         return entry
 
@@ -68,13 +68,13 @@ class VehicleBlacklistService:
             action="blacklist.update",
             entity_type="vehicle_blacklist",
             entity_id=entry.id,
-            description=f"Updated blacklisted vehicle {entry.vehicle_number or entry.chassis_number}",
+            description=f"Updated blacklisted vehicle {entry.vehicle_number or "vehicle"}",
         )
         return entry
 
     def delete(self, entry_id: uuid.UUID, current_user: User):
         entry = self.get(entry_id)
-        vehicle_label = entry.vehicle_number or entry.chassis_number
+        vehicle_label = entry.vehicle_number or "vehicle"
         image_urls = [img.image for img in entry.images]
         self.repository.delete(entry)
         for url in image_urls:

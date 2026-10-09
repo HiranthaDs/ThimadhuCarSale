@@ -1,7 +1,7 @@
 export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
-export async function apiRequest(path, { method = "GET", body } = {}) {
-  const headers = { "Content-Type": "application/json" }
+export async function apiRequest(path, { method = "GET", body, headers: extraHeaders } = {}) {
+  const headers = { "Content-Type": "application/json", ...extraHeaders }
 
   let response
   try {
@@ -35,7 +35,9 @@ export async function apiRequest(path, { method = "GET", body } = {}) {
       // the UI running against a dead session.
       window.dispatchEvent(new CustomEvent("thimadu:unauthorized"))
     }
-    throw new Error(typeof message === "string" ? message : "Request failed")
+    const error = new Error(typeof message === "string" ? message : "Request failed")
+    error.status = response.status
+    throw error
   }
 
   return data

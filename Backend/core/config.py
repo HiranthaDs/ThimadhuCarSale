@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = Field(default=60, ge=5, le=120)
+    access_token_expire_minutes: int = Field(default=300, ge=5, le=480)
     cookie_secure: bool = True
     cookie_samesite: Literal["lax", "strict", "none"] = "none"
     api_root_path: str = ""
@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     auto_migrate: bool = False
     private_download_seconds: int = Field(default=900, ge=60, le=3600)
     max_file_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=10 * 1024 * 1024)
+    # Inspection report PDFs: 40-70 pages at ~0.4 MB a page, so far above the per-file cap.
+    max_report_pdf_bytes: int = Field(default=60 * 1024 * 1024, ge=1024, le=100 * 1024 * 1024)
     blocking_worker_threads: int = Field(default=8, ge=2, le=32)
 
     owner_bootstrap_email: str = ""
@@ -50,7 +52,7 @@ class Settings(BaseSettings):
     # Hard cap on request bodies (mainly inspection-report photo uploads), to
     # stop a single request from exhausting server memory. 30MB comfortably
     # covers a report with dozens of compressed photos.
-    max_request_body_bytes: int = 30 * 1024 * 1024
+    max_request_body_bytes: int = 64 * 1024 * 1024
 
     # Choose SMTP or the Brevo HTTPS API. Credentials stay on the backend.
     email_provider: Literal["brevo_api", "smtp"] = "brevo_api"

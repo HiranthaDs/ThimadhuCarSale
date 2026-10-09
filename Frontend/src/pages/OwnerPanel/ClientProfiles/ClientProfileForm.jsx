@@ -1,18 +1,11 @@
 import { useEffect, useRef, useState } from "react"
 import { createClientProfile, listAllScanReports, updateClientProfile } from "../../../api/clients"
+import { confirmCloseForm, confirmDiscard, useUnsavedChanges } from "../../../components/unsavedChanges"
 import { TABS, buildSubmitPayload, initialFormState, mapProfileToForm, validateClientTypes } from "./clientProfileSchema"
 import { COUNTRIES } from "./countries"
 import { isSafeMediaUrl } from "../../../utils/safeUrl"
+import { compressImage, prepareUpload } from "../../../utils/image"
 import DatePicker from "../../../components/DatePicker"
-
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
 
 function TextField({ label, value, onChange, type = "text", required, placeholder }) {
   if (type === "date") {
@@ -148,6 +141,79 @@ function RadioField({ label, value, onChange, options }) {
   )
 }
 
+// A document field holds one image as a plain string, several as a JSON array string
+// (the backend stores and validates it the same way).
+function parseImages(value) {
+  if (!value) return []
+  if (typeof value === "string" && value.startsWith("[")) {
+    try {
+      const items = JSON.parse(value)
+      if (Array.isArray(items)) return items.filter(Boolean)
+    } catch { /* fall through: treat as a single image */ }
+  }
+  return [value]
+}
+
+function packImages(items) {
+  if (items.length === 0) return ""
+  return items.length === 1 ? items[0] : JSON.stringify(items)
+}
+
+// Several images in one field, up to `max`. Keep `max` in step with MULTI_IMAGE_LIMITS in Backend/core/media.py.
+function MultiImageField({ label, value, onChange, max, full }) {
+  const images = parseImages(value)
+  const remaining = max - images.length
+  const [adding, setAdding] = useState(false)
+  const [notice, setNotice] = useState("")
+
+  async function handleFiles(e) {
+    const picked = Array.from(e.target.files || [])
+    e.target.value = ""
+    if (picked.length === 0) return
+    const accepted = picked.slice(0, Math.max(remaining, 0))
+    setNotice(accepted.length < picked.length ? `Only ${max} image${max === 1 ? "" : "s"} allowed here — ${picked.length - accepted.length} not added.` : "")
+    if (accepted.length === 0) return
+    setAdding(true)
+    try {
+      const urls = await Promise.all(accepted.map(compressImage))
+      onChange(packImages([...images, ...urls]))
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  return (
+    <div className={`tp-form-group${full ? " tp-form-group-full" : ""}`}>
+      <span>
+        {label} <small className="tp-photo-count">({images.length}/{max})</small>
+      </span>
+      <input type="file" accept="image/*" multiple={max > 1} disabled={remaining <= 0 || adding} onChange={handleFiles} />
+      {adding && <small className="tp-muted">Adding images…</small>}
+      {notice && <small className="tp-photo-notice">{notice}</small>}
+      {images.length > 0 && (
+        <div className="tp-form-photo-strip">
+          {images.map((src, i) => (
+            <div key={i} className="tp-photo-thumb">
+              <img src={src} alt={label} />
+              <button
+                type="button"
+                className="tp-photo-remove"
+                aria-label="Remove image"
+                onClick={() => {
+                  setNotice("")
+                  onChange(packImages(images.filter((_, idx) => idx !== i)))
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ImageField({ label, value, onChange, full }) {
   return (
     <label className={`tp-form-group${full ? " tp-form-group-full" : ""}`}>
@@ -158,7 +224,7 @@ function ImageField({ label, value, onChange, full }) {
         onChange={async (e) => {
           const file = e.target.files?.[0]
           if (!file) return
-          onChange(await fileToDataUrl(file))
+          onChange(await compressImage(file))
         }}
       />
       {value && (
@@ -170,27 +236,60 @@ function ImageField({ label, value, onChange, full }) {
   )
 }
 
-function FileField({ label, value, onChange, full }) {
+// A PDF or image upload. A freshly picked file is still a data: URL, which browsers
+// refuse to open in a new tab, so it is previewed through a temporary blob: URL
+// until the profile is saved (the backend then returns a signed R2 link).
+function FileField({ label, value, onChange, full, readOnly }) {
+  const [picked, setPicked] = useState(null)
+
+  useEffect(() => {
+    if (!picked) return
+    return () => URL.revokeObjectURL(picked.url)
+  }, [picked])
+
+  const pickedIsCurrent = picked && picked.dataUrl === value
+  const viewUrl = pickedIsCurrent ? picked.url : value && isSafeMediaUrl(value) ? value : null
+
   return (
-    <label className={`tp-form-group${full ? " tp-form-group-full" : ""}`}>
+    <div className={`tp-form-group${full ? " tp-form-group-full" : ""}`}>
       <span>{label}</span>
-      <input
-        type="file"
-        accept="application/pdf,image/*"
-        onChange={async (e) => {
-          const file = e.target.files?.[0]
-          if (!file) return
-          onChange(await fileToDataUrl(file))
-        }}
-      />
-      {value && isSafeMediaUrl(value) && (
+      {!readOnly && (
+        <input
+          type="file"
+          accept="application/pdf,image/*"
+          onChange={async (e) => {
+            const file = e.target.files?.[0]
+            e.target.value = ""
+            if (!file) return
+            const dataUrl = await prepareUpload(file)
+            setPicked({ url: URL.createObjectURL(file), name: file.name, dataUrl })
+            onChange(dataUrl)
+          }}
+        />
+      )}
+      {value && (
         <div className="cp-scan-report-row">
-          <a href={value} target="_blank" rel="noopener noreferrer" className="tp-form-btn tp-form-btn-secondary">
-            View
-          </a>
+          {pickedIsCurrent && <small className="tp-muted">{picked.name}</small>}
+          {viewUrl && (
+            <a href={viewUrl} target="_blank" rel="noopener noreferrer" className="tp-form-btn tp-form-btn-secondary">
+              View
+            </a>
+          )}
+          {!readOnly && (
+            <button
+              type="button"
+              className="tp-form-btn tp-form-btn-secondary"
+              onClick={() => {
+                setPicked(null)
+                onChange("")
+              }}
+            >
+              Remove
+            </button>
+          )}
         </div>
       )}
-    </label>
+    </div>
   )
 }
 
@@ -300,6 +399,8 @@ const DOCUMENT_KINDS = [
   { key: "other", label: "Other document" },
 ]
 
+const DOCUMENT_IMAGE_LIMITS = { nic: 2, passport: 5, other: 10 }
+
 function DocumentPicker({ prefix, form, set }) {
   const typesKey = `${prefix}_client_document_types`
   const types = form[typesKey]
@@ -330,8 +431,9 @@ function DocumentPicker({ prefix, form, set }) {
             value={form[`${prefix}_client_${d.key}_number`]}
             onChange={(v) => set(`${prefix}_client_${d.key}_number`, v)}
           />
-          <ImageField
+          <MultiImageField
             label={`${d.label} Photo`}
+            max={DOCUMENT_IMAGE_LIMITS[d.key]}
             value={form[`${prefix}_client_${d.key}_image`]}
             onChange={(v) => set(`${prefix}_client_${d.key}_image`, v)}
           />
@@ -345,11 +447,22 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
   const isEdit = Boolean(profile)
   const [activeTab, setActiveTab] = useState("client_details")
   const [form, setForm] = useState(() => (isEdit ? mapProfileToForm(profile) : initialFormState))
+  const [dirty, setDirty] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
+  useUnsavedChanges(dirty && !readOnly, "client profile")
 
   function set(field, value) {
+    setDirty(true)
     setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  async function handleClose() {
+    if (await confirmDiscard()) onClose()
+  }
+
+  async function handleCloseButton() {
+    if (readOnly || (await confirmCloseForm("client profile"))) onClose()
   }
 
   function setExtraDepartment(index, field, value) {
@@ -392,7 +505,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
         <div className="tp-card-title">
           {readOnly ? "View Client Profile" : isEdit ? "Edit Client Profile" : "Create Client Profile"}
         </div>
-        <button type="button" className="tp-form-close" onClick={onClose} aria-label="Close">
+        <button type="button" className="tp-form-close" onClick={handleCloseButton} aria-label="Close">
           ×
         </button>
       </div>
@@ -490,9 +603,10 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
         {activeTab === "document" && (
           <div className="tp-form-section">
             <div className="tp-form-row">
-              <ImageField label="CR Document" value={form.cr_document_image} onChange={(v) => set("cr_document_image", v)} />
-              <ImageField
+              <MultiImageField label="CR Document" max={2} value={form.cr_document_image} onChange={(v) => set("cr_document_image", v)} />
+              <MultiImageField
                 label="Revenue License"
+                max={2}
                 value={form.revenue_license_image}
                 onChange={(v) => set("revenue_license_image", v)}
               />
@@ -508,6 +622,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
         {activeTab === "previous_owner" && (
           <div className="tp-form-section">
             <div className="tp-form-row">
+              <TextField label="Previous Owner Name" value={form.previous_owner_name} onChange={(v) => set("previous_owner_name", v)} />
               <TextField label="NIC" value={form.previous_owner_nic} onChange={(v) => set("previous_owner_nic", v)} />
               <TextField label="Phone Number" value={form.previous_owner_phone} onChange={(v) => set("previous_owner_phone", v)} />
               <RadioField
@@ -555,16 +670,18 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
                 label="Scan Report 1 (Upload)"
                 value={form.scan_report_1_upload}
                 onChange={(v) => set("scan_report_1_upload", v)}
+                readOnly={readOnly}
               />
               <FileField
                 label="Scan Report 2 (Upload)"
                 value={form.scan_report_2_upload}
                 onChange={(v) => set("scan_report_2_upload", v)}
+                readOnly={readOnly}
               />
             </div>
             <div className="tp-form-row">
-              <ImageField label="Garage Bill" value={form.garage_bill_image} onChange={(v) => set("garage_bill_image", v)} />
-              <ImageField label="Modification" value={form.modification_image} onChange={(v) => set("modification_image", v)} />
+              <MultiImageField label="Garage Bill" max={10} value={form.garage_bill_image} onChange={(v) => set("garage_bill_image", v)} />
+              <MultiImageField label="Modification" max={10} value={form.modification_image} onChange={(v) => set("modification_image", v)} />
             </div>
             <label className="tp-form-group tp-form-group-full">
               <span>Others</span>
@@ -692,7 +809,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
         {error && <div className="tp-form-error">{error}</div>}
 
         <div className="tp-form-actions">
-          <button type="button" className="tp-form-btn tp-form-btn-secondary" onClick={onClose}>
+          <button type="button" className="tp-form-btn tp-form-btn-secondary" onClick={handleClose}>
             {readOnly ? "Close" : "Cancel"}
           </button>
           {!readOnly && (

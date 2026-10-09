@@ -30,6 +30,7 @@ export const initialFormState = {
   chassis_number: "",
   vehicle_number: "",
 
+  previous_owner_name: "",
   previous_owner_nic: "",
   previous_owner_selfie_image: "",
   in_writing_letter_image: "",
@@ -109,6 +110,7 @@ export function mapProfileToForm(profile) {
     chassis_number: toInputValue(profile.chassis_number),
     vehicle_number: toInputValue(profile.vehicle_number),
 
+    previous_owner_name: toInputValue(profile.previous_owner_name),
     previous_owner_nic: toInputValue(profile.previous_owner_nic),
     previous_owner_selfie_image: toInputValue(profile.previous_owner_selfie_image),
     in_writing_letter_image: toInputValue(profile.in_writing_letter_image),
@@ -185,6 +187,7 @@ export function buildSubmitPayload(form) {
     chassis_number: toTextOrNull(form.chassis_number),
     vehicle_number: toTextOrNull(form.vehicle_number),
 
+    previous_owner_name: toTextOrNull(form.previous_owner_name),
     previous_owner_nic: toTextOrNull(form.previous_owner_nic),
     previous_owner_selfie_image: toTextOrNull(form.previous_owner_selfie_image),
     in_writing_letter_image: toTextOrNull(form.in_writing_letter_image),

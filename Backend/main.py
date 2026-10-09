@@ -18,6 +18,7 @@ from auth.router import router as auth_router
 from auth.service import AuthService
 from blacklist.router import router as blacklist_router
 from clients.router import router as clients_router
+from permissions.router import router as permissions_router
 from reminders.router import router as reminders_router
 from reports.router import router as reports_router
 from core.config import get_settings
@@ -28,6 +29,7 @@ from auth import model  # noqa: F401
 from activity import model as activity_model  # noqa: F401
 from blacklist import model as blacklist_model  # noqa: F401
 from clients import model as client_model  # noqa: F401
+from permissions import model as permissions_model  # noqa: F401
 from reminders import model as reminder_model  # noqa: F401
 from reports import model as report_model  # noqa: F401
 
@@ -44,14 +46,20 @@ def migrate_schema():
         conn.execute(text("SELECT pg_advisory_xact_lock(734021)"))
         Base.metadata.create_all(bind=conn)
         conn.execute(text("ALTER TABLE reminders ADD COLUMN IF NOT EXISTS acknowledged boolean NOT NULL DEFAULT false"))
+        # Access is now set per employee (user_permissions); the short-lived per-role table is unused.
+        conn.execute(text("DROP TABLE IF EXISTS role_permissions"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts integer NOT NULL DEFAULT 0"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until timestamptz"))
+        conn.execute(text("ALTER TABLE vehicle_blacklist ADD COLUMN IF NOT EXISTS mileage varchar(60)"))
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS previous_owner_name varchar(255)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS scan_report_1_upload text"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS scan_report_2_upload text"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS marketing_person_name varchar(255)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS technical_person_name varchar(255)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS purchasing_person_name varchar(255)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS extra_departments json"))
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS role_approvals json NOT NULL DEFAULT '[]'"))
+        conn.execute(text("ALTER TABLE inspection_reports ADD COLUMN IF NOT EXISTS role_approvals json NOT NULL DEFAULT '[]'"))
         for dept in ("marketing", "technical", "purchasing"):
             # Carry over profiles saved with the old single department + person.
             conn.execute(text(
@@ -72,6 +80,13 @@ def migrate_schema():
                 f"{prefix}_client_other_image = CASE WHEN {prefix}_client_document_type::text = 'other' THEN {prefix}_client_document_image END "
                 f"WHERE {prefix}_client_document_types IS NULL AND {prefix}_client_document_type::text <> 'none'"
             ))
+        # Client profiles now wait for the CEO (not the accountant) before the owner.
+        if conn.execute(text("SELECT 1 FROM pg_enum WHERE enumlabel = 'pending_accountant' "
+                              "AND enumtypid = 'client_profile_status'::regtype")).first():
+            conn.execute(text("ALTER TYPE client_profile_status RENAME VALUE 'pending_accountant' TO 'pending_ceo'"))
+        if not conn.execute(text("SELECT 1 FROM pg_enum WHERE enumlabel = 'admin' "
+                                 "AND enumtypid = 'user_role'::regtype")).first():
+            conn.execute(text("ALTER TYPE user_role ADD VALUE 'admin'"))
         # The "co" role was renamed to "ceo"; rename the existing enum value in
         # place (not idempotent via IF EXISTS, so only run it if "co" is still there).
         if conn.execute(text("SELECT 1 FROM pg_enum WHERE enumlabel = 'co' "
@@ -187,6 +202,7 @@ app.include_router(blacklist_router)
 app.include_router(reminders_router)
 app.include_router(activity_router)
 app.include_router(reports_router)
+app.include_router(permissions_router)
 
 @app.get("/health")
 def health():

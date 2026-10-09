@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react"
-import Sidebar from "../TechnicianPanel/components/Sidebar"
+import Sidebar, { navItemsFor } from "../TechnicianPanel/components/Sidebar"
 import Hero from "../TechnicianPanel/components/Hero"
 import { createUser, deleteUser, listUsers, setUserActive } from "../../api/auth"
 import { confirmDialog } from "../../components/ConfirmDialog"
 import ClientProfiles from "./ClientProfiles"
 import VehicleBlacklist from "./VehicleBlacklist"
 import ActivityLog from "./ActivityLog"
+import Customize from "./Customize"
+import { confirmDiscard } from "../../components/unsavedChanges"
 import InspectionReports from "./InspectionReports"
 import InspectionReports2 from "./InspectionReports/InspectionReports2"
 import InspectionForm from "../TechnicianPanel/components/InspectionForm"
@@ -16,8 +18,22 @@ import "./ClientProfiles/ClientProfiles.css"
 
 const initialForm = { email: "", fullName: "", password: "", role: "technician" }
 
-export default function OwnerPanel({ username, token, onLogout }) {
-  const [view, setView] = useState("dashboard")
+// Used by the owner (full access) and the CEO (only what the owner allowed in Customize).
+export default function OwnerPanel({ role: userRole = "owner", permissions = [], username, token, onLogout }) {
+  const can = (key) => userRole === "owner" || permissions.includes(key)
+  const allowedViews = navItemsFor(userRole, permissions).map((item) => item.view)
+  const [selectedView, setView] = useState("dashboard")
+  // Where to go back to if the owner cancels Customize's password popup.
+  const [viewBeforeCustomize, setViewBeforeCustomize] = useState("dashboard")
+  // Fall back to the first allowed section if the owner has since removed this one.
+  const view = allowedViews.includes(selectedView) ? selectedView : allowedViews[0]
+  const canManageAccounts = can("accounts.manage")
+
+  async function navigate(next) {
+    if (!(await confirmDiscard())) return
+    if (next === "customize" && view !== "customize") setViewBeforeCustomize(view)
+    setView(next)
+  }
   const [mobileOpen, setMobileOpen] = useState(false)
   const [users, setUsers] = useState([])
   const [loadingUsers, setLoadingUsers] = useState(true)
@@ -39,7 +55,8 @@ export default function OwnerPanel({ username, token, onLogout }) {
     setShowReportForm(false)
   }
 
-  function closeReportForm() {
+  async function closeReportForm() {
+    if (!(await confirmDiscard())) return
     setShowReportForm(false)
     setReportData(null)
   }
@@ -61,9 +78,9 @@ export default function OwnerPanel({ username, token, onLogout }) {
   }
 
   useEffect(() => {
-    if (token) refreshUsers()
+    if (token && canManageAccounts) refreshUsers()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token])
+  }, [token, canManageAccounts])
 
   function updateForm(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -121,11 +138,12 @@ export default function OwnerPanel({ username, token, onLogout }) {
   return (
     <div className="tp-app">
       <Sidebar
-        role="owner"
+        role={userRole}
+        permissions={permissions}
         username={username}
         onLogout={onLogout}
         activeView={view}
-        onNavigate={setView}
+        onNavigate={navigate}
         mobileOpen={mobileOpen}
         onMobileOpenChange={setMobileOpen}
       />
@@ -139,17 +157,19 @@ export default function OwnerPanel({ username, token, onLogout }) {
         />
 
         {view === "clients" ? (
-          <ClientProfiles token={token} role="owner" />
+          <ClientProfiles token={token} role={userRole} can={can} />
         ) : view === "approvals" ? (
           <ClientProfiles
             token={token}
-            role="owner"
-            statusFilter="pending_owner"
+            role={userRole}
+            can={can}
+            awaitingMe
             title="Profile Approvals"
             emptyLabel="No client profiles are waiting for your approval."
           />
         ) : view === "reports" ? (
           <>
+            {can("reports.create") && (
             <button
               type="button"
               className="tp-inspection-btn"
@@ -164,19 +184,24 @@ export default function OwnerPanel({ username, token, onLogout }) {
             >
               {showReportForm ? "Close Inspection Report" : "+ Inspection Report"}
             </button>
+            )}
 
             {showReportForm && (
               <InspectionForm onClose={closeReportForm} onSubmit={handleReportSubmit} />
             )}
 
-            <InspectionReports token={token} />
+            {/* Hidden while a new report is being written or previewed; it
+                remounts (and reloads, including the new report) afterwards. */}
+            {!showReportForm && !reportData && <InspectionReports token={token} canReview={can("reports.review")} />}
           </>
         ) : view === "reports2" ? (
-          <InspectionReports2 token={token} />
+          <InspectionReports2 token={token} canCreate={can("reports2.create")} />
         ) : view === "blacklist" ? (
-          <VehicleBlacklist token={token} role="owner" />
+          <VehicleBlacklist token={token} can={can} />
         ) : view === "activity" ? (
           <ActivityLog token={token} />
+        ) : view === "customize" ? (
+          <Customize onCancel={() => setView(viewBeforeCustomize)} />
         ) : view === "settings" ? (
           <Settings token={token} />
         ) : (
@@ -225,6 +250,7 @@ export default function OwnerPanel({ username, token, onLogout }) {
                   <select value={form.role} onChange={(e) => updateForm("role", e.target.value)}>
                     <option value="technician">Technician</option>
                     <option value="ceo">CEO</option>
+                    <option value="admin">Admin</option>
                     <option value="accountant">Accountant</option>
                   </select>
                 </label>

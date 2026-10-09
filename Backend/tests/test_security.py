@@ -138,10 +138,22 @@ class SecurityTests(unittest.TestCase):
         signed=private_url(stored)
         self.assertEqual(canonical_url(signed),stored)
     def test_approved_content_requires_new_reviews(self):
+        # A CEO (Approve ticked by default) has to review the edited content again.
+        self.db.add(User(email="ceo@example.com",full_name="CEO",role=UserRole.ceo,is_active=True,hashed_password=self.password_hash))
         profile=ClientProfile(created_by=self.user.id,status=ClientProfileStatus.pending_owner)
         self.db.add(profile);self.db.commit()
         updated=ClientProfileService(self.db).update(profile.id,ClientProfileUpdate(local_client_name="Changed"),self.user)
-        self.assertEqual(updated.status,ClientProfileStatus.pending_accountant)
+        self.assertEqual(updated.status,ClientProfileStatus.pending_ceo)
+    def test_copies_only_lists_newest_copy_first(self):
+        from datetime import datetime, timedelta, timezone
+        now=datetime.now(timezone.utc)
+        for i,name in enumerate(["AAA-1","BBB-2","BBB-2-Inspection Report 2","AAA-1-Inspection Report 2","CCC-3"]):
+            self.db.add(InspectionReport(registration_number=name,url="r2://reports/a.pdf",created_at=now+timedelta(minutes=i)))
+        self.db.commit();repository=ReportRepository(self.db)
+        pairs=repository.list_with_copies(copies_only=True)
+        self.assertEqual([(o.registration_number,c.registration_number) for o,c in pairs],
+                         [("AAA-1","AAA-1-Inspection Report 2"),("BBB-2","BBB-2-Inspection Report 2")])
+        self.assertEqual(len(repository.list_with_copies()),3)
     def test_list_pagination(self):
         for i in range(3): self.db.add(InspectionReport(registration_number=str(i),url="r2://reports/a.pdf"))
         self.db.commit();repository=ReportRepository(self.db)
