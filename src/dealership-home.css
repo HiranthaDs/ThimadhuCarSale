@@ -1,0 +1,111 @@
+/* The compact homepage theme follows the legacy reference stylesheet. */
+:root { --ink: #20252a; --muted: #667078; --line: #e1e3e2; --font-heading: Inter, system-ui, sans-serif; }
+body { color: var(--ink); }
+h1, h2, h3, h4 { font-family: var(--font-heading); }
+.container { width: calc(100% - 96px); max-width: 1280px; }
+.btn { border-radius: 6px; font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; }
+.dealership-home { background: #fff; }
+.dealership-home .eyebrow { color: #687279; letter-spacing: .13em; font-size: 10px; font-weight: 600; margin-bottom: 20px; }
+.showroom-hero { padding: 132px 0 54px; background: #f7f8f6; }
+.showroom-hero-layout { display: grid; grid-template-columns: 1fr 1.06fr; gap: 62px; align-items: center; }
+.showroom-hero-copy { padding: 15px 0; }
+.showroom-hero .eyebrow { display: flex; align-items: center; gap: 9px; font-size: 9px; letter-spacing: .1em; }
+.showroom-hero .eyebrow > span { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
+.showroom-hero h1 { font-family: Inter, sans-serif; font-size: clamp(40px, 4.2vw, 64px); font-weight: 600; letter-spacing: -.065em; line-height: 1.1; color: #20252a; margin-bottom: 24px; }
+.showroom-introduction { max-width: 395px; font-size: 15px; line-height: 1.8; color: #62696f; margin-bottom: 27px; }
+.showroom-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 24px; }
+.showroom-actions .btn { padding: 14px 19px; gap: 25px; }
+.showroom-deliveries-link { min-height: 46px; display: inline-flex; align-items: center; gap: 14px; font-size: 12px; font-weight: 600; }
+.showroom-deliveries-link svg { transform: rotate(90deg); }
+.showroom-deliveries-link:hover { color: var(--blue); }
+.showroom-contact { display: flex; align-items: center; gap: 12px; margin-top: 38px; }
+.showroom-contact-icon { display: grid; place-items: center; border: 1px solid #dce0dd; width: 38px; height: 38px; border-radius: 50%; }
+.showroom-contact > div { display: flex; flex-direction: column; }
+.showroom-contact > div > span { font-size: 10px; color: #72797f; }
+.showroom-contact a { width: fit-content; font-size: 13px; font-weight: 600; letter-spacing: .015em; }
+.showroom-contact a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.showroom-visual { min-width: 0; }
+.showroom-film { position: relative; background: #dce2e1; border-radius: 8px; overflow: hidden; aspect-ratio: 1.27; }
+.showroom-film > video, .showroom-film > img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 48% center; }
+.showroom-film-control { position: absolute; bottom: 16px; right: 16px; min-height: 38px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #ffffffed; color: #242a2e; font-size: 10px; font-weight: 600; border: 0; border-radius: 4px; }
+.showroom-film-control:hover { background: #fff; }
+.showroom-film-caption { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 14px; font-size: 9px; color: #737b80; }
+.showroom-film-caption > span:first-child { letter-spacing: .12em; font-weight: 600; }
+.showroom-film-caption > span:last-child { font-size: 11px; }
+.dealership-home .home-inventory { padding: 76px 0; background: #f7f8f6; }
+.dealership-home .collection-heading { margin-bottom: 28px; align-items: flex-end; }
+.dealership-home .collection-heading h2, .dealership-home .home-faq h2, .home-services h2 { font-family: Inter, sans-serif; color: var(--ink); font-size: clamp(30px, 3vw, 42px); font-weight: 550; letter-spacing: -.055em; line-height: 1.15; }
+.dealership-home .collection-heading > div:last-child p { font-size: 13px; line-height: 1.7; color: #697178; margin-bottom: 12px; }
+.dealership-home .text-link { color: var(--ink); font-family: Inter, sans-serif; font-size: 12px; border-color: #bec4c6; }
+.dealership-home .text-link:hover { color: var(--blue); border-color: var(--blue); }
+.dealership-home .collection-search-panel { margin-bottom: 28px; }
+.dealership-home .collection-search-panel .home-search { min-height: 58px; background: #fff; border: 1px solid #dbdfdc; border-radius: 6px; padding: 6px 6px 6px 18px; color: #657079; }
+.dealership-home .home-search input { color: #22292e; font-size: 13px; }
+.dealership-home .home-search input::placeholder { color: #848b90; }
+.dealership-home .home-search button { min-height: 42px; padding: 11px 20px; border-radius: 4px; font-family: Inter, sans-serif; font-size: 12px; }
+.dealership-home .collection-discovery { gap: 14px; padding-top: 12px; }
+.dealership-home .collection-discovery > span { font-size: 9px; color: #7b8288; }
+.dealership-home .collection-discovery a { min-height: 34px; border-radius: 4px; border-color: #dbe0dc; font-size: 11px; color: #515c63; padding: 5px 13px; }
+.dealership-home .collection-discovery a:hover { background: #fff; color: var(--blue); }
+.dealership-home .vehicle-card { border-radius: 7px; box-shadow: none; border-color: #e1e4e1; }
+.dealership-home .vehicle-card h3 { font-family: Inter, sans-serif; font-weight: 600; }
+.dealership-home .collection-tail { border-color: #dce0dc; color: #626d74; font-size: 11px; padding-top: 22px; }
+.home-services { background: #fff; padding: 82px 0; }
+.home-services > .container { display: grid; grid-template-columns: .85fr 1.2fr; gap: 100px; }
+.home-services h2 { margin-bottom: 26px; }
+.home-service-list { border-top: 1px solid #dce0df; }
+.home-service-row { display: grid; grid-template-columns: 22px 1fr 24px; gap: 20px; padding: 26px 0; border-bottom: 1px solid #dce0df; }
+.home-service-number { color: #838b90; font-size: 10px; padding-top: 6px; }
+.home-service-row h3 { font-size: 19px; font-weight: 550; letter-spacing: -.035em; line-height: 1.35; margin-bottom: 10px; }
+.home-service-row p { font-size: 12px; line-height: 1.8; color: #6a747a; max-width: 440px; margin-bottom: 12px; }
+.home-service-row > svg { margin-top: 5px; }
+.home-service-action { font-size: 11px; font-weight: 600; color: var(--blue); }
+.home-service-row:hover h3, .home-service-row:hover > svg { color: var(--blue); }
+.dealership-home .home-faq { background: #f7f8f6; padding: 72px 0 80px; }
+.dealership-home .faq-grid { grid-template-columns: .85fr 1.2fr; gap: 100px; }
+.dealership-home .home-faq h2 { font-size: 34px; margin-bottom: 24px; }
+.dealership-home .faq-introduction { color: #6c7479; font-size: 12px; }
+.dealership-home .faq-list, .dealership-home .faq-list details { border-color: #dce0dc; }
+.dealership-home .faq-list summary { font-family: Inter, sans-serif; color: #333c42; font-size: 13px; padding: 23px 0; font-weight: 500; }
+.dealership-home .faq-list summary > svg { color: #6e777d; width: 16px; }
+.dealership-home .faq-list details > p { color: #626e75; padding: 0 26px 23px 0; font-size: 12px; }
+@media (max-width: 1100px) {
+  .container { width: calc(100% - 64px); }
+  .showroom-hero-layout { gap: 35px; }
+  .showroom-hero h1 { font-size: 44px; }
+  .showroom-actions { gap: 14px; }
+  .home-services > .container, .dealership-home .faq-grid { gap: 55px; }
+}
+@media (max-width: 767px) {
+  .container { width: calc(100% - 40px); }
+  .showroom-hero { padding: 100px 0 30px; }
+  .showroom-hero-layout { grid-template-columns: 1fr; gap: 28px; }
+  .showroom-hero-copy { padding: 0; }
+  .showroom-hero .eyebrow { font-size: 8px; margin-bottom: 19px; }
+  .showroom-hero h1 { font-size: clamp(36px, 9.5vw, 58px); margin-bottom: 20px; letter-spacing: -.06em; }
+  .showroom-introduction { max-width: 440px; font-size: 13px; line-height: 1.75; margin-bottom: 22px; }
+  .showroom-actions { gap: 10px 20px; }
+  .showroom-actions .btn { min-height: 44px; padding: 12px 16px; font-size: 12px; gap: 16px; }
+  .showroom-deliveries-link { font-size: 11px; gap: 10px; }
+  .showroom-contact { margin-top: 23px; }
+  .showroom-film { aspect-ratio: 1.65; border-radius: 6px; }
+  .showroom-film-caption { padding-top: 10px; font-size: 8px; }
+  .showroom-film-caption > span:last-child { font-size: 10px; }
+  .showroom-film-control { bottom: 10px; right: 10px; min-height: 40px; }
+  .dealership-home .home-inventory, .home-services, .dealership-home .home-faq { padding: 48px 0; }
+  .dealership-home .collection-heading { gap: 16px; align-items: flex-start; }
+  .dealership-home .collection-heading h2, .home-services h2, .dealership-home .home-faq h2 { font-size: 30px; }
+  .dealership-home .collection-heading > div:last-child p { font-size: 12px; }
+  .dealership-home .eyebrow { margin-bottom: 13px; font-size: 9px; }
+  .dealership-home .home-search button { width: 43px; padding: 10px; }
+  .dealership-home .home-search input { font-size: 12px; }
+  .dealership-home .collection-search-panel .home-search { padding-left: 13px; gap: 9px; }
+  .dealership-home .collection-discovery { gap: 6px 12px; }
+  .dealership-home .collection-discovery a { min-height: 40px; padding-inline: 11px; }
+  .home-services > .container, .dealership-home .faq-grid { grid-template-columns: 1fr; gap: 28px; }
+  .home-services h2 br { display: none; }
+  .home-service-row { gap: 14px; padding: 24px 0; }
+  .home-service-row h3 { font-size: 18px; }
+  .dealership-home .faq-list summary { font-size: 13px; }
+  .desktop-break { display: none; }
+}

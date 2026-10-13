@@ -18,23 +18,21 @@ npm.cmd run preview
 
 ## Design and homepage
 
-The layout follows the user-requested [Driveberry reference](https://driveberry.fr/), with Thimadu branding and a blue, white and light-blue palette. Ubuntu headings and Inter body text are self-hosted. The italic serif treatment is removed, and the existing transparent PNG logo is displayed without an added background, border or frame.
+The homepage now puts customer deliveries immediately after a compact introduction. The design uses Thimadu's blue branding, warm white surfaces, Inter typography, simple navigation and a compact contact footer.
 
-The full homepage includes:
+1. A split introduction with the supplied `public/Videos/hero1.mp4`, vehicle link, delivery anchor and direct phone number.
+2. A customer photo/video grid on desktop and phones, with All / Photos / Videos filters and up to six items per selection. It balances media types when both collections have records.
+3. Current vehicle listings with search and category shortcuts.
+4. Three straightforward links for buying, selling and sourcing, followed by FAQs.
+5. A WhatsApp enquiry form and contact/navigation footer with the HICH WEB credit.
 
-1. Full-screen video using the supplied `public/Videos/hero1.mp4`, with a generated video-frame poster, mute, loop and a pause/play control.
-2. A pinned, scroll-driven transition into a three-dimensional iPhone with metallic edge layers, camera island, bezel, glass reflection and side controls.
-3. An animated, navigable mobile website demonstration inside the phone. The preview cycles through browsing, selling, sourcing and support, scrolls through the collection screen, and stops automatic cycling when interacted with.
-4. Moving manufacturer tiles, floating phone callouts and an introduction beside the phone.
-5. A semicircular animated gauge with moving benefit cards.
-6. Four complete alternating service chapters for each of the four journey tabs. A sticky dropdown replaces the tabs on mobile.
-7. Published customer stories with manual controls, pause and swipe support.
-8. Horizontal photographic scenes and illustrative enquiry conversations.
-9. An interactive Sri Lanka map that composes city-specific enquiries.
-10. Current vehicle listings, search and category shortcuts.
-11. Expanding service guides, FAQs, a large closing dial and the two-panel footer with outlined wordmark and an enquiry form.
+Both the homepage and `/reviews.html` use the same accessible delivery viewer. Photos open full size; videos support direct MP4/WebM/Ogg, YouTube, Google Drive and Vimeo. Other video links offer an original-source action. The viewer supports previous/next, arrow keys, Escape and focus restoration. No likes, comments or invented ratings are displayed.
 
-Small screens use a stacked phone layout and stacked photographic scenes. Reduced motion disables pinned sequences, animated page curtains and automatic phone cycling. Hero video does not autoplay under reduced-motion or data-saving preferences; it can be played explicitly. Phone, film and story animations avoid unnecessary work when out of view. Keyboard focus is managed in mobile navigation and native dialogs.
+Delivery content comes from the existing Apps Script `customers` and `videos` collections. Add active customer photos and videos through the existing admin portal; the website does not add sample customer media. A video thumbnail is optional for YouTube/Drive, and recommended for direct or externally hosted videos. Each card displays the published headline and customer/location details. Unavailable media shows an explicit fallback; missing feeds offer retry while keeping available collections usable.
+
+Phones and reduced-motion/data-saving visitors see the hero poster until they choose Play. Desktop autoplay is muted and pauses when the hero leaves the viewport or the tab is hidden. The grid is stationary on all devices. The prior phone, gauge, story carousel and decorative journey sections are no longer mounted on the homepage; their source files remain in the repository.
+
+Vehicle details reserve space beneath fixed navigation. Keyboard focus is managed in mobile navigation and native dialogs. Every public page retains the HICH WEB design/development credit, website and click-to-call phone number.
 
 ## Routes
 
@@ -45,8 +43,8 @@ Small screens use a stacked phone layout and stacked photographic scenes. Reduce
 | Vehicle details | `/car-details.html?vehicle=…` |
 | About | `/aboutus.html` |
 | Services | `/services.html` |
-| Customer stories | `/reviews.html` |
-| Video stories | `/reviews.html?tab=videos` |
+| Customer deliveries | `/reviews.html` |
+| Delivery videos | `/reviews.html?tab=videos` |
 | Sell a vehicle | `/sell-your-vehicle-sri-lanka.html` |
 | Request a specific vehicle | `/vehicle-sourcing-sri-lanka.html` |
 | Vehicle information | `/vehicle-information-support.html` |
@@ -71,7 +69,18 @@ Use that real domain for absolute canonical and social metadata in static HTML a
 
 ## Local backend hardening
 
-`Code.gs` now requires the **`THIMADU_ADMIN_TOKEN` Script Property**. There is no fallback admin password. If it is unset, admin authentication and write requests fail with `ADMIN_NOT_CONFIGURED` before accessing the spreadsheet. Set the property in Apps Script project settings before deploying this source. Use a strong private value and continue entering it through the existing admin login.
+`Code.gs` requires the **`THIMADU_ADMIN_TOKEN` Script Property**. There is no password embedded in the public admin page and no insecure fallback. If the property is unset, admin authentication and write requests fail with `ADMIN_NOT_CONFIGURED` before accessing the spreadsheet.
+
+To activate or repair the admin portal:
+
+1. Open the Apps Script project behind the configured `/exec` URL.
+2. Replace its script with the repository's complete `Code.gs` file.
+3. In **Project Settings → Script Properties**, create or update `THIMADU_ADMIN_TOKEN` with the intended admin password. Do not add spaces around it.
+4. Run `verifyAdminDeployment` once from the Apps Script editor and approve the Spreadsheet/Drive permissions. It should report `status: ready`, `apiVersion: 2.1.0`, and `tokenConfigured: true` without displaying the password.
+5. Choose **Deploy → Manage deployments → Edit → New version**, keep **Execute as: Me** and **Who has access: Anyone**, then deploy. Updating the existing deployment preserves the URL already used by both admin HTML files.
+6. Open `/ADMIN-THIMADU.html`. Its connection indicator must say **Secure admin service connected · API 2.1.0** before login.
+
+If the indicator says the deployment belongs to another project, the configured URL is serving the wrong Apps Script project or an old deployment version. Authentication cannot work until steps 1–5 are completed.
 
 Public GET requests no longer initialize, repair or mutate spreadsheet structure. For a new database, run `setupDatabase` in Apps Script or use the authenticated setup action. These source changes take effect only when the Apps Script web app is redeployed; no remote configuration, database migration or deployment was performed here.
 

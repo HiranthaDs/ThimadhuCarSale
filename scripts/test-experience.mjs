@@ -15,13 +15,17 @@ const customerFixtures = [
   { id: 'experience-b', headline: 'Experience fixture B', description: 'Second synthetic delivery story for carousel verification.', customer_name: 'Fixture B', location: 'Kandy', image_url: `${base}/images/hero.webp`, status: 'Active', display_order: 2 },
   { id: 'experience-hidden', headline: 'Unpublished experience fixture', description: 'This record must not appear.', customer_name: 'Hidden fixture', image_url: `${base}/images/journey.webp`, status: 'Inactive', display_order: 0 },
 ];
-await context.route('https://docs.google.com/spreadsheets/d/*/gviz/**', async (route) => {
+const videoFixtures = [
+  { id: 'experience-video', headline: 'Experience video fixture', description: 'Synthetic video story for mixed homepage coverage.', video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', thumbnail_url: `${base}/images/hero.webp`, platform: 'YouTube', status: 'Active', display_order: 1 },
+];
+await context.route('https://script.google.com/macros/s/**', async (route) => {
   const url = new URL(route.request().url());
-  const callback = url.searchParams.get('tqx')?.split('responseHandler:')[1];
-  if (!callback || !/^[\w$]+$/.test(callback)) return route.continue();
-  const records = url.searchParams.get('gid') === '1902933500' ? customerFixtures : [];
-  const keys = Object.keys(customerFixtures[0]);
-  await route.fulfill({ contentType: 'text/javascript', body: `${callback}(${JSON.stringify({ status: 'ok', table: { cols: keys.map((label) => ({ label })), rows: records.map((record) => ({ c: keys.map((key) => ({ v: record[key] ?? '' })) })) } })});` });
+  const records = url.searchParams.get('type') === 'customers' ? customerFixtures : videoFixtures;
+  await route.fulfill({
+    contentType: 'application/json',
+    headers: { 'Access-Control-Allow-Origin': '*' },
+    body: JSON.stringify({ apiVersion: '2.1.0', status: 'success', data: records }),
+  });
 });
 await context.route('https://docs.google.com/spreadsheets/d/e/**', (route) => route.fulfill({ status: 200, contentType: 'text/csv', headers: { 'Access-Control-Allow-Origin': '*' }, body: 'id,brand,model,year,price,mileage,fuel,transmission,type,condition,availability,image1\n' }));
 // External communication is never performed. Footer draft URLs are captured below.
@@ -109,7 +113,8 @@ try {
   });
 
   await check('The Sri Lanka map selects accurate destinations and composes an enquiry', async () => {
-    await page.getByRole('button', { name: 'Choose Kandy for a vehicle enquiry', exact: true }).click();
+    await expect(page.locator('.sl-map-city')).toHaveCount(17);
+    await page.getByRole('button', { name: 'Choose Kandy, Central Province, for a vehicle enquiry', exact: true }).click();
     await expect(page.locator('.sl-destination-place h3')).toHaveText('Kandy');
     const href = await page.locator('.sl-destination-link').getAttribute('href');
     assert.equal(new URL(href).pathname, '/94771813928');
@@ -117,14 +122,16 @@ try {
     await expect(page.locator('.sl-map-coastline')).toHaveAttribute('src', '/maps/sri-lanka.svg');
   });
 
-  await check('Published customer stories load, cycle, and omit unpublished records', async () => {
+  await check('The welcome card and a curated photo/video mix cycle while unpublished records stay hidden', async () => {
     await scrollTo('.ex-stories', 0, 30);
+    await expect(page.locator('.ex-story-card h3')).toContainText('Your story');
+    await page.getByRole('button', { name: 'Next customer story', exact: true }).click();
     await expect(page.locator('.ex-story-card h3')).toHaveText('Experience fixture A');
     await page.getByRole('button', { name: 'Next customer story', exact: true }).click();
-    await expect(page.locator('.ex-story-card h3')).toHaveText('Experience fixture B');
+    await expect(page.locator('.ex-story-card h3')).toHaveText('Experience video fixture');
     await page.getByRole('button', { name: 'Previous customer story', exact: true }).click();
     await expect(page.locator('.ex-story-card h3')).toHaveText('Experience fixture A');
-    assert.equal(await page.locator('.ex-portrait-rail button').count(), 2);
+    assert.equal(await page.locator('.ex-portrait-rail button').count(), 3);
     assert.ok(!(await page.locator('.ex-stories').innerText()).includes('Unpublished experience fixture'));
   });
 
@@ -178,13 +185,30 @@ try {
     assert.match(await page.locator('.footer-enquiry-form').innerText(), /review and send/i);
   });
 
-  await check('Mobile content fits and service selection remains usable', async () => {
+  await check('Mobile content offers compact services, a static hero and published reviews', async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(base, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('.hs-intro h1')).toBeVisible();
-    await page.getByRole('combobox', { name: 'Choose your vehicle journey' }).selectOption({ label: 'Sell your vehicle' });
-    await expect(page.getByRole('tabpanel').getByRole('link', { name: 'Start selling your vehicle', exact: true })).toBeVisible();
-    assert.equal(await page.getByRole('tablist', { name: 'Choose your vehicle journey' }).isVisible(), false);
+    await expect(page.locator('img.hs-video')).toHaveAttribute('src', '/images/hero1-poster.webp');
+    await expect(page.locator('video.hs-video,.hs-device,.hs-phone-scene')).toHaveCount(0);
+    await expect(page.locator('.jt-mobile-service')).toHaveCount(3);
+    await expect(page.locator('.jt-chapter,.jt-motion-ready')).toHaveCount(0);
+    await expect(page.getByRole('tablist', { name: 'Choose your vehicle journey' })).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: 'Choose your vehicle journey' })).toHaveCount(0);
+    const serviceLinks = page.locator('.jt-mobile-services .btn');
+    assert.deepEqual(await serviceLinks.evaluateAll(links => links.map(link => link.getAttribute('href'))), ['/all-vehicles.html', '/sell-your-vehicle-sri-lanka.html', '/vehicle-sourcing-sri-lanka.html']);
+    await page.locator('.jt-mobile-services').getByRole('link', { name: 'Start selling', exact: true }).click();
+    await expect(page).toHaveURL(`${base}/sell-your-vehicle-sri-lanka.html`);
+    await expect(page.locator('.page-hero h1')).toBeVisible();
+    await page.goBack();
+    await expect(page.locator('.jt-mobile-services')).toBeVisible();
+    await scrollTo('.home-reviews', 0, 100);
+    await expect(page.locator('.home-review-card h3')).toHaveText(['Experience fixture A', 'Experience video fixture', 'Experience fixture B']);
+    assert.ok(!(await page.locator('.home-reviews').innerText()).includes('Unpublished experience fixture'));
+    await expect(page.locator('.home-reviews-more')).toHaveAttribute('href', '/reviews.html');
+    assert.deepEqual(await page.locator('.home-review-link').evaluateAll(links => links.map(link => link.getAttribute('href'))), ['/reviews.html?tab=photos', '/reviews.html?tab=videos', '/reviews.html?tab=photos']);
+    await page.getByRole('button', { name: 'Next customer stories', exact: true }).click();
+    await expect(page.locator('.home-reviews-slide').nth(1)).toHaveAttribute('aria-hidden', 'false');
     const conversation = await page.locator('.ex-conversation-panel').evaluateAll(panels => panels.map(panel => panel.getBoundingClientRect().toJSON()));
     assert.ok(conversation[1].top >= conversation[0].bottom, 'Conversation photos must stack on mobile.');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);

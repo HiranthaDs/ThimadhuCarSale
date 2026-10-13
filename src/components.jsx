@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useMotionPreference } from './useMotionPreference';
+import './details-footer.css';
 
 const paths = {
   arrow: 'M4 12h16m-6-6 6 6-6 6', 'arrow-up': 'M5 19 19 5M5 5h14v14',
@@ -25,14 +27,19 @@ export function Button({ to, href, children, variant = 'primary', className = ''
 }
 export function Reveal({ children, className = '', delay = 0, ...props }) {
   const ref = useRef(null);
+  const { motionDisabled } = useMotionPreference();
   useEffect(() => {
-    if (!ref.current || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const node = ref.current;
+    if (!node) return;
+    if (motionDisabled) {
+      node.classList.remove('reveal-ready', 'is-visible');
+      return;
+    }
     node.classList.add('reveal-ready');
     const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { node.classList.add('is-visible'); observer.disconnect(); } }, { threshold: .08 });
     observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
+    return () => { observer.disconnect(); node.classList.remove('reveal-ready', 'is-visible'); };
+  }, [motionDisabled]);
   return <div ref={ref} className={`reveal ${className}`} style={{ '--reveal-delay': `${delay}ms` }} {...props}>{children}</div>;
 }
 export function PageHero({ eyebrow, title, description, children }) {
@@ -42,9 +49,10 @@ export function Brand({ footer = false }) {
   return <Link to="/" className={`brand ${footer ? 'brand-footer' : ''}`} aria-label="Thimadu Auto Traders home"><img className="brand-logo" src="/logo.png" alt="Thimadu Auto Traders" width="1115" height="583"/></Link>;
 }
 export function ContactBanner() {
-  return <section className="contact-banner"><div className="container"><Reveal><p className="eyebrow">LET’S FIND YOUR NEXT CHAPTER</p><h2>Good things are<br/>just around the bend.</h2><div className="button-row"><Button href="https://wa.me/94771813928" variant="white">Talk to our team <Icon name="arrow-up"/></Button><a className="contact-phone" href="tel:+94771813928">+94 77 181 3928</a></div></Reveal><div className="contact-road" aria-hidden="true"><span/><span/><span/></div></div></section>;
+  return <section className="contact-banner"><div className="container"><Reveal><p className="eyebrow">TALK TO THIMADU</p><h2>Have a vehicle<br/>in mind?</h2><div className="button-row"><Button href="https://wa.me/94771813928" variant="white">Chat on WhatsApp <Icon name="arrow-up"/></Button><a className="contact-phone" href="tel:+94771813928">+94 77 181 3928</a></div></Reveal></div></section>;
 }
 export function Footer() {
+  const { motionDisabled } = useMotionPreference();
   const [vehicle, setVehicle] = useState('');
   const [city, setCity] = useState('');
   const [draftOpened, setDraftOpened] = useState(false);
@@ -55,8 +63,34 @@ export function Footer() {
     window.open(`https://wa.me/94771813928?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     setDraftOpened(true);
   };
-  return <footer className="site-footer">
-    <section className="footer-enquiry" aria-labelledby="footer-enquiry-title"><div className="footer-brand-invitation"><p className="footer-kicker"><span/> THE START OF SOMETHING GOOD</p><div className="footer-wordmark" aria-hidden="true">Thimadu</div><p className="footer-invitation-copy">Where your next<br/>chapter begins.</p><a className="footer-direct-link" href="tel:+94771813928">Let’s talk. +94 77 181 3928 <Icon name="arrow-up" size={17}/></a></div><Reveal className="footer-enquiry-inner"><h2 id="footer-enquiry-title">Your next vehicle.<br/>Let’s start the conversation.</h2><p>A make. A model. A little daydream.<br/>Tell us what you have in mind.</p><form className="footer-enquiry-form" onSubmit={submit}><label htmlFor="footer-vehicle">What are you looking for?</label><input id="footer-vehicle" name="vehicle" placeholder="Make, model, or the kind of vehicle" value={vehicle} onChange={event => { setVehicle(event.target.value); setDraftOpened(false); }} required pattern=".*\S.*" maxLength={120}/><label htmlFor="footer-city">Your city</label><input id="footer-city" name="city" autoComplete="address-level2" placeholder="Where will your next journey begin?" value={city} onChange={event => { setCity(event.target.value); setDraftOpened(false); }} required pattern=".*\S.*" maxLength={80}/><button type="submit">Let’s find your next chapter <Icon name="arrow" size={18}/></button><small role="status">{draftOpened ? 'Continue in WhatsApp to review and send your enquiry.' : 'Opens a message in WhatsApp for you to review and send.'}</small></form></Reveal></section>
-    <div className="footer-links-panel"><div className="footer-top"><div><Brand footer/><p>A little guidance.<br/>A whole new journey.</p><a className="footer-social" href="https://www.facebook.com/thimaducar" target="_blank" rel="noreferrer">Follow our journey <Icon name="arrow-up" size={17}/></a></div><div><h3>Explore</h3><Link to="/all-vehicles.html">Our vehicles</Link><Link to="/aboutus.html">About Thimadu</Link><Link to="/reviews.html">Customer stories</Link><Link to="/services.html">Our services</Link></div><div><h3>Your next move</h3><Link to="/sell-your-vehicle-sri-lanka.html">Sell your vehicle</Link><Link to="/vehicle-sourcing-sri-lanka.html">Find a specific vehicle</Link><Link to="/vehicle-information-support.html">Vehicle information</Link><Link to="/#questions">Common questions</Link></div><div><h3>Let’s connect</h3><a href="tel:+94771813928">+94 77 181 3928</a><a href="https://wa.me/94771813928">Chat on WhatsApp <Icon name="arrow-up" size={14}/></a><span>Sri Lanka</span></div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} Thimadu Auto Traders.</span><span>Made for the road ahead.</span><button onClick={() => window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })}>Back to top <Icon name="arrow-up" size={16}/></button></div></div>
+  return <footer className="site-footer dealership-footer">
+    <section className="footer-enquiry" aria-labelledby="footer-enquiry-title">
+      <div className="footer-brand-invitation">
+        <p className="footer-kicker">LET US HELP YOU FIND IT</p>
+        <h2 id="footer-enquiry-title">Looking for a<br/> particular vehicle?</h2>
+        <p className="footer-invitation-copy">Tell us the make and model you have in mind. Our team can help you check the available options.</p>
+        <a className="footer-direct-link" href="tel:+94771813928"><Icon name="phone" size={18}/> +94 77 181 3928</a>
+      </div>
+      <Reveal className="footer-enquiry-inner">
+        <form className="footer-enquiry-form" onSubmit={submit}>
+          <label htmlFor="footer-vehicle">Vehicle you're looking for</label>
+          <input id="footer-vehicle" name="vehicle" placeholder="Make, model, or type of vehicle" value={vehicle} onChange={event => { setVehicle(event.target.value); setDraftOpened(false); }} required pattern=".*\S.*" maxLength={120}/>
+          <label htmlFor="footer-city">Your city</label>
+          <input id="footer-city" name="city" autoComplete="address-level2" placeholder="For example, Colombo" value={city} onChange={event => { setCity(event.target.value); setDraftOpened(false); }} required pattern=".*\S.*" maxLength={80}/>
+          <button type="submit">Enquire on WhatsApp <Icon name="arrow-up" size={18}/></button>
+          <small role="status">{draftOpened ? 'Continue in WhatsApp to review and send your enquiry.' : 'Review your message in WhatsApp before sending.'}</small>
+        </form>
+      </Reveal>
+    </section>
+    <div className="footer-links-panel">
+      <div className="footer-top">
+        <div><Brand footer/><p>Vehicles. Deliveries.<br/>People you can talk to.</p><a className="footer-social" href="https://www.facebook.com/thimaducar" target="_blank" rel="noreferrer">Find us on Facebook <Icon name="arrow-up" size={17}/></a></div>
+        <div><h3>Thimadu</h3><Link to="/all-vehicles.html">Vehicles</Link><Link to="/reviews.html">Customer deliveries</Link><Link to="/aboutus.html">About us</Link><Link to="/services.html">Services</Link></div>
+        <div><h3>How we can help</h3><Link to="/sell-your-vehicle-sri-lanka.html">Sell your vehicle</Link><Link to="/vehicle-sourcing-sri-lanka.html">Find a specific vehicle</Link><Link to="/vehicle-information-support.html">Vehicle information</Link><Link to="/#questions">Common questions</Link></div>
+        <div><h3>Contact</h3><a href="tel:+94771813928">+94 77 181 3928</a><a href="https://wa.me/94771813928">Chat on WhatsApp <Icon name="arrow-up" size={14}/></a><span>Sri Lanka</span></div>
+      </div>
+      <div className="footer-bottom"><span>&copy; {new Date().getFullYear()} Thimadu Auto Traders.</span><button onClick={() => window.scrollTo({ top: 0, behavior: motionDisabled ? 'instant' : 'smooth' })}>Back to top <Icon name="arrow-up" size={16}/></button></div>
+      <div className="footer-credits"><p>Website designed and developed by <a href="https://www.hichweb.com" target="_blank" rel="noreferrer">HICH WEB</a></p><div className="footer-credit-links"><a href="https://www.hichweb.com" target="_blank" rel="noreferrer">www.hichweb.com</a><a href="tel:+94714112113">071 411 2113</a></div></div>
+    </div>
   </footer>;
 }

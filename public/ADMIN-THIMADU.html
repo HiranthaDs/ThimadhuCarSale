@@ -1456,7 +1456,7 @@
       $("#videoInfoDone")?.addEventListener("click", () => setVideoInfo(false));
       videoInfoOverlay?.addEventListener("click", e => { if (e.target === videoInfoOverlay) setVideoInfo(false); });
       document.addEventListener("keydown", e => { if (e.key === "Escape" && videoInfoOverlay?.classList.contains("open")) setVideoInfo(false); });
-
+      
       function updateVideoLinkPreview() {
         const input = $("#videoForm [name=video_url]");
         const custom = $("#videoForm [name=thumbnail_url]");

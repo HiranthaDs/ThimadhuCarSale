@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Icon, Reveal } from '../components';
+import { useMediaQuery, useMotionPreference } from '../useMotionPreference';
 import './experience-sections.css';
 
 const WHATSAPP = 'https://wa.me/94771813928';
@@ -19,7 +20,25 @@ function storyPicture(story) {
   } catch { return ''; }
 }
 
+function featuredStories(records, limit = 6) {
+  const sorted = [...records].sort((a, b) => a.order - b.order || String(b.postedDate || '').localeCompare(String(a.postedDate || '')));
+  const buckets = {
+    photo: sorted.filter(story => story.kind === 'photo'),
+    video: sorted.filter(story => story.kind === 'video'),
+  };
+  const firstKind = sorted[0]?.kind === 'video' ? 'video' : 'photo';
+  const order = firstKind === 'video' ? ['video', 'photo'] : ['photo', 'video'];
+  const mixed = [];
+  while (mixed.length < limit && (buckets.photo.length || buckets.video.length)) {
+    order.forEach(kind => {
+      if (mixed.length < limit && buckets[kind].length) mixed.push(buckets[kind].shift());
+    });
+  }
+  return mixed;
+}
+
 export function CustomerStories() {
+  const { motionDisabled } = useMotionPreference();
   const section = useRef(null);
   const dragStart = useRef(null);
   const [stories, setStories] = useState([]);
@@ -36,7 +55,7 @@ export function CustomerStories() {
       started = true;
       import('../pages/ReviewsPage').then(({ loadStories }) => loadStories(controller.signal)).then((records) => {
         if (!controller.signal.aborted) {
-          setStories(records.sort((a, b) => a.order - b.order).slice(0, 12));
+          setStories(featuredStories(records));
           setStatus('ready');
         }
       }).catch(() => { if (!controller.signal.aborted) setStatus('unavailable'); });
@@ -48,21 +67,21 @@ export function CustomerStories() {
     return () => { controller.abort(); observer.disconnect(); };
   }, []);
   useEffect(() => {
+    if (motionDisabled) return;
     const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: .2 });
     observer.observe(section.current);
-    const motion = matchMedia('(prefers-reduced-motion: reduce)');
-    const update = () => { if (motion.matches) setPaused(true); };
-    motion.addEventListener('change', update);
-    return () => { observer.disconnect(); motion.removeEventListener('change', update); };
-  }, []);
+    return () => observer.disconnect();
+  }, [motionDisabled]);
   useEffect(() => {
-    if (paused || hovered || !visible || stories.length < 2) return;
-    const timer = setInterval(() => { if (!document.hidden) setActive(previous => (previous + 1) % stories.length); }, 4500);
+    if (motionDisabled || paused || hovered || !visible || stories.length < 1) return;
+    const timer = setInterval(() => { if (!document.hidden) setActive(previous => (previous + 1) % (stories.length + 1)); }, 4500);
     return () => clearInterval(timer);
-  }, [paused, hovered, visible, stories.length]);
-  const story = stories[active];
+  }, [paused, hovered, visible, stories.length, motionDisabled]);
+  useEffect(() => { if (active > stories.length) setActive(0); }, [active, stories.length]);
+  const story = active === 0 ? null : stories[active - 1];
   const portrait = storyPicture(story);
-  const changeStory = (direction) => { if (stories.length < 2) return; setPaused(true); setActive(previous => (previous + direction + stories.length) % stories.length); };
+  const slideCount = stories.length + 1;
+  const changeStory = (direction) => { if (slideCount < 2) return; setPaused(true); setActive(previous => (previous + direction + slideCount) % slideCount); };
 
   return <section ref={section} className="ex-stories" aria-labelledby="ex-stories-title">
     <div className="ex-stories-inner">
@@ -74,7 +93,7 @@ export function CustomerStories() {
         <Link className="ex-inline-link" to="/reviews.html">Meet our customers <Icon name="arrow" size={18} /></Link>
       </Reveal>
       <Reveal className="ex-stories-stage" delay={100} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocusCapture={() => setPaused(true)}>
-        <div className="ex-story-stack" aria-live={paused || hovered ? 'polite' : 'off'} aria-atomic="true" onPointerDown={event => { if (event.target.closest('a,button') || stories.length < 2) return; dragStart.current = event.clientX; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={event => { if (dragStart.current === null) return; const distance = event.clientX - dragStart.current; dragStart.current = null; if (Math.abs(distance) > event.currentTarget.offsetWidth * .18) changeStory(distance > 0 ? -1 : 1); }} onPointerCancel={() => { dragStart.current = null; }}>
+        <div className="ex-story-stack" aria-live={motionDisabled || paused || hovered ? 'polite' : 'off'} aria-atomic="true" onPointerDown={event => { if (event.target.closest('a,button') || slideCount < 2) return; dragStart.current = event.clientX; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={event => { if (dragStart.current === null) return; const distance = event.clientX - dragStart.current; dragStart.current = null; if (Math.abs(distance) > event.currentTarget.offsetWidth * .18) changeStory(distance > 0 ? -1 : 1); }} onPointerCancel={() => { dragStart.current = null; }}>
           <div className="ex-story-layer ex-story-layer-back" aria-hidden="true"><span /><span /><span /></div>
           <div className="ex-story-layer ex-story-layer-mid" aria-hidden="true"><span /><span /><span /></div>
           <article key={story?.key || 'welcome'} className={`ex-story-card ${!story ? 'ex-story-card-welcome' : ''}`}>
@@ -96,27 +115,27 @@ export function CustomerStories() {
           </article>
         </div>
         <div className="ex-story-controls">
-          <button type="button" onClick={() => changeStory(-1)} disabled={stories.length < 2} aria-label="Previous customer story"><Icon className="ex-arrow-back" name="arrow" /></button>
-          <span className="ex-story-count">{stories.length ? `${String(active + 1).padStart(2, '0')} / ${String(stories.length).padStart(2, '0')}` : status === 'loading' ? 'Discover the community' : 'Your next chapter'}</span>
-          <button type="button" onClick={() => changeStory(1)} disabled={stories.length < 2} aria-label="Next customer story"><Icon name="arrow" /></button>
-          {stories.length > 1 && <button type="button" className="ex-story-motion" onClick={() => setPaused(previous => !previous)} aria-label={paused ? 'Play customer stories' : 'Pause customer stories'} aria-pressed={paused}>{paused ? <Icon name="play" size={14}/> : <span aria-hidden="true">Ⅱ</span>}</button>}
+          <button type="button" onClick={() => changeStory(-1)} disabled={slideCount < 2} aria-label="Previous customer story"><Icon className="ex-arrow-back" name="arrow" /></button>
+          <span className="ex-story-count">{stories.length ? `${String(active + 1).padStart(2, '0')} / ${String(slideCount).padStart(2, '0')}` : status === 'loading' ? 'Discover the community' : 'Your next chapter'}</span>
+          <button type="button" onClick={() => changeStory(1)} disabled={slideCount < 2} aria-label="Next customer story"><Icon name="arrow" /></button>
+          {!motionDisabled && stories.length > 0 && <button type="button" className="ex-story-motion" onClick={() => setPaused(previous => !previous)} aria-label={paused ? 'Play customer stories' : 'Pause customer stories'} aria-pressed={paused}>{paused ? <Icon name="play" size={14}/> : <span aria-hidden="true">Ⅱ</span>}</button>}
         </div>
-        {stories.some(storyPicture) && <div className="ex-portrait-rail" aria-label="Choose a customer story">{stories.map((item, index) => storyPicture(item) && <button type="button" key={item.key} onClick={() => { setActive(index); setPaused(true); }} aria-label={`Show ${item.title}`} aria-pressed={index === active}><img src={storyPicture(item)} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.hidden = true; }} /></button>)}</div>}
+        {stories.some(storyPicture) && <div className="ex-portrait-rail" aria-label="Choose a customer story">{stories.map((item, index) => storyPicture(item) && <button type="button" key={item.key} onClick={() => { setActive(index + 1); setPaused(true); }} aria-label={`Show ${item.title}`} aria-pressed={index + 1 === active}><img src={storyPicture(item)} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.hidden = true; }} /></button>)}</div>}
       </Reveal>
     </div>
   </section>;
 }
 
 function useScrollProgress(ref, property = '--ex-progress') {
+  const { motionDisabled } = useMotionPreference();
+  const desktop = useMediaQuery('(min-width: 901px)');
   useEffect(() => {
     const section = ref.current;
-    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-    const desktop = matchMedia('(min-width: 901px)');
     if (!section) return;
+    if (motionDisabled || !desktop) { section.style.setProperty(property, '1'); return; }
     let frame = 0;
     const update = () => {
       frame = 0;
-      if (reduced.matches || !desktop.matches) { section.style.setProperty(property, '1'); return; }
       const box = section.getBoundingClientRect();
       const travel = property === '--ex-progress' ? Math.max(1, box.height - innerHeight) : Math.max(1, innerHeight * .8);
       const progress = property === '--ex-progress' ? -box.top / travel : (innerHeight - box.top) / travel;
@@ -126,21 +145,20 @@ function useScrollProgress(ref, property = '--ex-progress') {
     update();
     window.addEventListener('scroll', requestUpdate, { passive: true });
     window.addEventListener('resize', requestUpdate, { passive: true });
-    reduced.addEventListener('change', requestUpdate);
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener('scroll', requestUpdate);
       window.removeEventListener('resize', requestUpdate);
-      reduced.removeEventListener('change', requestUpdate);
     };
-  }, [ref, property]);
+  }, [ref, property, motionDisabled, desktop]);
 }
 
 export function ConversationJourney() {
+  const { motionDisabled } = useMotionPreference();
   const section = useRef(null);
   useScrollProgress(section);
   const revealPanel = (event) => {
-    if (!matchMedia('(min-width: 901px)').matches || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!matchMedia('(min-width: 901px)').matches || motionDisabled) return;
     const panel = event.target.closest('[data-ex-panel]');
     if (!panel) return;
     const node = section.current;

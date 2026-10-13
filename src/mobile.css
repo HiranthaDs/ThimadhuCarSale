@@ -1,0 +1,36 @@
+/* Phones use native scrolling and immediate interactions throughout the site. */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  html, body, *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+    will-change: auto !important;
+  }
+  .reveal, .reveal.reveal-ready {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .page-curtain { display: none !important; }
+  .page-transition-view { opacity: 1 !important; transform: none !important; }
+  .hs-device { display: none !important; }
+  .nav-reading-progress { display: none; }
+  .premium-nav-shell, .premium-mobile-menu, .nav-mobile-actions, .vehicle-status {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .btn:hover, .btn:hover svg, .vehicle-card:hover, .vehicle-card:hover .vehicle-card-media > img {
+    transform: none;
+  }
+}
+
+/* Keep the compact country rail moving on phones unless the visitor requests reduced motion. */
+@media (prefers-reduced-motion: no-preference) and (max-width: 767px),
+       (prefers-reduced-motion: no-preference) and (hover: none) and (pointer: coarse) {
+  .country-flags-animated .country-flags-track {
+    animation: country-flags-slide 32s linear infinite !important;
+    will-change: transform !important;
+  }
+  .country-flags-animated.is-paused .country-flags-track {
+    animation-play-state: paused !important;
+  }
+}

@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "node scripts/test-inventory-cache.mjs && node scripts/test-admin-auth.mjs",
-    "test:ui": "node scripts/browser-check.mjs && node scripts/test-flows.mjs && node scripts/test-experience.mjs && node scripts/test-navigation.mjs && node scripts/test-recovery.mjs && node scripts/test-hero-motion.mjs && node scripts/test-journey-animation.mjs"
+    "test:admin-ui": "node scripts/test-admin-portal.mjs",
+    "test:deliveries": "node scripts/test-delivery-gallery.mjs",
+    "test:ui": "node scripts/browser-check.mjs && node scripts/test-flows.mjs && node scripts/test-navigation.mjs && node scripts/test-recovery.mjs && node scripts/test-delivery-gallery.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",

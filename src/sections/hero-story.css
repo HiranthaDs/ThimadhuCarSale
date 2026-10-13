@@ -31,3 +31,22 @@
 @media(max-width:480px){.hs-opening{min-height:620px}.hs-intro h1{font-size:19vw}.hs-intro h1>span{font-size:17px;letter-spacing:.19em;margin-top:16px}.hs-eyebrow{font-size:8px;letter-spacing:.12em;margin-bottom:23px}.hs-intro>p:last-of-type{font-size:13px;max-width:285px;margin-top:23px}.hs-intro{bottom:105px}.hs-copy h2{font-size:32px}.hs-copy>p{font-size:13px}.hs-showcase{padding-inline:20px}.hs-phone-stage{width:270px;height:563px;margin-bottom:4px}.hs-device,.hs-chassis-layer{border-radius:43px}.hs-device-frame{border-radius:43px}.hs-device-bezel,.hs-glass-reflection{border-radius:38px}.hs-device-screen{border-radius:31px}.hs-screen-hero{height:137px}.hs-screen-hero h3{font-size:22px}.hs-screen-tile{min-height:130px;padding:10px}.hs-screen-tile>strong{font-size:14px}.hs-screen-feature-photo{height:96px}.hs-demo-field{padding-block:8px}.hs-screen-page-title h3{font-size:24px}.hs-screen-page-title p{font-size:8px}.hs-screen-cta{font-size:8px;margin-top:11px}.hs-notice-one{right:-30px;top:25px}.hs-notice-two{left:-27px;min-width:180px;top:47%}.hs-notice-three{right:-30px;bottom:11%}.hs-phone-notice{padding:10px;gap:7px}.hs-phone-notice strong{font-size:9px}.hs-phone-notice small{font-size:8px}.hs-demo-progress{width:130px}.hs-brands{width:calc(100% + 40px)}.confidence-gauge>h2{font-size:30px}.cg-gauge{width:95vw;margin-top:30px}.cg-gauge-copy{left:10%;right:10%;top:46%}.cg-gauge-copy h3{font-size:22px}.cg-gauge-copy p{font-size:10px;margin-top:12px}.cg-discover{margin-top:39px}.cg-needle{opacity:.07}}
 @media(prefers-reduced-motion:reduce){.hs-story{height:auto}.hs-stage{position:relative;height:auto;min-height:0}.hs-opening{position:relative;height:100svh;min-height:650px;opacity:1}.hs-showcase{position:relative;height:900px}.hs-copy{opacity:1;transform:translateY(-50%)}.hs-phone-stage{opacity:1;left:75%;transform:translate(-50%,-50%)!important}.hs-phone-scene{transform:none}.hs-phone-notice,.hs-brands{opacity:1}.hs-brand-track{animation:none}.hs-brand-window{overflow-x:auto}.hs-screen-body,.hs-demo-field,.hs-demo-progress>i{animation:none}.cg-benefit-track{transform:none;will-change:auto}.cg-benefit-window{overflow-x:auto}.cg-needle{transform:rotate(25deg)}}
 @media(prefers-reduced-motion:reduce) and (max-width:900px){.hs-showcase{height:auto}.hs-copy{transform:none}.hs-phone-stage{left:auto;transform:none!important}}
+
+/* A single, still hero lets phone visitors reach the vehicles immediately. */
+.hs-story.hs-mobile{height:auto;--hero-opacity:1}
+.hs-mobile .hs-stage{position:relative;height:auto;min-height:0}
+.hs-mobile .hs-opening{position:relative;height:min(760px,92svh);min-height:570px;opacity:1}
+.hs-mobile .hs-intro{bottom:58px;left:22px;right:22px}
+.hs-mobile .hs-intro h1{font-size:clamp(48px,15vw,88px);line-height:1.05;letter-spacing:-.035em}
+.hs-mobile .hs-intro h1>span{font-size:clamp(15px,4.6vw,22px);letter-spacing:.23em;margin-top:15px}
+.hs-mobile .hs-eyebrow{font-size:9px;letter-spacing:.12em;margin-bottom:20px}
+.hs-mobile .hs-intro>p:last-of-type{font-size:14px;line-height:1.6;margin-top:23px;max-width:330px}
+.hs-mobile .hs-opening-link{font-size:14px;min-height:46px;padding:10px 0}
+@media (max-width:767px), (hover:none) and (pointer:coarse){
+  .cg-benefit-window{overflow-x:auto;padding-inline:20px;scrollbar-width:thin}
+  .cg-benefit-track{transform:none;will-change:auto}
+  .cg-benefit-group[aria-hidden=true]{display:none}
+  .cg-benefit{width:160px;height:130px}
+  .cg-benefit h3{font-size:15px}
+  .cg-needle{transform:rotate(25deg)}
+}

@@ -11,16 +11,20 @@ await context.route('https://docs.google.com/spreadsheets/d/e/**', route => rout
   contentType: 'text/csv', headers: { 'Access-Control-Allow-Origin': '*' },
   body: `id,brand,model,year,price,mileage,fuel,transmission,type,condition,availability,image1,image2\nCHECK-1,Toyota,Aqua,2022,5000000,40000,Hybrid,Automatic,Hatchback,Used,Available,${base}/images/hero.webp,${base}/images/journey.webp\n`,
 }));
-await context.route('https://docs.google.com/spreadsheets/d/*/gviz/**', route => {
+await context.route('https://script.google.com/macros/s/**', route => {
   const url = new URL(route.request().url());
-  const video = url.searchParams.get('gid') === '1018172779';
+  const kind = url.searchParams.get('type');
+  if (url.searchParams.get('action') !== 'read' || !['customers', 'videos'].includes(kind)) return route.abort();
+  const video = kind === 'videos';
   if (outage === 'all' || (outage === 'video' && video)) return route.abort();
-  const callback = url.searchParams.get('tqx').split('responseHandler:')[1];
   const record = video ? { id: 'video-check', headline: 'A video moment', video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', status: 'Active' } : { id: 'photo-check', headline: 'A customer moment', description: 'Synthetic browser fixture.', image_url: `${base}/images/journey.webp`, status: 'Active' };
-  const keys = Object.keys(record);
-  return route.fulfill({ contentType: 'text/javascript', body: `${callback}(${JSON.stringify({ status: 'ok', table: { cols: keys.map(label => ({ label })), rows: [{ c: keys.map(key => ({ v: record[key] })) }] } })})` });
+  return route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    headers: { 'Access-Control-Allow-Origin': '*' },
+    body: JSON.stringify({ apiVersion: '2.1.0', status: 'success', data: [record] }),
+  });
 });
-await context.route('https://script.google.com/macros/**', route => route.abort());
 await context.route('https://wa.me/**', route => route.abort());
 const page = await context.newPage();
 page.on('pageerror', error => errors.push(error.message));

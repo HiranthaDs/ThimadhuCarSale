@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button, Icon, PageHero } from './components';
 import { useSeo } from './seo';
+import { useMotionPreference } from './useMotionPreference';
 import './inventory.css';
 
 const CONTACT = 'https://wa.me/94771813928';
@@ -133,6 +134,7 @@ function FilterControls({ params, facets, change, clear }) {
 }
 
 export function InventoryPage() {
+  const { motionDisabled } = useMotionPreference();
   const [params, setParams] = useSearchParams();
   const paramsKey = params.toString();
   const [draft, setDraft] = useState(params.get('q') || '');
@@ -172,7 +174,7 @@ export function InventoryPage() {
     setParams(next);
   }
   function reset() { setParams({}); setDraft(''); }
-  function pageTo(page) { change('page', String(page)); resultsTop.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }); }
+  function pageTo(page) { change('page', String(page)); resultsTop.current?.scrollIntoView({ behavior: motionDisabled ? 'instant' : 'smooth', block: 'start' }); }
   const activeFilters = [...params.entries()].filter(([key]) => !['sort', 'page'].includes(key));
   const pages = Array.from({ length: state.totalPages }, (_, index) => index + 1).filter((page) => page === 1 || page === state.totalPages || Math.abs(page - state.page) <= 1);
   const filterProps = { params, facets: state.facets, change, clear: reset };

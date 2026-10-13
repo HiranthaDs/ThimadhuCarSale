@@ -8,13 +8,37 @@ const project = (longitude, latitude) => ({
   x: 300 + (longitude - 80.773041) * Math.cos(7.876655 * Math.PI / 180) * 150,
   y: 360 - (latitude - 7.876655) * 150,
 });
+
+// Label offsets keep nearby destinations readable without moving their
+// geographic markers. On smaller screens the secondary labels move into the
+// location picker below the map, while their map dots remain interactive.
 const cities = [
-  { name: 'Jaffna', province: 'Northern Province', latitude: 9.668446, longitude: 80.007420, side: 'left' },
-  { name: 'Trincomalee', province: 'Eastern Province', latitude: 8.5778, longitude: 81.2289, side: 'right' },
-  { name: 'Kandy', province: 'Central Province', latitude: 7.2906, longitude: 80.6336, side: 'right' },
-  { name: 'Colombo', province: 'Western Province', latitude: 6.93548, longitude: 79.84868, side: 'left' },
-  { name: 'Galle', province: 'Southern Province', latitude: 6.0461, longitude: 80.2103, side: 'right' },
+  { name: 'Jaffna', province: 'Northern Province', latitude: 9.668446, longitude: 80.007420, side: 'left', featured: true },
+  { name: 'Kilinochchi', province: 'Northern Province', latitude: 9.3961, longitude: 80.3982, side: 'right' },
+  { name: 'Mannar', province: 'Northern Province', latitude: 8.98945, longitude: 79.87842, side: 'left', labelY: 2 },
+  { name: 'Trincomalee', province: 'Eastern Province', latitude: 8.5778, longitude: 81.2289, side: 'right', labelY: -5, featured: true },
+  { name: 'Anuradhapura', province: 'North Central Province', latitude: 8.31223, longitude: 80.41306, side: 'left', labelY: -5, featured: true },
+  { name: 'Puttalam', province: 'North Western Province', latitude: 8.0362, longitude: 79.8283, side: 'left', labelY: 7 },
+  { name: 'Batticaloa', province: 'Eastern Province', latitude: 7.7102, longitude: 81.6924, side: 'right', labelY: 8 },
+  { name: 'Kurunegala', province: 'North Western Province', latitude: 7.4839, longitude: 80.3683, side: 'left', labelY: -14 },
+  { name: 'Kandy', province: 'Central Province', latitude: 7.2906, longitude: 80.6336, side: 'right', labelY: -12, featured: true },
+  { name: 'Negombo', province: 'Western Province', latitude: 7.2083, longitude: 79.8358, side: 'left', labelY: 5 },
+  { name: 'Badulla', province: 'Uva Province', latitude: 6.9802, longitude: 81.0577, side: 'right', labelY: -13 },
+  { name: 'Nuwara Eliya', province: 'Central Province', latitude: 6.9708, longitude: 80.7829, side: 'left', labelY: 10 },
+  { name: 'Colombo', province: 'Western Province', latitude: 6.93548, longitude: 79.84868, side: 'left', labelY: 10, featured: true },
+  { name: 'Ratnapura', province: 'Sabaragamuwa Province', latitude: 6.6858, longitude: 80.4036, side: 'right', labelY: 14 },
+  { name: 'Hambantota', province: 'Southern Province', latitude: 6.1241, longitude: 81.1185, side: 'right', labelY: -20 },
+  { name: 'Beliatta', province: 'Southern Province', latitude: 6.0496, longitude: 80.73252, side: 'right', labelY: 2, featured: true },
+  { name: 'Galle', province: 'Southern Province', latitude: 6.0461, longitude: 80.2103, side: 'left', labelY: -14 },
 ].map(city => ({ ...city, ...project(city.longitude, city.latitude) }));
+
+const cityStyle = city => ({
+  left: `${city.x / 6}%`,
+  top: `${city.y / 7.2}%`,
+  '--sl-label-x': city.side === 'left' ? '-18px' : '18px',
+  '--sl-label-y': `${city.labelY || 0}px`,
+  '--sl-label-anchor': city.side === 'left' ? '-100%' : '0%',
+});
 
 const enquiryLink = city => `https://wa.me/94771813928?text=${encodeURIComponent(`Hi Thimadu Auto Traders, I'm in ${city} and would like to discuss my next vehicle.`)}`;
 
@@ -49,7 +73,7 @@ export default function SriLankaNetwork() {
       </Reveal>
 
       <div className="sl-network-map-panel">
-        <div className="sl-map-topline"><span><span className="sl-map-status-dot" /> CHOOSE YOUR CITY</span><span>LK / +94</span></div>
+        <div className="sl-map-topline"><span><span className="sl-map-status-dot" /> CHOOSE YOUR CITY</span><span>{cities.length} DESTINATIONS / 9 PROVINCES</span></div>
         <div className="sl-map" role="group" aria-label="Select an enquiry destination in Sri Lanka">
           <svg className="sl-map-grid" viewBox="0 0 600 720" fill="none" aria-hidden="true">
             {[6, 7, 8, 9].map(latitude => <g key={latitude}><path d={`M35 ${project(80, latitude).y}H565`} /><text x="17" y={project(80, latitude).y + 4}>{latitude}°</text></g>)}
@@ -64,12 +88,16 @@ export default function SriLankaNetwork() {
           </svg>}
           <span className="sl-map-ocean" aria-hidden="true">INDIAN<br />OCEAN</span>
           <span className="sl-map-compass" aria-hidden="true"><span>N</span><svg viewBox="0 0 20 32" width="20" height="32"><path d="M10 1 19 29 10 23 1 29Z" fill="none" stroke="currentColor" /><path d="M10 1 10 23 1 29Z" fill="currentColor" /></svg></span>
-          {cities.map(city => <button type="button" key={city.name} className={`sl-map-city sl-map-city-${city.side}${!hasCustomCity && selectedName === city.name ? ' is-selected' : ''}`} style={{ left: `${city.x / 6}%`, top: `${city.y / 7.2}%` }} aria-pressed={!hasCustomCity && selectedName === city.name} aria-label={`Choose ${city.name} for a vehicle enquiry`} onClick={() => selectCity(city.name)}>
+          {cities.map(city => <button type="button" key={city.name} className={`sl-map-city sl-map-city-${city.side} ${city.featured ? 'is-featured' : 'is-secondary'}${!hasCustomCity && selectedName === city.name ? ' is-selected' : ''}`} style={cityStyle(city)} aria-pressed={!hasCustomCity && selectedName === city.name} aria-label={`Choose ${city.name}, ${city.province}, for a vehicle enquiry`} onClick={() => selectCity(city.name)}>
             <span className="sl-map-city-dot" aria-hidden="true"><span /></span><span className="sl-map-city-name">{city.name}</span>
           </button>)}
         </div>
+        <div className="sl-map-location-picker" role="group" aria-label="Choose from all Sri Lankan enquiry destinations">
+          <p>All {cities.length} destinations</p>
+          <div>{cities.map(city => <button type="button" key={city.name} className={!hasCustomCity && selectedName === city.name ? 'is-selected' : ''} aria-pressed={!hasCustomCity && selectedName === city.name} onClick={() => selectCity(city.name)}>{city.name}</button>)}</div>
+        </div>
         <div className="sl-map-bottomline"><a href={enquiryLink(destination)}>ENQUIRE FROM {destination.toLocaleUpperCase()} <Icon name="arrow-up" size={13} /></a><span>SRI LANKA · 07° N 81° E</span></div>
-        <p className="sl-map-note">Enquiry destinations. Select your location to start a conversation.</p>
+        <p className="sl-map-note">Enquiry destinations across all nine provinces. Select the nearest location to start a conversation.</p>
         <p className="sl-map-attribution">Map: <a href="https://www.naturalearthdata.com/" target="_blank" rel="noreferrer">Natural Earth</a> · Cities: <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">GeoNames</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>)</p>
       </div>
     </div>

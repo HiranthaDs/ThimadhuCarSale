@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useMotionPreference } from './useMotionPreference';
 
 const pageNames = {
   '/': 'THE ROAD AHEAD', '/index.html': 'THE ROAD AHEAD',
@@ -10,6 +11,7 @@ const pageNames = {
 };
 
 export default function PageTransition({ children }) {
+  const { motionDisabled } = useMotionPreference();
   const location = useLocation();
   const [displayed, setDisplayed] = useState(location);
   const [phase, setPhase] = useState('idle');
@@ -25,7 +27,7 @@ export default function PageTransition({ children }) {
       return;
     }
     changedPage.current = true;
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (motionDisabled) {
       displayedRef.current = location;
       setDisplayed(location);
       setPhase('idle');
@@ -39,7 +41,7 @@ export default function PageTransition({ children }) {
     }, 240);
     const finish = setTimeout(() => setPhase('idle'), 760);
     return () => { clearTimeout(swap); clearTimeout(finish); };
-  }, [location]);
+  }, [location, motionDisabled]);
 
   useLayoutEffect(() => {
     if (!changedPage.current) return;

@@ -7,7 +7,7 @@ const STORE_NAME = 'snapshots';
 const CACHE_KEY = 'public-inventory-v3';
 const CACHE_SCHEMA = 3;
 const FRESH_FOR_MS = 5 * 60 * 1000;
-const API_FALLBACK = 'https://script.google.com/macros/s/AKfycbzh9gqz8J6qWbiqW0-N1gZMzM66TD7sQ4QHsmDBL7Osml99CEnUPC3LFLnAHCBN2mvSXg/exec?action=read&type=vehicles';
+const API_FALLBACK = 'https://script.google.com/macros/s/AKfycbzua3u-DZejQpn5fEBVi9v2qatu1du6F2pIU-s2eF9NyhJVKcIgO8foP8SFnZ1XygEOpg/exec?action=read&type=vehicles';
 const NETWORK_ATTEMPTS = 3;
 
 let records = [];

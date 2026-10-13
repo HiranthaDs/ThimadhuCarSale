@@ -18,7 +18,7 @@ await mkdir('.audit/navigation', { recursive: true });
 
 try {
   await page.goto(base + '/aboutus.html');
-  await page.getByRole('button', { name: 'Our services', exact: true }).click();
+  await page.getByRole('button', { name: 'Services', exact: true }).click();
   await expect(page.locator('.nav-mega-menu')).toBeVisible();
   await page.screenshot({ path: '.audit/navigation/desktop-mega-menu.png' });
   await page.keyboard.press('Escape');
@@ -52,13 +52,13 @@ try {
   await page.getByRole('button', { name: 'Open vehicle search' }).click();
   await expect(page.getByLabel('Make', { exact: true })).toHaveValue('toyota');
   await page.locator('#global-vehicle-search').fill('no-such-car');
-  await expect(page.locator('.nav-search-state h3')).toHaveText('Still out there.');
+  await expect(page.locator('.nav-search-state h3')).toHaveText('No matching vehicles');
   await page.evaluate(() => {
     window.__navigationQuery = window.VehicleStore.query;
     window.VehicleStore.query = () => Promise.reject(new Error('Synthetic connection failure'));
   });
   await page.locator('.nav-search-dialog').getByRole('button', { name: 'Reset', exact: true }).click();
-  await expect(page.locator('.nav-search-state h3')).toHaveText('Let’s connect you.');
+  await expect(page.locator('.nav-search-state h3')).toHaveText('Unable to load vehicles');
   await page.evaluate(() => { window.VehicleStore.query = window.__navigationQuery; delete window.__navigationQuery; });
   await page.getByRole('button', { name: 'Try again', exact: true }).click();
   await expect(page.locator('.nav-result')).toHaveCount(3);

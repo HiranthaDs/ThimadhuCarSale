@@ -1,6 +1,6 @@
 import { chromium } from '@playwright/test';
 
-const baseURL = process.env.TEST_URL || 'http://127.0.0.1:4174';
+const baseURL = process.env.TEST_URL || 'http://127.0.0.1:5174';
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 

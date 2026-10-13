@@ -7,3 +7,28 @@
 @media(prefers-reduced-motion:reduce){.vehicle-card,.vehicle-card-media>img,.vehicle-card-arrow{transition:none}.vehicle-card:hover{transform:none}.vehicle-card:hover .vehicle-card-media>img{transform:none}.vehicle-skeleton>span,.detail-loading-title,.detail-loading-layout>div{animation:none}}
 body:has(.inv-filter-dialog[open],.detail-lightbox[open]){overflow:hidden}
 .inv-range-error{color:#a12d35;font-size:10px;line-height:1.6;margin:10px 0 0}.inv-range input[aria-invalid="true"]{border-color:#a12d35}
+
+/* Reserve space for the fixed navigation in every vehicle-details state. */
+.detail-top,
+.detail-loading,
+.detail-missing { padding-top: 136px; }
+.detail-heading > div { min-width: 0; }
+.detail-heading h1,
+.detail-price,
+.detail-enquiry-note { overflow-wrap: anywhere; }
+.detail-share { min-height: 44px; }
+@media (max-width: 1100px) {
+  .detail-top,
+  .detail-loading,
+  .detail-missing { padding-top: 120px; }
+}
+@media (max-width: 767px) {
+  .detail-top,
+  .detail-loading,
+  .detail-missing { padding-top: 104px; }
+  .detail-back { min-height: 44px; }
+  .detail-heading { margin-top: 20px; }
+  .detail-photo-arrows button,
+  .detail-lightbox-toolbar button,
+  .detail-lightbox-controls button { width: 44px; height: 44px; }
+}

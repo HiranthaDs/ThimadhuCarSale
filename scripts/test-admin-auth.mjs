@@ -17,15 +17,24 @@ vm.runInContext(await readFile(new URL('../Code.gs', import.meta.url), 'utf8'), 
 const post = payload => JSON.parse(context.doPost({ postData: { contents: JSON.stringify(payload) } }).text);
 const get = parameter => JSON.parse(context.doGet({ parameter }).text);
 
-assert.equal(post({ action: 'auth', token: 'unconfigured-example' }).code, 'ADMIN_NOT_CONFIGURED');
+const unconfigured = post({ action: 'auth', token: 'unconfigured-example' });
+assert.equal(unconfigured.code, 'ADMIN_NOT_CONFIGURED');
+assert.equal(unconfigured.apiVersion, '2.1.0');
 assert.equal(post({ action: 'delete', token: '' }).code, 'ADMIN_NOT_CONFIGURED');
 assert.equal(sheetReads, 0, 'Unconfigured admin actions must not touch the spreadsheet.');
 configuredToken = 'synthetic-local-test-token';
-assert.equal(post({ action: 'auth', token: 'incorrect' }).status, 'error');
+const rejected = post({ action: 'auth', token: 'incorrect' });
+assert.equal(rejected.status, 'error');
+assert.equal(rejected.code, 'UNAUTHORIZED');
 assert.equal(post({ action: 'delete', token: 'incorrect' }).code, 'UNAUTHORIZED');
-assert.equal(post({ action: 'auth', token: configuredToken }).status, 'success');
+const accepted = post({ action: 'auth', token: configuredToken });
+assert.equal(accepted.status, 'success');
+assert.equal(accepted.apiVersion, '2.1.0');
 assert.equal(sheetReads, 0, 'Login and rejected writes must not initialize spreadsheet structure.');
-assert.equal(get({ action: 'health' }).status, 'success');
+const health = get({ action: 'health' });
+assert.equal(health.status, 'success');
+assert.equal(health.version, '2.1.0');
+assert.equal(health.apiVersion, '2.1.0');
 assert.equal(sheetReads, 0, 'Public health must be read-only.');
 const response = get({ action: 'read', type: 'all' });
 assert.equal(response.status, 'success');

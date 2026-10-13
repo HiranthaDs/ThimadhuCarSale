@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Brand, Icon } from './components';
+import { useMotionPreference } from './useMotionPreference';
 import './navigation.css';
 
 const CONTACT = 'https://wa.me/94771813928';
 const inventoryPath = '/all-vehicles.html';
-const links = [[inventoryPath, 'The collection'], ['/reviews.html', 'Customer stories'], ['/aboutus.html', 'Our story']];
+const links = [[inventoryPath, 'Vehicles'], ['/reviews.html', 'Deliveries'], ['/aboutus.html', 'About us']];
 const services = [
-  ['/sell-your-vehicle-sri-lanka.html', 'Sell your vehicle', 'Make room for your next chapter.', 'key'],
-  ['/vehicle-sourcing-sri-lanka.html', 'Find something specific', 'Tell us what you have in mind.', 'search'],
-  ['/vehicle-information-support.html', 'Know your next vehicle', 'A little clarity before your next move.', 'shield'],
+  ['/sell-your-vehicle-sri-lanka.html', 'Sell your vehicle', 'Speak to us about selling your vehicle.', 'key'],
+  ['/vehicle-sourcing-sri-lanka.html', 'Vehicle sourcing', 'Tell us what you have in mind.', 'search'],
+  ['/vehicle-information-support.html', 'Vehicle information', 'Get help with vehicle details and documents.', 'shield'],
 ];
 const emptyFilters = { q: '', brand: '', type: '', fuel: '', minPrice: '', maxPrice: '', minYear: '', maxYear: '', sort: 'recommended' };
 const number = new Intl.NumberFormat('en-LK', { maximumFractionDigits: 0 });
@@ -97,9 +98,9 @@ function SearchDialog({ open, close, dialogRef, initialSearch }) {
 
   return <dialog ref={dialogRef} className="nav-search-dialog" aria-labelledby="nav-search-title" onCancel={event => { event.preventDefault(); close(); }} onClose={close} onClick={event => { if (event.target === event.currentTarget) close(); }}>
     <div className="nav-search-panel">
-      <div className="nav-search-heading"><div><p className="nav-overline">A GOOD PLACE TO START</p><h2 id="nav-search-title">Your next car. <span>Your way.</span></h2></div><button type="button" className="nav-icon-button" onClick={close} aria-label="Close vehicle search"><Icon name="close" size={22} /></button></div>
+      <div className="nav-search-heading"><div><p className="nav-overline">VEHICLE SEARCH</p><h2 id="nav-search-title">Find a vehicle</h2></div><button type="button" className="nav-icon-button" onClick={close} aria-label="Close vehicle search"><Icon name="close" size={22} /></button></div>
       <form onSubmit={submit} className="nav-search-form" role="search" aria-label="Advanced vehicle search">
-        <div className="nav-search-input"><Icon name="search" size={25} /><label className="nav-sr-only" htmlFor="global-vehicle-search">Search make, model or keyword</label><input id="global-vehicle-search" ref={inputRef} type="search" autoComplete="off" value={filters.q} onChange={event => change('q', event.target.value)} placeholder="A make, a model, a new possibility…" /><kbd>ESC</kbd></div>
+        <div className="nav-search-input"><Icon name="search" size={25} /><label className="nav-sr-only" htmlFor="global-vehicle-search">Search make, model or keyword</label><input id="global-vehicle-search" ref={inputRef} type="search" autoComplete="off" value={filters.q} onChange={event => change('q', event.target.value)} placeholder="Search make, model or keyword" /><kbd>ESC</kbd></div>
         <div className="nav-search-body">
           <div className="nav-search-filters"><div className="nav-filter-label"><span><Icon name="filter" size={16} /> Refine your search {filterCount > 0 && <i>{filterCount}</i>}</span><button type="button" onClick={() => setFilters(emptyFilters)}>Reset</button></div>
             <div className="nav-select-grid">{[['brand', 'brands', 'Make', 'All makes'], ['type', 'types', 'Body type', 'All body types'], ['fuel', 'fuels', 'Fuel', 'All fuel types']].map(([key, facet, label, placeholder]) => <label className="nav-field" key={key}><span>{label}</span><select aria-label={label} value={filters[key]} onChange={event => change(key, event.target.value)}><option value="">{placeholder}</option>{filters[key] && !(state.facets?.[facet] || []).some(option => option.key === filters[key]) && <option value={filters[key]}>{filters[key].split(',').join(', ')}</option>}{(state.facets?.[facet] || []).map(option => <option value={option.key} key={option.key}>{option.value} ({option.count})</option>)}</select></label>)}</div>
@@ -108,12 +109,12 @@ function SearchDialog({ open, close, dialogRef, initialSearch }) {
             {rangeError && <p className="nav-range-error" id="nav-range-error" role="alert">{rangeError}</p>}
             <label className="nav-field nav-sort-field"><span>Show me</span><select value={filters.sort} onChange={event => change('sort', event.target.value)}><option value="recommended">Recommended first</option><option value="price-low">Lowest price first</option><option value="price-high">Highest price first</option><option value="year-new">Newest model year</option><option value="mileage-low">Lowest mileage first</option><option value="newest">Recently added</option></select></label>
           </div>
-          <div className="nav-search-preview" aria-busy={state.loading && !rangeError}><div className="nav-preview-label"><span>{queryKey ? 'YOUR MATCHES' : 'FROM THE COLLECTION'}</span><span role="status" aria-live="polite">{rangeError ? 'Check your range' : state.loading ? 'Searching…' : state.error ? 'Connection unavailable' : `${state.total} ${state.total === 1 ? 'vehicle' : 'vehicles'}`}</span></div>
-            {rangeError ? <div className="nav-search-state"><Icon name="filter" size={30} /><h3>A small adjustment.</h3><p>Check the highlighted range to see matching vehicles.</p></div> : state.loading ? <div className="nav-search-skeleton" aria-label="Loading matching vehicles">{[0, 1, 2].map(index => <div key={index}><i /><span><b /><b /></span></div>)}</div> : state.error ? <div className="nav-search-state"><Icon name="car" size={30} /><h3>Let’s connect you.</h3><p>We couldn’t reach the catalogue. Try again, or ask our team about current stock.</p><button type="button" className="nav-inline-link" onClick={() => setRetry(value => value + 1)}>Try again <Icon name="arrow" size={16} /></button><a href={CONTACT}>Ask on WhatsApp <Icon name="arrow-up" size={15} /></a></div> : !state.items?.length ? <div className="nav-search-state"><Icon name="search" size={30} /><h3>Still out there.</h3><p>{queryKey ? 'No vehicles match yet. Widen your search, or let us help find what you have in mind.' : 'New possibilities are always on the way. Ask our team about available stock.'}</p><Link to="/vehicle-sourcing-sri-lanka.html" onClick={close}>Find a specific vehicle <Icon name="arrow" size={16} /></Link></div> : <>{state.cached && <p className="nav-cached-note">Showing saved stock. Please confirm availability.</p>}<div className="nav-result-list">{state.items.map(vehicle => <Link key={vehicle.id} to={`/car-details.html?vehicle=${encodeURIComponent(vehicle.slug)}`} className="nav-result" onClick={close}><SearchThumbnail vehicle={vehicle} /><span className="nav-result-copy"><small>{[vehicle.year, vehicle.type].filter(Boolean).join(' · ')}</small><strong>{[vehicle.brand, vehicle.model].filter(Boolean).join(' ')}</strong><span>{Number(vehicle.price) > 0 ? `LKR ${number.format(vehicle.price)}` : 'Price on request'}<i>{vehicle.availability || 'Enquire'}</i></span></span><Icon name="arrow-up" size={16} /></Link>)}</div></>}
-            <Link className="nav-search-help" to="/vehicle-sourcing-sri-lanka.html" onClick={close}><span>Have something specific in mind?</span><strong>Let’s find it together <Icon name="arrow-up" size={15} /></strong></Link>
+          <div className="nav-search-preview" aria-busy={state.loading && !rangeError}><div className="nav-preview-label"><span>{queryKey ? 'YOUR MATCHES' : 'AVAILABLE VEHICLES'}</span><span role="status" aria-live="polite">{rangeError ? 'Check your range' : state.loading ? 'Searching…' : state.error ? 'Connection unavailable' : `${state.total} ${state.total === 1 ? 'vehicle' : 'vehicles'}`}</span></div>
+            {rangeError ? <div className="nav-search-state"><Icon name="filter" size={30} /><h3>Check your range</h3><p>Check the highlighted range to see matching vehicles.</p></div> : state.loading ? <div className="nav-search-skeleton" aria-label="Loading matching vehicles">{[0, 1, 2].map(index => <div key={index}><i /><span><b /><b /></span></div>)}</div> : state.error ? <div className="nav-search-state"><Icon name="car" size={30} /><h3>Unable to load vehicles</h3><p>We couldn’t reach the catalogue. Try again, or ask our team about current stock.</p><button type="button" className="nav-inline-link" onClick={() => setRetry(value => value + 1)}>Try again <Icon name="arrow" size={16} /></button><a href={CONTACT}>Ask on WhatsApp <Icon name="arrow-up" size={15} /></a></div> : !state.items?.length ? <div className="nav-search-state"><Icon name="search" size={30} /><h3>No matching vehicles</h3><p>{queryKey ? 'No vehicles match yet. Widen your search, or let us help find what you have in mind.' : 'Ask our team about available stock.'}</p><Link to="/vehicle-sourcing-sri-lanka.html" onClick={close}>Find a specific vehicle <Icon name="arrow" size={16} /></Link></div> : <>{state.cached && <p className="nav-cached-note">Showing saved stock. Please confirm availability.</p>}<div className="nav-result-list">{state.items.map(vehicle => <Link key={vehicle.id} to={`/car-details.html?vehicle=${encodeURIComponent(vehicle.slug)}`} className="nav-result" onClick={close}><SearchThumbnail vehicle={vehicle} /><span className="nav-result-copy"><small>{[vehicle.year, vehicle.type].filter(Boolean).join(' · ')}</small><strong>{[vehicle.brand, vehicle.model].filter(Boolean).join(' ')}</strong><span>{Number(vehicle.price) > 0 ? `LKR ${number.format(vehicle.price)}` : 'Price on request'}<i>{vehicle.availability || 'Enquire'}</i></span></span><Icon name="arrow-up" size={16} /></Link>)}</div></>}
+            <Link className="nav-search-help" to="/vehicle-sourcing-sri-lanka.html" onClick={close}><span>Have something specific in mind?</span><strong>Ask about vehicle sourcing <Icon name="arrow-up" size={15} /></strong></Link>
           </div>
         </div>
-        <div className="nav-search-footer"><span><Icon name="shield" size={16} /> A little guidance. A better next move.</span><button className="nav-search-submit" type="submit" disabled={!!rangeError}>Explore {state.loading || state.error || rangeError ? 'the collection' : `${state.total} ${state.total === 1 ? 'vehicle' : 'vehicles'}`} <Icon name="arrow" size={19} /></button></div>
+        <div className="nav-search-footer"><span><Icon name="shield" size={16} /> Contact our team to confirm availability.</span><button className="nav-search-submit" type="submit" disabled={!!rangeError}>View {state.loading || state.error || rangeError ? 'vehicles' : `${state.total} ${state.total === 1 ? 'vehicle' : 'vehicles'}`} <Icon name="arrow" size={19} /></button></div>
       </form>
     </div>
   </dialog>;
@@ -121,6 +122,7 @@ function SearchDialog({ open, close, dialogRef, initialSearch }) {
 
 export default function Header() {
   const location = useLocation();
+  const { motionDisabled } = useMotionPreference();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -148,6 +150,13 @@ export default function Header() {
   }, []);
   useEffect(() => {
     let frame;
+    if (motionDisabled) {
+      const updatePosition = () => setScrolled(window.scrollY > 32);
+      updatePosition();
+      progressRef.current?.style.removeProperty('transform');
+      window.addEventListener('scroll', updatePosition, { passive: true });
+      return () => window.removeEventListener('scroll', updatePosition);
+    }
     const update = () => {
       frame = null;
       setScrolled(window.scrollY > 32);
@@ -158,7 +167,7 @@ export default function Header() {
     update();
     window.addEventListener('scroll', schedule, { passive: true }); window.addEventListener('resize', schedule);
     return () => { cancelAnimationFrame(frame); window.removeEventListener('scroll', schedule); window.removeEventListener('resize', schedule); };
-  }, [location.pathname]);
+  }, [location.pathname, motionDisabled]);
   useEffect(() => {
     if (!mobileOpen && !searchOpen) return;
     const previous = document.body.style.overflow;
@@ -202,19 +211,19 @@ export default function Header() {
     <a className="skip-link" href="#main-content">Skip to content</a>
     <header className={`site-header premium-header${scrolled ? ' is-scrolled' : ''}${mobileOpen ? ' menu-is-open' : ''}`}>
       <div className="nav-shell premium-nav-shell"><Brand />
-        <nav className="premium-desktop-nav" aria-label="Main navigation"><NavLink to={inventoryPath}>The collection</NavLink><div className="nav-services" ref={servicesRef} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setServicesOpen(false); }}><button ref={servicesButton} aria-expanded={servicesOpen} aria-controls="nav-services-menu" onClick={() => setServicesOpen(current => !current)} className={location.pathname.includes('service') || location.pathname.includes('sourcing') || location.pathname.includes('support') || location.pathname.includes('sell-your') ? 'active' : ''}>Our services <Icon name="chevron" size={12} /></button><div id="nav-services-menu" className={`nav-mega-menu${servicesOpen ? ' is-open' : ''}`} inert={!servicesOpen ? true : undefined}><div className="nav-mega-intro"><p className="nav-overline">BEYOND THE DRIVE</p><h2>Every next move.<br /><span>A little easier.</span></h2><Link to="/services.html">Explore our services <Icon name="arrow" size={17} /></Link></div><div className="nav-mega-links">{services.map(([to, title, description, icon]) => <Link to={to} key={to}><span className="nav-service-icon"><Icon name={icon} size={20} /></span><span><strong>{title}</strong><small>{description}</small></span><Icon name="arrow-up" size={16} /></Link>)}</div></div></div><NavLink to="/reviews.html">Customer stories</NavLink><NavLink to="/aboutus.html">Our story</NavLink></nav>
-        <div className="nav-utilities"><button ref={searchButton} className="nav-search-trigger" onClick={openSearch} aria-label="Open vehicle search" aria-haspopup="dialog"><Icon name="search" size={18} /><span>Search</span><kbd>{shortcut}</kbd></button><a className="nav-contact premium-contact" href={CONTACT}>Let’s talk <Icon name="arrow-up" size={16} /></a><button ref={toggleRef} className="menu-toggle premium-menu-toggle" aria-controls="mobile-navigation" aria-expanded={mobileOpen} aria-label={mobileOpen ? 'Close menu' : 'Open menu'} onClick={() => { setServicesOpen(false); setMobileOpen(current => !current); }}><Icon name={mobileOpen ? 'close' : 'menu'} size={23} /></button></div>
+        <nav className="premium-desktop-nav" aria-label="Main navigation"><NavLink to={inventoryPath}>Vehicles</NavLink><div className="nav-services" ref={servicesRef} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setServicesOpen(false); }}><button ref={servicesButton} aria-expanded={servicesOpen} aria-controls="nav-services-menu" onClick={() => setServicesOpen(current => !current)} className={location.pathname.includes('service') || location.pathname.includes('sourcing') || location.pathname.includes('support') || location.pathname.includes('sell-your') ? 'active' : ''}>Services <Icon name="chevron" size={12} /></button><div id="nav-services-menu" className={`nav-mega-menu${servicesOpen ? ' is-open' : ''}`} inert={!servicesOpen ? true : undefined}><div className="nav-mega-intro"><p className="nav-overline">HOW WE CAN HELP</p><h2>Buying, selling<br /><span>and vehicle support.</span></h2><Link to="/services.html">View all services <Icon name="arrow" size={17} /></Link></div><div className="nav-mega-links">{services.map(([to, title, description, icon]) => <Link to={to} key={to}><span className="nav-service-icon"><Icon name={icon} size={20} /></span><span><strong>{title}</strong><small>{description}</small></span><Icon name="arrow-up" size={16} /></Link>)}</div></div></div><NavLink to="/reviews.html">Deliveries</NavLink><NavLink to="/aboutus.html">About us</NavLink></nav>
+        <div className="nav-utilities"><button ref={searchButton} className="nav-search-trigger" onClick={openSearch} aria-label="Open vehicle search" aria-haspopup="dialog"><Icon name="search" size={18} /><span>Search</span><kbd>{shortcut}</kbd></button><a className="nav-contact premium-contact" href={CONTACT}>WhatsApp <Icon name="arrow-up" size={16} /></a><button ref={toggleRef} className="menu-toggle premium-menu-toggle" aria-controls="mobile-navigation" aria-expanded={mobileOpen} aria-label={mobileOpen ? 'Close menu' : 'Open menu'} onClick={() => { setServicesOpen(false); setMobileOpen(current => !current); }}><Icon name={mobileOpen ? 'close' : 'menu'} size={23} /></button></div>
       </div><div className="nav-reading-progress" aria-hidden="true"><span ref={progressRef} /></div>
     </header>
-    <div className={`nav-desktop-actions ${scrolled ? 'is-scrolled' : ''}`} aria-label="Quick vehicle actions"><button type="button" onClick={openSearch}><Icon name="car" size={19}/>Find my next vehicle</button><Link to="/sell-your-vehicle-sri-lanka.html"><Icon name="key" size={18}/>Sell my vehicle <Icon name="arrow" size={17}/></Link></div>
+    <div className={`nav-desktop-actions ${scrolled ? 'is-scrolled' : ''}`} aria-label="Quick vehicle actions"><button type="button" onClick={openSearch}><Icon name="car" size={19}/>Find a vehicle</button><Link to="/sell-your-vehicle-sri-lanka.html"><Icon name="key" size={18}/>Sell my vehicle <Icon name="arrow" size={17}/></Link></div>
     {mobileOpen && <div className="menu-backdrop premium-menu-backdrop" onClick={() => closeMobile(true)} />}
     <nav ref={menuRef} id="mobile-navigation" className={`mobile-navigation premium-mobile-navigation${mobileOpen ? ' is-open' : ''}`} aria-label="Mobile navigation" inert={!mobileOpen ? true : undefined}>
-      <div className="nav-mobile-heading"><span className="nav-overline">YOUR NEXT CHAPTER STARTS HERE</span><span>LK · EST. FOR THE ROAD</span></div>
-      <div className="mobile-links"><Link to="/">Home <small>01</small></Link>{[links[0], ['/services.html', 'Our services'], ...links.slice(1)].map(([to, title], index) => <Link to={to} key={to}>{title}<small>0{index + 2}</small></Link>)}</div>
+      <div className="nav-mobile-heading"><span className="nav-overline">THIMADU AUTO TRADERS</span><span>SRI LANKA</span></div>
+      <div className="mobile-links"><Link to="/">Home <small>01</small></Link>{[links[0], ['/services.html', 'Services'], ...links.slice(1)].map(([to, title], index) => <Link to={to} key={to}>{title}<small>0{index + 2}</small></Link>)}</div>
       <div className="nav-mobile-secondary"><Link to="/sell-your-vehicle-sri-lanka.html">Sell your vehicle <Icon name="arrow-up" size={16} /></Link><Link to="/vehicle-sourcing-sri-lanka.html">Find a specific vehicle <Icon name="arrow-up" size={16} /></Link></div>
-      <div className="mobile-menu-footer"><button type="button" onClick={openSearch}><Icon name="search" size={20} /> Find your next vehicle <Icon name="arrow" size={20} /></button><a href="tel:+94771813928">077 181 3928 <Icon name="phone" size={17} /></a><a href={CONTACT}>Chat on WhatsApp <Icon name="chat" size={17} /></a></div>
+      <div className="mobile-menu-footer"><button type="button" onClick={openSearch}><Icon name="search" size={20} /> Search vehicles <Icon name="arrow" size={20} /></button><a href="tel:+94771813928">077 181 3928 <Icon name="phone" size={17} /></a><a href={CONTACT}>Chat on WhatsApp <Icon name="chat" size={17} /></a></div>
     </nav>
-    <div className={`nav-mobile-actions${mobileOpen || searchOpen ? ' is-hidden' : ''}`} aria-label="Start your vehicle journey"><button onClick={openSearch}><Icon name="search" size={18} />Find a vehicle</button><Link to="/sell-your-vehicle-sri-lanka.html">Sell your vehicle <Icon name="arrow-up" size={16} /></Link></div>
+    <div className={`nav-mobile-actions${mobileOpen || searchOpen ? ' is-hidden' : ''}`} aria-label="Vehicle actions"><button onClick={openSearch}><Icon name="search" size={18} />Find a vehicle</button><Link to="/sell-your-vehicle-sri-lanka.html">Sell your vehicle <Icon name="arrow-up" size={16} /></Link></div>
     <SearchDialog open={searchOpen} close={closeSearch} dialogRef={searchRef} initialSearch={initialSearch} />
   </>;
 }

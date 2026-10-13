@@ -25,6 +25,7 @@
  */
 
 const CONFIG = Object.freeze({
+  API_VERSION: "2.1.0",
   SPREADSHEET_ID: "1kyJXiH67w19sgt5sqeDeiqytXUVMlqAsrEKKJwRaue0",
   ROOT_DRIVE_FOLDER_ID: "1Ot4nsPI2Q9oaxsj-T_JJSM9NMvs6GIy1",
   PUBLIC_VEHICLE_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQtUtkiDWGhuls-2JhfsVL1Hj_oFiFTyBPZyHndMBHeNoRotTcjppZe-tN32NqST4-t-xsgXnjYMK-8/pub?output=csv",
@@ -78,7 +79,7 @@ function doGet(e) {
       return json_({
         status: "success",
         service: "Thimadu Auto Traders API",
-        version: "2.0.0",
+        version: CONFIG.API_VERSION,
         database: CONFIG.SPREADSHEET_ID,
         csv: CONFIG.PUBLIC_VEHICLE_CSV,
         time: new Date().toISOString()
@@ -129,6 +130,7 @@ function doPost(e) {
       const authorized = isAdminAuthorized_(payload.token);
       return json_({
         status: authorized ? "success" : "error",
+        code: authorized ? undefined : "UNAUTHORIZED",
         message: authorized ? "Authenticated" : "Invalid admin password"
       });
     }
@@ -214,6 +216,28 @@ function setupDatabase() {
     vehicleSheet: CONFIG.VEHICLE_SHEET,
     customerSheet: CONFIG.CUSTOMER_SHEET,
     videoSheet: CONFIG.VIDEO_SHEET
+  };
+}
+
+/**
+ * Run from the Apps Script editor after configuring THIMADU_ADMIN_TOKEN.
+ * This never returns or logs the secret value.
+ */
+function verifyAdminDeployment() {
+  const tokenConfigured = Boolean(
+    String(PropertiesService.getScriptProperties().getProperty("THIMADU_ADMIN_TOKEN") || "").trim()
+  );
+
+  ensureDatabase_();
+
+  return {
+    status: tokenConfigured ? "ready" : "action_required",
+    apiVersion: CONFIG.API_VERSION,
+    tokenConfigured: tokenConfigured,
+    spreadsheet: SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getName(),
+    message: tokenConfigured
+      ? "Admin API is ready. Update the web app deployment to a new version."
+      : "Set the THIMADU_ADMIN_TOKEN Script Property, then run this check again."
   };
 }
 
@@ -978,6 +1002,7 @@ function cleanFileName_(name) {
 
 function detectVideoPlatform_(url) {
   const u = String(url || "").toLowerCase();
+  if (u.indexOf("drive.google.com") >= 0 || u.indexOf("docs.google.com") >= 0) return "Google Drive";
   if (u.indexOf("youtube.com") >= 0 || u.indexOf("youtu.be") >= 0) return "YouTube";
   if (u.indexOf("facebook.com") >= 0 || u.indexOf("fb.watch") >= 0) return "Facebook";
   if (u.indexOf("tiktok.com") >= 0) return "TikTok";
@@ -987,8 +1012,25 @@ function detectVideoPlatform_(url) {
 }
 
 function deriveVideoThumbnail_(url) {
-  const id = extractYouTubeId_(url);
-  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : "";
+  const youtubeId = extractYouTubeId_(url);
+  if (youtubeId) return `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`;
+  const driveId = extractDriveId_(url);
+  return driveId ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveId)}&sz=w1200` : "";
+}
+
+function extractDriveId_(url) {
+  const value = String(url || "").trim();
+  if (!/https?:\/\/(?:drive|docs)\.google\.com\//i.test(value)) return "";
+  const patterns = [
+    /\/file\/d\/([\w-]+)/i,
+    /\/d\/([\w-]+)/i,
+    /[?&]id=([\w-]+)/i
+  ];
+  for (let i = 0; i < patterns.length; i++) {
+    const match = value.match(patterns[i]);
+    if (match) return match[1];
+  }
+  return "";
 }
 
 function extractYouTubeId_(url) {
@@ -1098,7 +1140,10 @@ function clearCaches_() {
 
 function json_(payload) {
   return ContentService
-    .createTextOutput(JSON.stringify(payload))
+    .createTextOutput(JSON.stringify(Object.assign(
+      { apiVersion: CONFIG.API_VERSION },
+      payload || {}
+    )))
     .setMimeType(ContentService.MimeType.JSON);
 }
 

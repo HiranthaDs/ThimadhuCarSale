@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Icon } from '../components';
+import { useMediaQuery, useMotionPreference } from '../useMotionPreference';
 import './hero-story.css';
 
 const clamp = (n, min = 0, max = 1) => Math.min(max, Math.max(min, n));
@@ -13,6 +14,7 @@ const journeys = [
 ];
 
 export function PhonePreview({ mode, compact = false, auto = false, paused = false, onViewChange }) {
+  const { mobile, motionDisabled } = useMotionPreference();
   const [view, setView] = useState(0);
   const [interacting, setInteracting] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -21,21 +23,22 @@ export function PhonePreview({ mode, compact = false, auto = false, paused = fal
   const current = mode ? Math.max(0, journeys.findIndex(item => item.id === mode)) : view;
   const journey = journeys[current];
   useEffect(() => {
+    if (mobile) return;
     const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), {threshold:.2});
     if (root.current) observer.observe(root.current);
     return () => observer.disconnect();
-  }, []);
+  }, [mobile]);
   useEffect(() => {
-    if (!auto || paused || interacting || !visible || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!auto || paused || interacting || !visible || motionDisabled) return;
     const timer = setInterval(() => { if (!document.hidden) setView(value => (value + 1) % journeys.length); }, 5200);
     return () => clearInterval(timer);
-  }, [auto, paused, interacting, visible]);
+  }, [auto, paused, interacting, visible, motionDisabled]);
   useEffect(() => { onViewChange?.(current); }, [current, onViewChange]);
   useEffect(() => {
     const node = screen.current;
     if (!node) return;
     node.scrollTop = 0;
-    if (!auto || current !== 0 || paused || interacting || !visible || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!auto || current !== 0 || paused || interacting || !visible || motionDisabled) return;
     let frame;
     const started = performance.now();
     const animate = now => {
@@ -45,8 +48,9 @@ export function PhonePreview({ mode, compact = false, auto = false, paused = fal
     };
     frame=requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
-  }, [auto,current,paused,interacting,visible]);
+  }, [auto,current,paused,interacting,visible,motionDisabled]);
   const select = index => { setInteracting(true); setView(index); };
+  if (mobile) return null;
   return <div ref={root} className={`hs-device ${compact ? 'hs-device-compact' : ''}`} role="group" aria-label="Animated preview of the Thimadu mobile website" onFocusCapture={() => setInteracting(true)} onPointerDown={() => setInteracting(true)} onWheel={() => setInteracting(true)}>
     {Array.from({length:14}, (_,index) => <div key={index} className="hs-chassis-layer" aria-hidden="true" style={{'--depth':`${-index * .9}px`,'--edge-light':`${28 + index * 3.6}%`}}/>)}
     <div className="hs-device-frame"><div className="hs-device-bezel"><div className="hs-device-screen">
@@ -79,19 +83,26 @@ function BrandRail() {
 
 export default function HeroStory() {
   const root = useRef(null), video = useRef(null), showcase = useRef(null), opening = useRef(null);
-  const [reduced,setReduced] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const { mobile, reduced, motionDisabled } = useMotionPreference();
+  const wideLayout = useMediaQuery('(min-width: 901px)');
   const [paused,setPaused] = useState(false);
   const [videoFailed,setVideoFailed] = useState(false);
   const [videoPlaying,setVideoPlaying] = useState(false);
   const [view,setView] = useState(0);
-  useEffect(() => { const media = matchMedia('(prefers-reduced-motion: reduce)'); const update = () => setReduced(media.matches); media.addEventListener('change',update); return () => media.removeEventListener('change',update); }, []);
   useEffect(() => {
     const node = root.current;
+    const staticLayout = motionDisabled || !wideLayout;
+    if (staticLayout) {
+      ['--hero-opacity','--phone-opacity','--copy-opacity','--brand-opacity'].forEach(property => node.style.setProperty(property, '1'));
+      node.style.setProperty('--copy-y', '0px');
+      if (showcase.current) showcase.current.inert = false;
+      if (opening.current) opening.current.inert = false;
+      return;
+    }
     let frame = 0;
     const render = () => {
       frame = 0;
       const box = node.getBoundingClientRect();
-      const staticLayout = reduced || innerWidth < 901;
       const p = staticLayout ? 1 : clamp(-box.top / Math.max(1,box.height-innerHeight));
       const morph = clamp(p / .42), settle = clamp((p-.32)/.43);
       node.style.setProperty('--hero-opacity', staticLayout ? 1 : 1-clamp(p/.24));
@@ -115,34 +126,35 @@ export default function HeroStory() {
     const schedule = () => { if (!frame) frame = requestAnimationFrame(render); };
     render(); window.addEventListener('scroll',schedule,{passive:true}); window.addEventListener('resize',schedule);
     return () => {cancelAnimationFrame(frame);window.removeEventListener('scroll',schedule);window.removeEventListener('resize',schedule);};
-  }, [reduced,paused]);
+  }, [motionDisabled,wideLayout,paused,reduced]);
   useEffect(() => {
     const film = video.current;
-    if (!film) return;
+    if (!film || mobile) return;
     let visible = true;
     const update = () => { if (visible && !opening.current?.inert && !document.hidden && !paused && !reduced && !navigator.connection?.saveData) film.play().catch(() => {}); else film.pause(); };
     const observer = new IntersectionObserver(([entry]) => {visible=entry.isIntersecting;update();}); observer.observe(film); document.addEventListener('visibilitychange',update); update();
     return () => {observer.disconnect();document.removeEventListener('visibilitychange',update);film.pause();};
-  }, [paused,reduced]);
+  }, [paused,reduced,mobile]);
   function explorePhone(event) {
     event.preventDefault();
     const node = root.current;
-    const top = innerWidth < 901 || reduced ? showcase.current.getBoundingClientRect().top+scrollY-100 : node.getBoundingClientRect().top+scrollY+(node.offsetHeight-innerHeight)*.75;
-    scrollTo({top,behavior:reduced?'instant':'smooth'});
+    if (!showcase.current) return;
+    const top = !wideLayout || motionDisabled ? showcase.current.getBoundingClientRect().top+scrollY-100 : node.getBoundingClientRect().top+scrollY+(node.offsetHeight-innerHeight)*.75;
+    scrollTo({top,behavior:motionDisabled?'instant':'smooth'});
   }
-  return <section className={`hs-story ${reduced ? 'hs-reduced' : ''} ${paused ? 'hs-paused' : ''}`} ref={root} aria-label="Discover Thimadu Auto Traders">
+  return <section className={`hs-story ${reduced ? 'hs-reduced' : ''} ${mobile ? 'hs-mobile' : ''} ${paused ? 'hs-paused' : ''}`} ref={root} aria-label="Discover Thimadu Auto Traders">
     <div className="hs-stage">
       <div className="hs-opening" ref={opening}>
-        <div className="hs-film"><video ref={video} className="hs-video" src={reduced || navigator.connection?.saveData ? undefined : '/Videos/hero1.mp4'} poster="/images/hero1-poster.webp" muted loop playsInline preload="metadata" aria-label="Thimadu automotive film" onPlay={()=>setVideoPlaying(true)} onPause={()=>setVideoPlaying(false)} onError={() => setVideoFailed(true)}/><div className="hs-film-overlay"/></div>
-        <div className="hs-intro"><p className="hs-eyebrow">YOUR NEXT CHAPTER STARTS HERE</p><h1>Thimadu<span>Auto Traders</span></h1><p>Find the vehicle that moves you.<br/>Buying, selling and sourcing.<br/>A more personal journey, across Sri Lanka.</p><Link to="/all-vehicles.html" className="hs-opening-link">Explore our vehicles <Icon name="arrow" size={18}/></Link></div>
-        <a className="hs-scroll-link" href="#your-journey" onClick={explorePhone}>Scroll to discover <span><Icon name="arrow" size={18}/></span></a>
-        {!videoFailed && <button className="hs-video-control" type="button" onClick={() => {if(reduced || navigator.connection?.saveData){const film=video.current;if(!film.src)film.src='/Videos/hero1.mp4';if(film.paused)film.play().catch(()=>{});else film.pause();}else setPaused(value=>!value);}} aria-label={videoPlaying ? 'Pause hero video' : 'Play hero video'}><Icon name={videoPlaying ? 'pause':'play'} size={14}/>{videoPlaying ? 'Pause film':'Play film'}</button>}
+        <div className="hs-film">{mobile ? <img className="hs-video" src="/images/hero1-poster.webp" alt="" width="1920" height="1080" fetchPriority="high"/> : <video ref={video} className="hs-video" src={reduced || navigator.connection?.saveData ? undefined : '/Videos/hero1.mp4'} poster="/images/hero1-poster.webp" muted loop playsInline preload="metadata" aria-label="Thimadu automotive film" onPlay={()=>setVideoPlaying(true)} onPause={()=>setVideoPlaying(false)} onError={() => setVideoFailed(true)}/>}<div className="hs-film-overlay"/></div>
+        <div className="hs-intro"><p className="hs-eyebrow">YOUR NEXT CHAPTER STARTS HERE</p><h1>THIMADU <span>AUTO TRADERS</span></h1><p>Find the vehicle that moves you.<br/>Buying, selling and sourcing.<br/>A more personal journey, across Sri Lanka.</p><Link to="/all-vehicles.html" className="hs-opening-link">Explore our vehicles <Icon name="arrow" size={18}/></Link></div>
+        {!mobile && <a className="hs-scroll-link" href="#your-journey" onClick={explorePhone}>Scroll to discover <span><Icon name="arrow" size={18}/></span></a>}
+        {!mobile && !videoFailed && <button className="hs-video-control" type="button" onClick={() => {if(reduced || navigator.connection?.saveData){const film=video.current;if(!film.src)film.src='/Videos/hero1.mp4';if(film.paused)film.play().catch(()=>{});else film.pause();}else setPaused(value=>!value);}} aria-label={videoPlaying ? 'Pause hero video' : 'Play hero video'}><Icon name={videoPlaying ? 'pause':'play'} size={14}/>{videoPlaying ? 'Pause film':'Play film'}</button>}
       </div>
-      <div className="hs-showcase" id="your-journey" ref={showcase}>
-        <div className="hs-copy"><h2>Your next vehicle.<br/>Your next adventure.<br/>Find it. Feel it.<br/><span>Make it yours.</span></h2><p>Explore our collection, tell us what you’re looking for, and connect with a team that understands your next move.</p><Button to="/all-vehicles.html">Find my next vehicle <Icon name="arrow"/></Button><div className="hs-preview-control"><button type="button" onClick={()=>setPaused(value=>!value)} aria-pressed={paused} aria-label={paused?'Play phone website demo':'Pause phone website demo'}><Icon name={paused?'play':'pause'} size={13}/>{paused ? 'Play the website preview':'Website preview playing'}</button></div></div>
+      {!mobile && <div className="hs-showcase" id="your-journey" ref={showcase}>
+        <div className="hs-copy"><h2>Your next vehicle.<br/>Your next adventure.<br/>Find it. Feel it.<br/><span>Make it yours.</span></h2><p>Thimadu Auto Traders helps you buy, sell and source quality vehicles in Sri Lanka, with a carefully selected catalogue and personal support for your next purchase.</p><Button to="/all-vehicles.html">Find my next vehicle <Icon name="arrow"/></Button><div className="hs-preview-control"><button type="button" onClick={()=>setPaused(value=>!value)} aria-pressed={paused} aria-label={paused?'Play phone website demo':'Pause phone website demo'}><Icon name={paused?'play':'pause'} size={13}/>{paused ? 'Play the website preview':'Website preview playing'}</button></div></div>
         <div className="hs-phone-stage"><div className="hs-phone-scene"><PhonePreview auto paused={paused || reduced} onViewChange={setView}/></div><div className="hs-phone-notice hs-notice-one"><span className="hs-notice-icon"><Icon name="car" size={18}/></span><div><strong>Your mobile showroom</strong><small>Explore wherever you are</small></div><i/></div><div className="hs-phone-notice hs-notice-two"><span className="hs-notice-icon"><Icon name={journeys[view].icon} size={18}/></span><div><strong>{journeys[view].title}</strong><small>A simpler next step</small><span className="hs-demo-progress" key={view}><i/></span></div></div><div className="hs-phone-notice hs-notice-three"><span className="hs-notice-icon"><Icon name="chat" size={18}/></span><div><strong>Real people. Real guidance.</strong><small>One conversation away</small></div></div></div>
         <BrandRail/>
-      </div>
+      </div>}
     </div>
   </section>;
 }
@@ -150,10 +162,12 @@ export default function HeroStory() {
 const benefits = [['A car that fits your life','car'],['Details made clearer','shield'],['A more personal search','search'],['Room for your next chapter','key'],['A real conversation','chat'],['Your next adventure','pin']];
 export function ConfidenceGauge() {
   const section = useRef(null);
+  const { motionDisabled } = useMotionPreference();
   useEffect(() => {
+    if (motionDisabled) { section.current?.style.setProperty('--gauge-progress', '.7'); return; }
     let frame=0;
     const update=()=>{frame=0;const node=section.current;if(!node)return;const box=node.getBoundingClientRect();node.style.setProperty('--gauge-progress',clamp((innerHeight-box.top)/(innerHeight+box.height)));};
     const schedule=()=>{if(!frame)frame=requestAnimationFrame(update);};update();window.addEventListener('scroll',schedule,{passive:true});return()=>{cancelAnimationFrame(frame);window.removeEventListener('scroll',schedule);};
-  },[]);
+  },[motionDisabled]);
   return <section ref={section} className="confidence-gauge" aria-labelledby="confidence-heading"><h2 id="confidence-heading">More possibilities.<br/><span>Less second-guessing.</span></h2><div className="cg-benefit-window"><div className="cg-benefit-track">{[0,1].map(copy=><div className="cg-benefit-group" key={copy} aria-hidden={copy===1?true:undefined}>{benefits.map(([title,icon])=><div className="cg-benefit" key={title}><h3>{title}</h3><Icon name={icon} size={31}/></div>)}</div>)}</div></div><div className="cg-gauge"><svg viewBox="0 0 860 450" fill="none" aria-hidden="true">{Array.from({length:41},(_,index)=>{const angle=(180+index*4.5)*Math.PI/180;const inside=index%5===0?348:370;return <line key={index} x1={430+Math.cos(angle)*inside} y1={430+Math.sin(angle)*inside} x2={430+Math.cos(angle)*395} y2={430+Math.sin(angle)*395} stroke="currentColor" strokeWidth={index%5===0?2.3:1.7}/>;})}<g className="cg-needle"><path d="M422 420 430 155 438 420Z" fill="currentColor"/><circle cx="430" cy="430" r="15" fill="currentColor"/></g></svg><div className="cg-gauge-copy"><h3>A little guidance.<br/>A lot more confidence.</h3><p>Every next move starts with understanding<br/>what matters to you.</p></div></div><a className="cg-discover" href="#how-it-works">Discover how it works <span><Icon name="arrow" size={18}/></span></a></section>;
 }

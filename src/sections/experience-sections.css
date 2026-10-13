@@ -102,3 +102,21 @@
 @media(prefers-reduced-motion:reduce) and (max-width:900px){.ex-conversation-track{grid-template-columns:1fr}.ex-conversation-panel{height:790px}.ex-conversation-panel-second{height:680px}.ex-conversation-caption h2{font-size:clamp(31px,8vw,45px)}}
 /* A glimpse of the next editorial card invites a native swipe on phones. */
 @media(max-width:600px){.ex-guides{padding-top:60px;overflow:hidden}.ex-guide-cards{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:23px;margin-inline:-23px;padding:5px 23px 17px;min-height:0;gap:13px;scrollbar-width:thin;scrollbar-color:#9abcf6 transparent}.ex-guide-card,.ex-guide-card.is-active{flex:0 0 min(294px,84vw);scroll-snap-align:start;height:340px}.ex-guide-card:focus-visible{outline-offset:-4px}.ex-guide-card h3{font-size:29px}.ex-guide-card.is-active:focus-visible{outline-color:#fff}.ex-guide-card:last-child{margin-right:0}.ex-story-controls .ex-story-motion{width:30px;height:30px;margin-left:0}}
+
+@media(max-width:767px), (hover:none) and (pointer:coarse){
+  .ex-conversation{height:auto}
+  .ex-conversation-sticky{position:relative;height:auto;overflow:visible;padding:7px}
+  .ex-conversation-track{display:grid;grid-template-columns:1fr;width:100%;height:auto;gap:9px;transform:none;will-change:auto}
+  .ex-conversation-panel{width:100%;height:580px;min-height:0;max-height:none;border-radius:24px}
+  .ex-conversation-panel-second{height:460px}
+  .ex-conversation-progress{display:none}
+  .ex-message{opacity:1;transform:none}
+  .ex-conversation-caption{left:23px;right:23px;bottom:30px;display:block}
+  .ex-conversation-caption h2{font-size:clamp(30px,8.8vw,42px)}
+  .ex-conversation-caption .btn{margin-top:20px}
+  .ex-finale-glow{transform:none}
+  .ex-dial-arc{stroke-dashoffset:14}
+  .ex-dial-needle{transform:rotate(65deg)}
+  .ex-story-card{transform:none}
+  .ex-story-stack{touch-action:pan-y}
+}

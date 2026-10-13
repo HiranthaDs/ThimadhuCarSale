@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Icon } from '../components';
 import { PhonePreview } from './HeroStory';
+import { useMotionPreference } from '../useMotionPreference';
 import './journey-timeline.css';
 
 const journeys = [
@@ -43,13 +44,14 @@ const journeys = [
 ];
 
 export default function JourneyTimeline() {
+  const { mobile, motionDisabled } = useMotionPreference();
   const [selected, setSelected] = useState(0);
   const buttonRefs = useRef([]);
   const panelRef = useRef(null);
   const journey = journeys[selected];
   useEffect(() => {
     const panel = panelRef.current;
-    if (!panel || !('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!panel || motionDisabled || !('IntersectionObserver' in window)) return;
     const chapters = [...panel.querySelectorAll('.jt-chapter')];
     const settleTimers = [];
     let animationFrame = 0;
@@ -66,14 +68,13 @@ export default function JourneyTimeline() {
     const updateCardPositions = () => {
       animationFrame = 0;
       const viewportHeight = window.innerHeight;
-      const mobileStrength = window.innerWidth < 768 ? .55 : 1;
       chapters.forEach(chapter => {
         const bounds = chapter.getBoundingClientRect();
         if (bounds.bottom < -100 || bounds.top > viewportHeight + 100) return;
         const travel = (bounds.top + bounds.height / 2 - viewportHeight / 2) / ((viewportHeight + bounds.height) / 2);
         const progress = Math.max(-1, Math.min(1, travel));
-        chapter.style.setProperty('--jt-visual-y', `${(progress * 38 * mobileStrength).toFixed(2)}px`);
-        chapter.style.setProperty('--jt-copy-y', `${(progress * -27 * mobileStrength).toFixed(2)}px`);
+        chapter.style.setProperty('--jt-visual-y', `${(progress * 38).toFixed(2)}px`);
+        chapter.style.setProperty('--jt-copy-y', `${(progress * -27).toFixed(2)}px`);
       });
     };
     const requestCardUpdate = () => {
@@ -88,14 +89,33 @@ export default function JourneyTimeline() {
       window.removeEventListener('resize', requestCardUpdate);
       if (animationFrame) cancelAnimationFrame(animationFrame);
       settleTimers.forEach(timer => clearTimeout(timer));
+      panel.classList.remove('jt-motion-ready');
+      chapters.forEach(chapter => {
+        chapter.classList.remove('is-visible', 'is-settled');
+        chapter.style.removeProperty('--jt-visual-y');
+        chapter.style.removeProperty('--jt-copy-y');
+      });
     };
-  }, [selected]);
+  }, [selected, motionDisabled, mobile]);
   function selectJourney(index) { setSelected(index); }
   function handleTabKey(event, index) {
     const next = event.key === 'ArrowRight' ? (index + 1) % journeys.length : event.key === 'ArrowLeft' ? (index + journeys.length - 1) % journeys.length : event.key === 'Home' ? 0 : event.key === 'End' ? journeys.length - 1 : undefined;
     if (next === undefined) return;
     event.preventDefault(); selectJourney(next); buttonRefs.current[next]?.focus({ preventScroll: true });
   }
+  if (mobile) return <section className="jt-section jt-mobile" id="how-it-works" aria-labelledby="jt-heading">
+    <div className="container jt-container">
+      <div className="jt-heading"><span className="jt-eyebrow">AT YOUR SERVICE</span><h2 id="jt-heading">Every move.<br/><span>Thoughtfully handled.</span></h2><p>Buy, sell or find something specific.<br/>A clear next step, with a real person to help.</p></div>
+      <div className="jt-mobile-services">
+        {[
+          { id:'buy', icon:'car', title:'Find your next vehicle', text:'Browse available vehicles, compare the details and arrange a viewing.', action:'Explore vehicles', to:'/all-vehicles.html' },
+          { id:'sell', icon:'key', title:'Sell your vehicle', text:'Share your vehicle details and speak with us about the next steps.', action:'Start selling', to:'/sell-your-vehicle-sri-lanka.html' },
+          { id:'source', icon:'search', title:'Find your perfect fit', text:'Tell us your preferred make, model and budget. We will help with your search.', action:'Tell us your wish list', to:'/vehicle-sourcing-sri-lanka.html' },
+        ].map(service => <article className="jt-mobile-service" key={service.id}><span className="jt-mobile-icon"><Icon name={service.icon} size={23}/></span><div><h3>{service.title}</h3><p>{service.text}</p><Button to={service.to}>{service.action}<Icon name="arrow" size={17}/></Button></div></article>)}
+      </div>
+      <div className="jt-mobile-help"><Icon name="chat" size={19}/><p>Have a question? <a href="https://wa.me/94771813928">Talk to our team <Icon name="arrow" size={14}/></a></p></div>
+    </div>
+  </section>;
   return <section className="jt-section" id="how-it-works" aria-labelledby="jt-heading">
     <div className="container jt-container">
       <div className="jt-heading"><div><span className="jt-eyebrow">AT YOUR SERVICE</span><h2 id="jt-heading">Every move.<br/><span>Thoughtfully handled.</span></h2></div><p>Buying. Selling. Finding the one.<br/>Choose your journey. We’ll help you<br className="jt-desktop-break"/> understand what comes next.</p></div>

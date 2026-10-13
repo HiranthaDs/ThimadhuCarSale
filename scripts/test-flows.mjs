@@ -7,10 +7,11 @@ const errors=[];
 const columns=['id','brand','model','year','price','mileage','fuel','transmission','type','condition','availability','image1','image2','description'];
 const rows=Array.from({length:15},(_,i)=>[`TEST-${i+1}`,i%2?'Honda':'Toyota',i%2?'Fit':'Aqua',2020+i%4,3000000+i*100000,40000+i*100,'Hybrid','Automatic','Hatchback','Used','Available',`${base}/images/hero.webp`,`${base}/images/journey.webp`,'Test fixture only.']);
 await context.route('https://docs.google.com/spreadsheets/d/e/**',route=>route.fulfill({status:200,contentType:'text/csv',headers:{'Access-Control-Allow-Origin':'*'},body:[columns,...rows].map(row=>row.join(',')).join('\n')}));
-await context.route('https://docs.google.com/spreadsheets/d/*/gviz/**',route=>{
-  const url=new URL(route.request().url()),callback=url.searchParams.get('tqx').split('responseHandler:')[1],isVideo=url.searchParams.get('gid')==='1018172779';
+await context.route('https://script.google.com/macros/s/**',route=>{
+  const url=new URL(route.request().url()),kind=url.searchParams.get('type'),isVideo=kind==='videos';
+  if(url.searchParams.get('action')!=='read'||!['customers','videos'].includes(kind))return route.abort();
   const data=isVideo?[{id:'video',headline:'A test video',description:'Fixture only',video_url:'https://www.youtube.com/watch?v=dQw4w9WgXcQ',thumbnail_url:`${base}/images/hero.webp`,status:'Active',posted_date:'2026-09-20'}]:Array.from({length:14},(_,i)=>({id:`photo-${i}`,headline:`Customer moment ${String(i).padStart(2,'0')}`,description:'Synthetic test fixture',customer_name:`Customer ${i}`,image_url:`${base}/images/journey.webp`,status:i===13?'Inactive':'Active',posted_date:`2026-09-${String(i+1).padStart(2,'0')}`}));
-  const keys=Object.keys(data[0]);route.fulfill({contentType:'text/javascript',body:`${callback}(${JSON.stringify({status:'ok',table:{cols:keys.map(label=>({label})),rows:data.map(row=>({c:keys.map(key=>({v:row[key]}))}))}})})`});
+  route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify({apiVersion:'2.1.0',status:'success',data})});
 });
 const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
 await page.goto(`${base}/all-vehicles.html`);
@@ -44,13 +45,13 @@ assert.equal(await page.locator('dialog[open]').count(),1);await page.keyboard.p
 assert.equal(await page.locator('dialog[open]').count(),0);
 await page.goto(`${base}/reviews.html`);
 await page.locator('.story-card').first().waitFor();assert.equal(await page.locator('.story-card').count(),12);
-await page.getByRole('button',{name:'More happy moments'}).click();assert.equal(await page.locator('.story-card').count(),14);
-await page.getByRole('button',{name:'Photos',exact:true}).click();await expect(page.locator('.story-card')).toHaveCount(12);
+await page.getByRole('button',{name:'More deliveries',exact:true}).click();assert.equal(await page.locator('.story-card').count(),14);
+await page.getByRole('group',{name:'Delivery type'}).getByRole('button',{name:/^Photos\s*13$/}).click();await expect(page.locator('.story-card')).toHaveCount(12);
 await page.getByRole('searchbox',{name:'Search customer stories'}).fill('Customer moment 02');
 await expect(page.locator('.story-card')).toHaveCount(1);
 await page.getByRole('button',{name:'View Customer moment 02'}).click();assert.equal(await page.locator('dialog[open]').count(),1);
 await page.keyboard.press('Escape');assert.equal(await page.locator('dialog[open]').count(),0);
-await page.getByRole('button',{name:'Clear search',exact:true}).click();await page.getByRole('button',{name:'Videos',exact:true}).click();
+await page.getByRole('button',{name:'Clear search',exact:true}).click();await page.getByRole('group',{name:'Delivery type'}).getByRole('button',{name:/^Videos\s*1$/}).click();
 await page.waitForURL('**tab=videos');await expect(page.locator('.story-card')).toHaveCount(1);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 let enquiry;
