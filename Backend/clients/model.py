@@ -48,6 +48,8 @@ class ClientProfile(Base):
     )
     # Approvals of the current version: {"role", "name", "at"} (see core.approvals).
     role_approvals: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
+    custom_fields: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    custom_field_schema: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
 
     # ---- Local client details ----
     has_local_client: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -135,3 +137,13 @@ class ClientProfile(Base):
     selling_price: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
     loan_amount: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
     customer_down_payment: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
+
+
+class ClientProfileFormSchema(Base):
+    __tablename__ = "client_profile_form_schema"
+
+    id: Mapped[str] = mapped_column(String(30), primary_key=True)
+    fields: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    labels: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    hidden_fields: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    field_types: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)

@@ -1,5 +1,16 @@
 import { BASE_URL, apiRequest } from "./client"
 
+export function getReportFormSchema() {
+  return apiRequest("/reports/form-schema")
+}
+
+export function saveReportFormSchema(sections) {
+  return apiRequest("/reports/form-schema", { method: "PUT", body: { sections } }).then((result) => {
+    window.dispatchEvent(new CustomEvent("thimadu:report-form-schema-changed"))
+    return result
+  })
+}
+
 async function parseResponse(response, fallbackMessage) {
   const isJson = response.headers.get("content-type")?.includes("application/json")
   const text = response.status === 204 ? "" : await response.text()

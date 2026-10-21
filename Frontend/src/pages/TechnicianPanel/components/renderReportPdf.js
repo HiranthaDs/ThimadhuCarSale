@@ -26,6 +26,10 @@ const PDF_CSS = `
     border: 1px solid #c7cbd6 !important;
     border-collapse: collapse !important;
   }
+  .ir-pdf-render .ir-table { width: 100% !important; table-layout: fixed !important; }
+  .ir-pdf-render .ir-table th, .ir-pdf-render .ir-table td { overflow-wrap: anywhere !important; vertical-align: top !important; }
+  .ir-pdf-render .ir-text-value { white-space: pre-wrap !important; overflow-wrap: anywhere !important; }
+  .ir-pdf-render .ir-photo { object-fit: contain !important; max-width: min(100%, 180px) !important; }
   .ir-pdf-render .ir-table th { background: #fafafa !important; }
 `
 

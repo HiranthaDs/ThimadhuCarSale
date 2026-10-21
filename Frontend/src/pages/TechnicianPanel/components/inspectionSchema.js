@@ -23,7 +23,7 @@ const LEGACY_PAINT_THICKNESS_KEYS = [
   "rightRearFenderPaint",
 ]
 
-export const SECTIONS = [
+export const DEFAULT_SECTIONS = [
   {
     title: "Buyer Information",
     fields: [
@@ -337,7 +337,7 @@ export const SECTIONS = [
   {
     title: "Technician Comment",
     fields: [
-      { key: "technicianComments", label: "Technicians Comments", type: "textarea" },
+      { key: "technicianComments", label: "Damages & Missing Components", type: "textarea" },
       { key: "recommendations", label: "Recommendations", type: "textarea" },
       { key: "marketPriceValuation", label: "Market Price Valuation", type: "text" },
     ],
@@ -367,6 +367,7 @@ export const SECTIONS = [
 ]
 
 export const STATUS_OPTIONS = STATUS_OPTS
+export const SECTIONS = DEFAULT_SECTIONS
 
 export const MAX_PHOTOS_PER_FIELD = 60
 
@@ -384,13 +385,13 @@ export function toPhotoList(value) {
 }
 
 // Merge saved form data over a blank form, upgrading old single-photo values to lists.
-export function withDefaults(saved) {
-  const data = { ...buildInitialData(), ...(saved || {}) }
+export function withDefaults(saved, sections = SECTIONS) {
+  const data = { ...buildInitialData(sections), ...(saved || {}) }
   const legacyPaint = LEGACY_PAINT_THICKNESS_KEYS.flatMap((key) => toPhotoList(data[key]))
   LEGACY_PAINT_THICKNESS_KEYS.forEach((key) => delete data[key])
   // Every older photo is kept, even past the limit (more just can't be added).
   if (legacyPaint.length) data.paintThicknessPhotos = [...toPhotoList(data.paintThicknessPhotos), ...legacyPaint]
-  SECTIONS.forEach((section) => {
+  sections.forEach((section) => {
     section.fields.forEach((field) => {
       if (field.type === "multiphoto") data[field.key] = toPhotoList(data[field.key])
       // Diagrams used to be uploaded photos (lists); keep the first one as the picture.
@@ -400,9 +401,9 @@ export function withDefaults(saved) {
   return data
 }
 
-export function buildInitialData() {
+export function buildInitialData(sections = SECTIONS) {
   const data = {}
-  SECTIONS.forEach((section) => {
+  sections.forEach((section) => {
     section.fields.forEach((field) => {
       if (field.type === "multiphoto") data[field.key] = []
       else data[field.key] = field.default ?? ""

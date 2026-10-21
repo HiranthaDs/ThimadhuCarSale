@@ -6,10 +6,10 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 from core.config import get_settings
 
-from auth.dependencies import require_permission
+from auth.dependencies import require_owner, require_permission
 from auth.model import User
 from core.database import get_db
-from reports.model import REPORT_STATUSES, STATUS_PENDING
+from reports.model import REPORT_STATUSES, STATUS_PENDING, InspectionReportFormSchema
 from reports.schema import InspectionReportDetail, InspectionReportOut, InspectionReportStatusUpdate, InspectionReportUpdate
 from reports.service import ReportService, approval_permission
 from reports.repository import ReportRepository
@@ -19,6 +19,57 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 
 can_read = require_permission("reports.view", "reports2.view")
 can_write = require_permission("reports.create", "reports2.create")
+can_read_form = require_permission("reports.view", "reports2.view", "reports.create", "reports2.create", "reports.form.edit")
+can_edit_form = require_permission("reports.form.edit")
+
+
+@router.get("/form-schema")
+def get_report_form_schema(db: Session = Depends(get_db), current_user: User = Depends(can_read_form)):
+    saved = db.get(InspectionReportFormSchema, "default")
+    return {"sections": saved.sections if saved else None}
+
+
+@router.put("/form-schema")
+def update_report_form_schema(payload: dict, db: Session = Depends(get_db), current_user: User = Depends(can_edit_form)):
+    sections = payload.get("sections") if isinstance(payload, dict) else None
+    allowed = {"text", "number", "date", "datetime", "textarea", "status", "yesno", "select", "multiphoto", "file", "signature", "diagram", "reference"}
+    if not isinstance(sections, list) or not sections or len(sections) > 40:
+        raise HTTPException(400, "The form must contain between 1 and 40 sections.")
+    keys, total_fields = set(), 0
+    for section in sections:
+        if not isinstance(section, dict) or not isinstance(section.get("title"), str) or not section["title"].strip() or not isinstance(section.get("fields"), list):
+            raise HTTPException(400, "Each section needs a title and fields.")
+        for field in section["fields"]:
+            if (not isinstance(field, dict) or not isinstance(field.get("key"), str) or not field["key"].strip()
+                    or not isinstance(field.get("label"), str) or not field["label"].strip()
+                    or not isinstance(field.get("type"), str) or field["type"] not in allowed):
+                raise HTTPException(400, "Every field needs a key, label, and supported type.")
+            key = field["key"]
+            if len(key) > 80 or not key.replace("_", "").isalnum() or key in keys:
+                raise HTTPException(400, "Field keys must be unique and use letters, numbers, or underscores.")
+            keys.add(key)
+            total_fields += 1
+            if field["type"] == "select" and (not isinstance(field.get("options"), list) or not field["options"] or any(not isinstance(option, str) or not option.strip() for option in field["options"])):
+                raise HTTPException(400, "Select fields need at least one option.")
+    if total_fields > 500:
+        raise HTTPException(400, "The form cannot contain more than 500 fields.")
+    saved = db.get(InspectionReportFormSchema, "default")
+    if saved:
+        saved.sections = sections
+    else:
+        db.add(InspectionReportFormSchema(id="default", sections=sections))
+    db.commit()
+    return {"sections": sections}
+
+
+@router.get("/storage-usage")
+def get_storage_usage(current_user: User = Depends(require_owner)):
+    from core.r2_client import storage_usage
+
+    try:
+        return storage_usage()
+    except Exception:
+        raise HTTPException(502, "Cloudflare storage usage is temporarily unavailable.")
 
 
 def _can_edit(report, request: Request) -> bool:
@@ -269,7 +320,9 @@ def update_report_status(
     service = ReportService(db, current_user)
     report = _get_report_or_404(service, report_id, True)
     try:
-        report = service.set_status(report, payload.status)
+        report = service.set_status(report, payload.status, current_user)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     return _to_out(report, request, service)

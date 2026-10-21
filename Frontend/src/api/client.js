@@ -1,6 +1,6 @@
 export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
-export async function apiRequest(path, { method = "GET", body, headers: extraHeaders } = {}) {
+export async function apiRequest(path, { method = "GET", body, headers: extraHeaders, signal } = {}) {
   const headers = { "Content-Type": "application/json", ...extraHeaders }
 
   let response
@@ -10,6 +10,7 @@ export async function apiRequest(path, { method = "GET", body, headers: extraHea
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
+      signal,
     })
   } catch {
     throw new Error("Could not reach the server. Is the backend running?")
@@ -38,6 +39,10 @@ export async function apiRequest(path, { method = "GET", body, headers: extraHea
     const error = new Error(typeof message === "string" ? message : "Request failed")
     error.status = response.status
     throw error
+  }
+
+  if (method !== "GET" && method !== "HEAD") {
+    window.dispatchEvent(new CustomEvent("thimadu:data-changed"))
   }
 
   return data

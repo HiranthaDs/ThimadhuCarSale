@@ -1,0 +1,31 @@
+/* Keep the existing application's reset. Utilities are used by the new UI components. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+}
+
+.lg-branding {
+  --background: #061326;
+  --foreground: #f2f8ff;
+  --card: #0b2138;
+  --card-foreground: #f2f8ff;
+  --primary: #8be8f6;
+  --primary-foreground: #061326;
+  --muted: #19344b;
+  --muted-foreground: #bacddd;
+  --border: #a4eafa30;
+  --ring: #67e8f9;
+}

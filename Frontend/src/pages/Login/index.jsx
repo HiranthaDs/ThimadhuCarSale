@@ -1,30 +1,21 @@
-import { useEffect, useState } from "react"
-import {
-  InventoryFeatureIcon,
-  CustomersFeatureIcon,
-  WrenchIcon,
-  UsersIcon,
-  StaffIcon,
-  MailIcon,
-  LockIcon,
-  EyeIcon,
-  EyeOffIcon,
-  ArrowRightIcon,
-  ShieldIcon,
-} from "./icons"
+import { useState } from "react"
+import { WrenchIcon, UsersIcon, StaffIcon, MailIcon, LockIcon, EyeIcon, EyeOffIcon, ArrowRightIcon, ShieldIcon } from "./icons"
 import PasswordReset from "../../components/PasswordReset"
 import { login } from "../../api/auth"
-import logo from "../../assets/logo.png"
-import logoLight from "../../assets/logo-light.png"
+import BrandingPanel from "./BrandingPanel"
 import "./Login.css"
 
 const roles = [
   { key: "owner", label: "Owner", icon: UsersIcon },
   { key: "ceo", label: "CEO", icon: StaffIcon },
   { key: "admin", label: "Admin", icon: ShieldIcon },
-  { key: "accountant", label: "Accountant", icon: ShieldIcon },
+  { key: "accountant", label: "Accountant", icon: CalculatorIcon },
   { key: "technician", label: "Technician", icon: WrenchIcon },
 ]
+
+function CalculatorIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="3" /><path d="M8 6h8M8 11h1m6 0h1m-8 4h1m6 0h1m-8 4h1m6 0h1" /></svg>
+}
 
 export default function Login({ onLogin }) {
   const [resetting, setResetting] = useState(false)
@@ -35,32 +26,15 @@ export default function Login({ onLogin }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  useEffect(() => {
-    // #root normally forces a full-viewport min-height for other pages'
-    // full-height layouts; that leaves dead white space below this
-    // shorter login page on mobile, so drop it while this page is mounted.
-    const root = document.getElementById("root")
-    const prev = root?.style.minHeight
-    if (root) root.style.minHeight = "0"
-    return () => {
-      if (root) root.style.minHeight = prev || ""
-    }
-  }, [])
-
-  async function handleSubmit(e) {
-    e.preventDefault()
+  async function handleSubmit(event) {
+    event.preventDefault()
+    if (loading) return
     setError("")
-    const form = new FormData(e.target)
-    const email = form.get("email")
-    const password = form.get("password")
-    if (!email || !password) return
-
+    const form = new FormData(event.currentTarget)
     setLoading(true)
     try {
-      const { user } = await login(email, password)
-      if (user.role !== role) {
-        setError(`This account is registered as "${user.role}", not "${role}". Logging you in to the correct portal.`)
-      }
+      const { user } = await login(form.get("email"), form.get("password"))
+      // The authenticated account determines permissions and its destination.
       onLogin(user)
     } catch (err) {
       setError(err.message || "Login failed. Please check your credentials.")
@@ -70,160 +44,54 @@ export default function Login({ onLogin }) {
   }
 
   return (
-    <div className="lg-screen">
-      <div className="lg-hero-bg" />
-      <div className="lg-hero-overlay" />
-      <div className="lg-hero-glow" />
+    <main className="lg-screen">
+      <div className="lg-shell">
+        <BrandingPanel />
 
-      <div className="lg-hero-content">
-        <div className="lg-brand">
-          <img src={logo} alt="Thimadu Auto Trading" className="lg-brand-icon" />
-          <div className="lg-brand-text">
-            <div className="lg-brand-name">Thimadu</div>
-            <div className="lg-brand-tag">Auto Trading</div>
-          </div>
-        </div>
-
-        <div className="lg-signage">
-          Premium Cars
-          <br />
-          Better Journeys
-          <div className="lg-signage-bar" />
-        </div>
-
-        <div className="lg-hero-main">
-          <div className="lg-eyebrow">WELCOME BACK</div>
-          <h1 className="lg-hero-title">
-            Manage, Sell, Grow
-            <br />
-            Together
-          </h1>
-          <p className="lg-hero-desc">
-            Your all-in-one platform to manage inventory, customers, service requests and more — all in one place.
-          </p>
-        </div>
-
-        <div className="lg-features">
-          <div className="lg-feature">
-            <div className="lg-feature-icon">
-              <InventoryFeatureIcon />
+        <section className="lg-panel-wrap" aria-label="Account access">
+          <div className="lg-panel-top"><span className="lg-access-badge" aria-label="Authorized personnel only. Sign in to verify access."><span aria-hidden="true" /> Authorized Access</span></div>
+          {resetting ? (
+            <div className="lg-card lg-reset-card">
+              <PasswordReset initialEmail={email} onCancel={() => setResetting(false)} onSuccess={(message) => {
+                setResetting(false)
+                setError("")
+                setResetSuccess(message)
+              }} />
             </div>
-            <div className="lg-feature-title">Manage Inventory</div>
-            <div className="lg-feature-desc">Keep track of all vehicles in your stock.</div>
-          </div>
-          <div className="lg-feature">
-            <div className="lg-feature-icon">
-              <CustomersFeatureIcon />
-            </div>
-            <div className="lg-feature-title">Serve Customers</div>
-            <div className="lg-feature-desc">Deliver a seamless buying experience.</div>
-          </div>
-          <div className="lg-feature">
-            <div className="lg-feature-icon">
-              <WrenchIcon />
-            </div>
-            <div className="lg-feature-title">Streamline Service</div>
-            <div className="lg-feature-desc">Keep your cars in top condition.</div>
-          </div>
-        </div>
+          ) : (
+            <form className="lg-card" onSubmit={handleSubmit} aria-labelledby="lg-welcome" aria-busy={loading}>
+              <div className="lg-form-eyebrow">WELCOME BACK</div>
+              <h2 id="lg-welcome">Sign in to your<br />workspace<span>.</span></h2>
+              <p className="lg-welcome-sub">Access your Thimadu Auto Trading account and continue managing your dealership.</p>
+
+              <div className="lg-input-group">
+                <label className="lg-field-label" htmlFor="login-email">Email address</label>
+                <div className="lg-input-wrap"><MailIcon /><input id="login-email" name="email" type="email" autoComplete="username" placeholder="you@thimadu.com" required value={email} onChange={(event) => setEmail(event.target.value)} disabled={loading} /></div>
+              </div>
+              <div className="lg-input-group">
+                <div className="lg-label-row"><label className="lg-field-label" htmlFor="login-password">Password</label><button className="lg-forgot" type="button" disabled={loading} onClick={() => { setResetSuccess(""); setResetting(true) }}>Forgot password?</button></div>
+                <div className="lg-input-wrap"><LockIcon /><input id="login-password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="Enter your password" required disabled={loading} /><button type="button" className="lg-eye-btn" aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOffIcon /> : <EyeIcon />}</button></div>
+              </div>
+              {resetSuccess && <div className="password-reset-message" role="status">{resetSuccess}</div>}
+              {error && <div className="lg-error" role="alert">{error}</div>}
+              <button type="submit" className="lg-login-btn" disabled={loading}>{loading ? <><span className="lg-spinner" /> Signing in...</> : <>Sign in as {roles.find((item) => item.key === role).label}<ArrowRightIcon /></>}</button>
+              <fieldset className="lg-role-fieldset" disabled={loading}>
+                <legend className="lg-role-legend">CHOOSE YOUR ROLE</legend>
+                <div className="lg-role-group">
+                  {roles.map(({ key, label, icon: Icon }) => (
+                    <label key={key} className={`lg-role-btn${role === key ? " lg-role-btn-active" : ""}`}>
+                      <input type="radio" name="role" value={key} checked={role === key} onChange={() => setRole(key)} />
+                      <Icon /><span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <div className="lg-secure"><LockIcon /><span>Secure access to your team's workspace</span></div>
+            </form>
+          )}
+          <footer className="lg-panel-footer"><span>Thimadu Auto Trading</span><span>Built for the road ahead.</span></footer>
+        </section>
       </div>
-
-      <div className="lg-panel-wrap">
-        <div className="lg-panel-top">
-          <div>
-            <div className="lg-eyebrow-mission">
-              <b>Different Roles</b> . Same Mission
-            </div>
-            <div className="lg-mission-bar" />
-          </div>
-        </div>
-
-        {resetting ? (
-          <div className="lg-card lg-reset-card">
-            <PasswordReset initialEmail={email} onCancel={() => setResetting(false)} onSuccess={(message) => {
-              setResetting(false)
-              setError("")
-              setResetSuccess(message)
-            }} />
-          </div>
-        ) : <form className="lg-card" onSubmit={handleSubmit}>
-          <div className="lg-card-brand">
-            <img src={logoLight} alt="Thimadu Auto Trading" className="lg-card-brand-icon" />
-            <div className="lg-card-brand-text">
-              <div className="lg-brand-name">Thimadu</div>
-              <div className="lg-brand-tag">Auto Trading</div>
-            </div>
-          </div>
-
-          <div className="lg-welcome-title">Welcome Back!</div>
-          <div className="lg-welcome-sub">Sign in to your account to continue</div>
-
-          <span className="lg-field-label">Select Your Role</span>
-          <div className="lg-role-group">
-            {roles.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                type="button"
-                className={`lg-role-btn${role === key ? " lg-role-btn-active" : ""}`}
-                onClick={() => setRole(key)}
-              >
-                <Icon />
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="lg-input-group">
-            <span className="lg-field-label">Email Address</span>
-            <div className="lg-input-wrap">
-              <MailIcon />
-              <input name="email" type="email" autoComplete="email" placeholder="Enter your email" required value={email} onChange={(event) => setEmail(event.target.value)} />
-            </div>
-          </div>
-
-          <div className="lg-input-group">
-            <span className="lg-field-label">Password</span>
-            <div className="lg-input-wrap">
-              <LockIcon />
-              <input name="password" type={showPassword ? "text" : "password"} placeholder="Enter your password" required />
-              <button
-                type="button"
-                className="lg-eye-btn"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                onClick={() => setShowPassword((v) => !v)}
-              >
-                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-              </button>
-            </div>
-          </div>
-
-          <div className="lg-row-between">
-            <label className="lg-remember">
-              <input type="checkbox" /> Remember me
-            </label>
-            <button className="lg-forgot" type="button" disabled={loading} onClick={() => {
-              setResetSuccess("")
-              setResetting(true)
-            }}>
-              Forgot password?
-            </button>
-          </div>
-
-          {resetSuccess && <div className="password-reset-message" role="status">{resetSuccess}</div>}
-          {error && <div className="lg-error">{error}</div>}
-
-          <button type="submit" className="lg-login-btn" disabled={loading}>
-            {loading ? "Signing in…" : "Login"}
-            <ArrowRightIcon />
-          </button>
-
-          <hr className="lg-divider" />
-          <div className="lg-secure">
-            <ShieldIcon />
-            Secure Login
-          </div>
-        </form>}
-      </div>
-    </div>
+    </main>
   )
 }

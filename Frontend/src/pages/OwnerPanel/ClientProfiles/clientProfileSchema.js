@@ -1,4 +1,5 @@
 export const initialFormState = {
+  custom_fields: {},
   has_local_client: true,
   local_client_name: "",
   local_client_phone: "",
@@ -81,6 +82,7 @@ export function mapProfileToForm(profile) {
   return {
     ...initialFormState,
     ...profile,
+    custom_fields: profile.custom_fields || {},
     local_client_name: toInputValue(profile.local_client_name),
     local_client_phone: toInputValue(profile.local_client_phone),
     local_client_document_types: toTypesArray(profile.local_client_document_types),

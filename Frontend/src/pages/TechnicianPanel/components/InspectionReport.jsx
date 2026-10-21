@@ -39,10 +39,11 @@ function FieldValue({ field, value }) {
     const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/.exec(value)
     return <span>{m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}` : value}</span>
   }
-  return <span>{value}</span>
+  return <span className="ir-text-value">{value}</span>
 }
 
 export default function InspectionReport({ data, vehicleTitle, token, reportId, onClose, onPrint, onSaved }) {
+  const sections = data?._schema || SECTIONS
   const pageRef = useRef(null)
   const autoSaveStarted = useRef(false)
   const [uploading, setUploading] = useState(false)
@@ -195,7 +196,7 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
           {vehicleTitle ? ` — ${vehicleTitle}` : ""}
         </h1>
 
-        {SECTIONS.map((section) => (
+        {sections.map((section) => (
           <section className="ir-section" key={section.title}>
             <h2 className="ir-section-title">{section.title}</h2>
             <table className="ir-table">

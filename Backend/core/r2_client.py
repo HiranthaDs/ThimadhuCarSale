@@ -1,5 +1,8 @@
 import json
+import threading
+import time
 import uuid
+from datetime import datetime, timezone
 from urllib.parse import unquote, urlsplit
 from fastapi import HTTPException
 from pydantic import BaseModel, model_serializer
@@ -28,13 +31,59 @@ REPORTS_PUBLIC_URL = _settings.r2_reports_public_url.rstrip("/")
 BLACKLIST_BUCKET = _settings.r2_blacklist_bucket
 BLACKLIST_PUBLIC_URL = _settings.r2_blacklist_public_url.rstrip("/")
 
+_USAGE_CACHE_SECONDS = 300
+_usage_cache_lock = threading.Lock()
+_usage_cache = {"expires_at": 0.0, "value": None}
+
+
+def _invalidate_usage_cache() -> None:
+    with _usage_cache_lock:
+        _usage_cache["expires_at"] = 0.0
+
+
+def storage_usage() -> dict:
+    """Return the current object storage size for this app's configured R2 buckets."""
+    now = time.monotonic()
+    with _usage_cache_lock:
+        if _usage_cache["value"] is not None and now < _usage_cache["expires_at"]:
+            return dict(_usage_cache["value"])
+
+    buckets = list(dict.fromkeys(bucket for bucket in (REPORTS_BUCKET, BLACKLIST_BUCKET) if bucket))
+    if not buckets:
+        raise RuntimeError("R2 buckets are not configured.")
+
+    used_bytes = 0
+    object_count = 0
+    for bucket in buckets:
+        paginator = _client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=bucket):
+            for item in page.get("Contents", []):
+                used_bytes += item.get("Size", 0)
+                object_count += 1
+
+    included_bytes = 10_000_000_000  # Cloudflare R2 Standard monthly free storage allowance: 10 GB-month.
+    value = {
+        "used_bytes": used_bytes,
+        "object_count": object_count,
+        "included_free_bytes": included_bytes,
+        "remaining_included_bytes": max(0, included_bytes - used_bytes),
+        "bucket_count": len(buckets),
+        "measured_at": datetime.now(timezone.utc).isoformat(),
+    }
+    with _usage_cache_lock:
+        _usage_cache["value"] = value
+        _usage_cache["expires_at"] = time.monotonic() + _USAGE_CACHE_SECONDS
+    return dict(value)
+
 
 def _put(bucket: str, key: str, content: bytes, content_type: str) -> None:
     _client.put_object(Bucket=bucket, Key=key, Body=content, ContentType=content_type)
+    _invalidate_usage_cache()
 
 
 def _delete(bucket: str, key: str) -> None:
     _client.delete_object(Bucket=bucket, Key=key)
+    _invalidate_usage_cache()
 
 
 def _key_from_url(public_base: str, url: str | None) -> str | None:
@@ -82,6 +131,18 @@ def upload_client_document(content: bytes, content_type: str) -> str:
     key = f"{CLIENT_DOCUMENT_PREFIX}/{uuid.uuid4().hex}.{_ext_for_content_type(content_type)}"
     _put(REPORTS_BUCKET, key, content, content_type)
     return f"r2://reports/{key}"
+
+
+def get_client_document_bytes(value: str) -> bytes:
+    reference = storage_reference(value)
+    if not reference or reference[0] != REPORTS_BUCKET or not reference[1].startswith(CLIENT_DOCUMENT_PREFIX + "/"):
+        raise ValueError("This is not a client document.")
+    response = _client.get_object(Bucket=REPORTS_BUCKET, Key=reference[1])
+    with response["Body"] as body:
+        content = body.read(_settings.max_file_bytes + 1)
+    if len(content) > _settings.max_file_bytes:
+        raise ValueError("Client document exceeds the file limit.")
+    return content
 
 
 def delete_client_document(url: str | None) -> None:

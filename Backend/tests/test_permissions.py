@@ -191,11 +191,20 @@ class ReportApprovalTests(unittest.TestCase):
         report = self.add_report("CBE-1")
         self.assertEqual(self.reports.annotate(report).waiting_for, ["ceo"])
         with self.assertRaises(ValueError):
-            self.reports.set_status(report, "checked")
+            self.reports.set_status(report, "checked", self.owner)
         self.reports.approve(report, self.ceo, self.access.for_user(self.ceo))
         self.assertEqual(report.waiting_for, [])
         self.assertEqual(report.role_approvals[0]["name"], "Ceo")
-        self.assertEqual(self.reports.set_status(report, "checked").status, "checked")
+        self.assertEqual(self.reports.set_status(report, "checked", self.owner).status, "checked")
+
+    def test_only_owner_gives_final_check(self):
+        report = self.add_report("CBE-9")
+        self.reports.approve(report, self.ceo, self.access.for_user(self.ceo))
+        with self.assertRaises(PermissionError):
+            self.reports.set_status(report, "checked", self.ceo)
+        self.reports.set_status(report, "checked", self.owner)
+        with self.assertRaises(PermissionError):
+            self.reports.set_status(report, "needs_modifications", self.ceo)  # Can't undo the owner's check.
 
     def test_report_2_uses_its_own_tick(self):
         # The CEO keeps the Report 1 tick but loses the Report 2 one.
@@ -205,12 +214,12 @@ class ReportApprovalTests(unittest.TestCase):
         self.assertEqual(ReportService(self.db).annotate(copy).waiting_for, [])
         with self.assertRaises(PermissionError):
             ReportService(self.db).approve(copy, self.ceo, self.access.for_user(self.ceo))
-        self.assertEqual(ReportService(self.db).set_status(copy, "checked").status, "checked")
+        self.assertEqual(ReportService(self.db).set_status(copy, "checked", self.owner).status, "checked")
 
     def test_sent_back_report_needs_approvals_again(self):
         report = self.add_report("CBE-2")
         self.reports.approve(report, self.ceo, self.access.for_user(self.ceo))
-        self.reports.set_status(report, "needs_modifications")
+        self.reports.set_status(report, "needs_modifications", self.owner)
         report.status = "pending"
         self.assertEqual(ReportService(self.db).annotate(report).waiting_for, ["ceo"])
 

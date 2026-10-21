@@ -1,26 +1,43 @@
-import { useEffect, useRef, useState } from "react"
-import { createClientProfile, listAllScanReports, updateClientProfile } from "../../../api/clients"
+import { createContext, useContext, useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
+import { createClientProfile, getClientFormSchema, listAllScanReports, updateClientProfile } from "../../../api/clients"
 import { confirmCloseForm, confirmDiscard, useUnsavedChanges } from "../../../components/unsavedChanges"
 import { TABS, buildSubmitPayload, initialFormState, mapProfileToForm, validateClientTypes } from "./clientProfileSchema"
 import { COUNTRIES } from "./countries"
 import { isSafeMediaUrl } from "../../../utils/safeUrl"
 import { compressImage, prepareUpload } from "../../../utils/image"
 import DatePicker from "../../../components/DatePicker"
+import { builtinKey } from "./clientProfileBuiltins"
+
+const BuiltinLabelsContext = createContext({ tab: "", labels: {}, hidden: [], fieldTypes: {} })
+
+function useBuiltinSettings(label, defaultType) {
+  const { tab, labels, hidden, fieldTypes } = useContext(BuiltinLabelsContext)
+  const key = builtinKey(tab, label)
+  return {
+    displayLabel: labels[key] || label,
+    visible: !hidden.includes(key),
+    inputType: fieldTypes[key] || defaultType,
+  }
+}
 
 function TextField({ label, value, onChange, type = "text", required, placeholder }) {
-  if (type === "date") {
+  const { displayLabel, visible, inputType } = useBuiltinSettings(label, type)
+  if (!visible) return null
+  if (inputType === "date") {
     return (
       <div className="tp-form-group">
-        <span>{label}</span>
+        <span>{displayLabel}</span>
         <DatePicker value={value} onChange={onChange} />
       </div>
     )
   }
+  if (inputType === "textarea") return <label className="tp-form-group tp-form-group-full"><span>{displayLabel}</span><textarea rows={3} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} /></label>
   return (
     <label className="tp-form-group">
-      <span>{label}</span>
+      <span>{displayLabel}</span>
       <input
-        type={type}
+        type={inputType}
         value={value}
         required={required}
         placeholder={placeholder}
@@ -31,6 +48,7 @@ function TextField({ label, value, onChange, type = "text", required, placeholde
 }
 
 function CountrySelect({ label, value, onChange }) {
+  const { displayLabel, visible } = useBuiltinSettings(label)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const boxRef = useRef(null)
@@ -49,9 +67,10 @@ function CountrySelect({ label, value, onChange }) {
     return () => document.removeEventListener("mousedown", onClickOutside)
   }, [])
 
+  if (!visible) return null
   return (
     <label className="tp-form-group" ref={boxRef}>
-      <span>{label}</span>
+      <span>{displayLabel}</span>
       <div className="cp-country-select">
         <button
           type="button"
@@ -107,9 +126,11 @@ function CountrySelect({ label, value, onChange }) {
 }
 
 function SelectField({ label, value, onChange, options }) {
+  const { displayLabel, visible } = useBuiltinSettings(label)
+  if (!visible) return null
   return (
     <label className="tp-form-group">
-      <span>{label}</span>
+      <span>{displayLabel}</span>
       <select value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -122,9 +143,11 @@ function SelectField({ label, value, onChange, options }) {
 }
 
 function RadioField({ label, value, onChange, options }) {
+  const { displayLabel, visible } = useBuiltinSettings(label)
+  if (!visible) return null
   return (
     <div className="tp-form-group">
-      <span>{label}</span>
+      <span>{displayLabel}</span>
       <div className="cp-radio-row">
         {options.map((opt) => (
           <label key={opt.value} className="cp-radio-option">
@@ -159,8 +182,70 @@ function packImages(items) {
   return items.length === 1 ? items[0] : JSON.stringify(items)
 }
 
+function PhotoPreview({ images, label }) {
+  const [index, setIndex] = useState(null)
+  const closeRef = useRef(null)
+  const triggerRef = useRef(null)
+  const open = index !== null && images.length > 0
+
+  useEffect(() => {
+    if (!open) return
+    closeRef.current?.focus()
+    function onKeyDown(event) {
+      if (event.key === "Escape") setIndex(null)
+      if (images.length > 1 && event.key === "ArrowRight") setIndex((current) => (current + 1) % images.length)
+      if (images.length > 1 && event.key === "ArrowLeft") setIndex((current) => (current - 1 + images.length) % images.length)
+      if (event.key === "Tab") {
+        const controls = document.querySelectorAll(".cp-photo-preview button")
+        const first = controls[0]
+        const last = controls[controls.length - 1]
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => {
+      window.removeEventListener("keydown", onKeyDown)
+      triggerRef.current?.focus()
+    }
+  }, [open, images.length])
+
+  if (!images.length) return null
+  return (
+    <>
+      <a
+        ref={triggerRef}
+        href="#photo-preview"
+        role="button"
+        className="cp-photo-view"
+        onClick={(event) => { event.preventDefault(); setIndex(0) }}
+        onKeyDown={(event) => { if (event.key === " ") { event.preventDefault(); setIndex(0) } }}
+        aria-label={`View ${label} ${images.length === 1 ? "photo" : "photos"}`}
+      >
+        View
+      </a>
+      {open && createPortal(
+        <div className="cp-photo-preview-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setIndex(null) }}>
+          <div className="cp-photo-preview" role="dialog" aria-modal="true" aria-label={`${label} photo viewer`}>
+            <div className="cp-photo-preview-header">
+              <div><strong>{label}</strong><span>{index + 1} / {images.length}</span></div>
+              <button ref={closeRef} type="button" className="cp-photo-preview-close" aria-label="Close photo viewer" onClick={() => setIndex(null)}>×</button>
+            </div>
+            <div className="cp-photo-preview-content">
+              {images.length > 1 && <button type="button" className="cp-photo-preview-arrow" aria-label="Previous photo" onClick={() => setIndex((current) => (current - 1 + images.length) % images.length)}>‹</button>}
+              <img src={images[index]} alt={`${label} photo ${index + 1} of ${images.length}`} />
+              {images.length > 1 && <button type="button" className="cp-photo-preview-arrow" aria-label="Next photo" onClick={() => setIndex((current) => (current + 1) % images.length)}>›</button>}
+            </div>
+          </div>
+        </div>, document.body,
+      )}
+    </>
+  )
+}
+
 // Several images in one field, up to `max`. Keep `max` in step with MULTI_IMAGE_LIMITS in Backend/core/media.py.
-function MultiImageField({ label, value, onChange, max, full }) {
+function MultiImageField({ label, value, onChange, max, full, readOnly = false }) {
+  const { displayLabel, visible } = useBuiltinSettings(label)
   const images = parseImages(value)
   const remaining = max - images.length
   const [adding, setAdding] = useState(false)
@@ -182,10 +267,11 @@ function MultiImageField({ label, value, onChange, max, full }) {
     }
   }
 
+  if (!visible) return null
   return (
     <div className={`tp-form-group${full ? " tp-form-group-full" : ""}`}>
       <span>
-        {label} <small className="tp-photo-count">({images.length}/{max})</small>
+        {displayLabel} <small className="tp-photo-count">({images.length}/{max})</small>
       </span>
       <input type="file" accept="image/*" multiple={max > 1} disabled={remaining <= 0 || adding} onChange={handleFiles} />
       {adding && <small className="tp-muted">Adding images…</small>}
@@ -194,8 +280,8 @@ function MultiImageField({ label, value, onChange, max, full }) {
         <div className="tp-form-photo-strip">
           {images.map((src, i) => (
             <div key={i} className="tp-photo-thumb">
-              <img src={src} alt={label} />
-              <button
+              <img src={src} alt={displayLabel} />
+              {!readOnly && <button
                 type="button"
                 className="tp-photo-remove"
                 aria-label="Remove image"
@@ -205,22 +291,26 @@ function MultiImageField({ label, value, onChange, max, full }) {
                 }}
               >
                 ×
-              </button>
+              </button>}
             </div>
           ))}
         </div>
       )}
+      <PhotoPreview images={images} label={displayLabel} />
     </div>
   )
 }
 
 function ImageField({ label, value, onChange, full }) {
+  const { displayLabel, visible } = useBuiltinSettings(label)
+  if (!visible) return null
   return (
-    <label className={`tp-form-group${full ? " tp-form-group-full" : ""}`}>
-      <span>{label}</span>
+    <div className={`tp-form-group${full ? " tp-form-group-full" : ""}`}>
+      <span>{displayLabel}</span>
       <input
         type="file"
         accept="image/*"
+        aria-label={displayLabel}
         onChange={async (e) => {
           const file = e.target.files?.[0]
           if (!file) return
@@ -229,10 +319,11 @@ function ImageField({ label, value, onChange, full }) {
       />
       {value && (
         <div className="tp-form-photo-strip">
-          <img src={value} alt={label} />
+          <img src={value} alt={displayLabel} />
         </div>
       )}
-    </label>
+      <PhotoPreview images={value ? [value] : []} label={displayLabel} />
+    </div>
   )
 }
 
@@ -240,6 +331,7 @@ function ImageField({ label, value, onChange, full }) {
 // refuse to open in a new tab, so it is previewed through a temporary blob: URL
 // until the profile is saved (the backend then returns a signed R2 link).
 function FileField({ label, value, onChange, full, readOnly }) {
+  const { displayLabel, visible } = useBuiltinSettings(label)
   const [picked, setPicked] = useState(null)
 
   useEffect(() => {
@@ -250,9 +342,10 @@ function FileField({ label, value, onChange, full, readOnly }) {
   const pickedIsCurrent = picked && picked.dataUrl === value
   const viewUrl = pickedIsCurrent ? picked.url : value && isSafeMediaUrl(value) ? value : null
 
+  if (!visible) return null
   return (
     <div className={`tp-form-group${full ? " tp-form-group-full" : ""}`}>
-      <span>{label}</span>
+      <span>{displayLabel}</span>
       {!readOnly && (
         <input
           type="file"
@@ -304,6 +397,7 @@ function scanReportNameFromUrl(url) {
 }
 
 function ScanReportField({ token, label, value, onChange, vehicleNumber, readOnly }) {
+  const { displayLabel, visible } = useBuiltinSettings(label)
   const valueName = scanReportNameFromUrl(value)
   const [query, setQuery] = useState("")
   const [all, setAll] = useState(null)
@@ -341,9 +435,10 @@ function ScanReportField({ token, label, value, onChange, vehicleNumber, readOnl
     setOpen(false)
   }
 
+  if (!visible) return null
   return (
     <div className="tp-form-group" ref={boxRef}>
-      <span>{label}{valueName ? " (report selected)" : ""}</span>
+      <span>{displayLabel}{valueName ? " (report selected)" : ""}</span>
       {!readOnly && (
         <div className="cp-scan-report-search-box">
           <input
@@ -402,6 +497,9 @@ const DOCUMENT_KINDS = [
 const DOCUMENT_IMAGE_LIMITS = { nic: 2, passport: 5, other: 10 }
 
 function DocumentPicker({ prefix, form, set }) {
+  const { tab, labels, hidden } = useContext(BuiltinLabelsContext)
+  const labelFor = (label) => labels[builtinKey(tab, label)] || label
+  const isVisible = (label) => !hidden.includes(builtinKey(tab, label))
   const typesKey = `${prefix}_client_document_types`
   const types = form[typesKey]
 
@@ -409,20 +507,21 @@ function DocumentPicker({ prefix, form, set }) {
     set(typesKey, checked ? [...types, kind] : types.filter((t) => t !== kind))
   }
 
+  if (!isVisible("Identification Document")) return null
   return (
     <div className="tp-form-group">
-      <span>Identification Document</span>
+      <span>{labelFor("Identification Document")}</span>
       <div className="cp-radio-row">
-        {DOCUMENT_KINDS.map((d) => (
+        {DOCUMENT_KINDS.filter((d) => isVisible(d.label)).map((d) => (
           <label key={d.key} className="cp-radio-option">
             <input type="checkbox" checked={types.includes(d.key)} onChange={(e) => toggle(d.key, e.target.checked)} />
-            {d.label}
+            {labelFor(d.label)}
           </label>
         ))}
-        <label className="cp-radio-option">
+        {isVisible("No document") && <label className="cp-radio-option">
           <input type="checkbox" checked={types.length === 0} onChange={() => set(typesKey, [])} />
-          No document
-        </label>
+          {labelFor("No document")}
+        </label>}
       </div>
       {DOCUMENT_KINDS.filter((d) => types.includes(d.key)).map((d) => (
         <div className="tp-form-row" key={d.key}>
@@ -450,11 +549,63 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
   const [dirty, setDirty] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const [customFields, setCustomFields] = useState(profile?.custom_field_schema || [])
+  const [builtinLabels, setBuiltinLabels] = useState({})
+  const [builtinHidden, setBuiltinHidden] = useState([])
+  const [builtinFieldTypes, setBuiltinFieldTypes] = useState({})
+  const [schemaError, setSchemaError] = useState("")
+  const [schemaLoading, setSchemaLoading] = useState(true)
   useUnsavedChanges(dirty && !readOnly, "client profile")
+
+  useEffect(() => {
+    let active = true
+    function loadSchema() {
+      setSchemaLoading(true)
+      getClientFormSchema(token).then((data) => {
+        if (!active) return
+        const merged = new Map((data.fields || []).map((field) => [field.key, field]))
+        for (const field of profile?.custom_field_schema || []) merged.set(field.key, field)
+        setCustomFields([...merged.values()])
+        setBuiltinLabels(data.labels || {})
+        setBuiltinHidden(data.hidden_fields || [])
+        setBuiltinFieldTypes(data.field_types || {})
+        if (!isEdit && (data.hidden_fields || []).includes(builtinKey("client_details", "Local Client"))) {
+          setForm((previous) => ({ ...previous, has_local_client: false }))
+        }
+        setSchemaError("")
+      }).catch((err) => {
+        if (active) setSchemaError(err.message || "Could not load the client profile fields.")
+      }).finally(() => { if (active) setSchemaLoading(false) })
+    }
+    loadSchema()
+    window.addEventListener("thimadu:client-form-schema-changed", loadSchema)
+    return () => { active = false; window.removeEventListener("thimadu:client-form-schema-changed", loadSchema) }
+  }, [token, profile, isEdit])
 
   function set(field, value) {
     setDirty(true)
     setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  function setCustom(key, value) {
+    setDirty(true)
+    setForm((prev) => ({ ...prev, custom_fields: { ...prev.custom_fields, [key]: value } }))
+  }
+
+  const labelFor = (label) => builtinLabels[builtinKey(activeTab, label)] || label
+  const isVisible = (label) => isEdit || !builtinHidden.includes(builtinKey(activeTab, label))
+
+  function customField(field) {
+    const value = form.custom_fields[field.key] ?? (field.type === "checkbox" ? false : "")
+    const onChange = (next) => setCustom(field.key, next)
+    if (field.type === "image") return <ImageField key={field.key} label={field.label} value={value} onChange={onChange} />
+    if (field.type === "multi_image") return <MultiImageField key={field.key} label={field.label} value={value} onChange={onChange} max={10} readOnly={readOnly} />
+    if (field.type === "file") return <FileField key={field.key} label={field.label} value={value} onChange={onChange} readOnly={readOnly} />
+    if (field.type === "checkbox") return <label key={field.key} className="cp-radio-option cp-client-toggle"><input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} />{field.label}</label>
+    if (field.type === "radio") return <RadioField key={field.key} label={field.label} value={value} onChange={onChange} options={(field.options || []).map((option) => ({ value: option, label: option }))} />
+    if (field.type === "select") return <SelectField key={field.key} label={field.label} value={value} onChange={onChange} options={[{ value: "", label: "Select…" }, ...(field.options || []).map((option) => ({ value: option, label: option }))]} />
+    if (field.type === "textarea") return <label key={field.key} className="tp-form-group tp-form-group-full"><span>{field.label}</span><textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)} /></label>
+    return <TextField key={field.key} label={field.label} type={field.type} value={value} onChange={onChange} />
   }
 
   async function handleClose() {
@@ -474,6 +625,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (schemaLoading || schemaError) return
     setError("")
 
     const validationError = validateClientTypes(form)
@@ -485,11 +637,19 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
 
     setSubmitting(true)
     try {
+      const formForSubmit = isEdit ? form : {
+        ...form,
+        has_local_client: builtinHidden.includes(builtinKey("client_details", "Local Client")) ? false : form.has_local_client,
+        has_foreign_client: builtinHidden.includes(builtinKey("client_details", "Foreign Client")) ? false : form.has_foreign_client,
+        third_person_involved: builtinHidden.includes(builtinKey("previous_owner", "Third Person Involved?")) ? false : form.third_person_involved,
+      }
+      const payload = buildSubmitPayload(formForSubmit)
+      if (!isEdit && builtinHidden.includes(builtinKey("previous_owner", "Registration Status"))) payload.registration_type = null
       if (isEdit) {
-        const updated = await updateClientProfile(token, profile.id, buildSubmitPayload(form))
+        const updated = await updateClientProfile(token, profile.id, payload)
         onUpdated?.(updated)
       } else {
-        const created = await createClientProfile(token, buildSubmitPayload(form))
+        const created = await createClientProfile(token, payload)
         onCreated?.(created)
       }
     } catch (err) {
@@ -523,19 +683,20 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
         ))}
       </div>
 
+      <BuiltinLabelsContext.Provider value={{ tab: activeTab, labels: builtinLabels, hidden: isEdit ? [] : builtinHidden, fieldTypes: isEdit ? {} : builtinFieldTypes }}>
       <form onSubmit={handleSubmit} className="tp-inspection-form">
         <fieldset disabled={readOnly} className="cp-fieldset">
         {activeTab === "client_details" && (
           <div className="tp-form-section">
-            <label className="cp-radio-option cp-client-toggle">
+            {isVisible("Local Client") && <label className="cp-radio-option cp-client-toggle">
               <input
                 type="checkbox"
                 checked={form.has_local_client}
                 onChange={(e) => set("has_local_client", e.target.checked)}
               />
-              Local Client
-            </label>
-            {form.has_local_client && (
+              {labelFor("Local Client")}
+            </label>}
+            {isVisible("Local Client") && form.has_local_client && (
               <div className="cp-client-block">
                 <div className="tp-form-row">
                   <TextField
@@ -560,15 +721,15 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
               </div>
             )}
 
-            <label className="cp-radio-option cp-client-toggle">
+            {isVisible("Foreign Client") && <label className="cp-radio-option cp-client-toggle">
               <input
                 type="checkbox"
                 checked={form.has_foreign_client}
                 onChange={(e) => set("has_foreign_client", e.target.checked)}
               />
-              Foreign Client
-            </label>
-            {form.has_foreign_client && (
+              {labelFor("Foreign Client")}
+            </label>}
+            {isVisible("Foreign Client") && form.has_foreign_client && (
               <div className="cp-client-block">
                 <div className="tp-form-row">
                   <TextField
@@ -683,10 +844,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
               <MultiImageField label="Garage Bill" max={10} value={form.garage_bill_image} onChange={(v) => set("garage_bill_image", v)} />
               <MultiImageField label="Modification" max={10} value={form.modification_image} onChange={(v) => set("modification_image", v)} />
             </div>
-            <label className="tp-form-group tp-form-group-full">
-              <span>Others</span>
-              <textarea rows={2} value={form.other_notes} onChange={(e) => set("other_notes", e.target.value)} />
-            </label>
+            <TextField type="textarea" label="Others" value={form.other_notes} onChange={(v) => set("other_notes", v)} />
             <RadioField
               label="Third Person Involved?"
               value={form.third_person_involved ? "yes" : "no"}
@@ -804,8 +962,15 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
             </div>
           </div>
         )}
+        {customFields.some((field) => field.tab === activeTab) && <div className="tp-form-section cp-custom-fields">
+          <h3>Additional details</h3>
+          <BuiltinLabelsContext.Provider value={{ tab: "", labels: {}, hidden: [], fieldTypes: {} }}>
+            <div className="tp-form-row">{customFields.filter((field) => field.tab === activeTab).map(customField)}</div>
+          </BuiltinLabelsContext.Provider>
+        </div>}
         </fieldset>
 
+        {schemaError && <div className="tp-form-error">{schemaError}</div>}
         {error && <div className="tp-form-error">{error}</div>}
 
         <div className="tp-form-actions">
@@ -813,12 +978,13 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
             {readOnly ? "Close" : "Cancel"}
           </button>
           {!readOnly && (
-            <button type="submit" className="tp-form-btn tp-form-btn-primary" disabled={submitting}>
+            <button type="submit" className="tp-form-btn tp-form-btn-primary" disabled={submitting || schemaLoading || Boolean(schemaError)}>
               {submitting ? "Saving…" : isEdit ? "Save Changes" : "Save Client Profile"}
             </button>
           )}
         </div>
       </form>
+      </BuiltinLabelsContext.Provider>
     </div>
   )
 }

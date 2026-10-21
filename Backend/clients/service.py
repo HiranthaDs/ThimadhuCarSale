@@ -8,7 +8,7 @@ from reports.model import InspectionReport
 from activity.service import ActivityLogService
 from core.approvals import approval_entry, approved_roles
 from auth.model import ROLE_LABELS, User, UserRole, is_owner_level
-from clients.model import ClientProfileStatus
+from clients.model import ClientProfileFormSchema, ClientProfileStatus
 from clients.repository import ClientProfileRepository
 from clients.schema import IMAGE_FIELDS, ClientProfileCreate, ClientProfileUpdate
 from core.media import decode_data_url, join_images, split_images
@@ -73,6 +73,54 @@ class ClientProfileService:
                 data[field] = canonical
         return data
 
+    def prepare_custom_fields(self, values, profile=None):
+        saved = self.db.get(ClientProfileFormSchema, "default")
+        # Keep fields already stored on a profile readable after the owner removes
+        # them from the form used for new profiles.
+        definitions = {field["key"]: field for field in (saved.fields or [])} if saved else {}
+        if profile:
+            definitions.update({field["key"]: field for field in (profile.custom_field_schema or [])})
+        previous = profile.custom_fields or {} if profile else {}
+        if set(values) - set(definitions):
+            raise HTTPException(400, "The client profile contains an unknown custom field.")
+        result = dict(previous)
+        allowed = [url for field in definitions.values() if field["type"] in ("image", "multi_image", "file")
+                   for url in split_images(previous.get(field["key"]))]
+        for key, value in values.items():
+            kind = definitions[key]["type"]
+            if kind == "checkbox":
+                if not isinstance(value, bool):
+                    raise HTTPException(400, "A checkbox value must be true or false.")
+                result[key] = value
+                continue
+            if value is None or value == "":
+                result[key] = ""
+                continue
+            if not isinstance(value, str):
+                raise HTTPException(400, "Custom field values must be text.")
+            if kind in ("image", "multi_image", "file"):
+                images = split_images(value)
+                if len(images) > (10 if kind == "multi_image" else 1):
+                    raise HTTPException(400, "Too many files in a custom field.")
+                uploaded = []
+                for image in images:
+                    decoded = decode_data_url(image)
+                    if decoded:
+                        content_type, content = decoded
+                        if kind != "file" and not content_type.startswith("image/"):
+                            raise HTTPException(400, "This field accepts images only.")
+                        uploaded.append(upload_client_document(content, content_type))
+                    else:
+                        uploaded.append(existing_reference(image, allowed))
+                result[key] = join_images(uploaded)
+            else:
+                if len(value) > 5000:
+                    raise HTTPException(400, "Custom field text is too long.")
+                if kind in ("radio", "select") and value not in definitions[key].get("options", []):
+                    raise HTTPException(400, "Choose a valid custom field option.")
+                result[key] = value
+        return result, list(definitions.values())
+
     # ---- Approvals: every role with the Approve tick, then the owner ----
 
     def _approver_roles(self) -> list[str]:
@@ -111,6 +159,7 @@ class ClientProfileService:
 
     def create(self, payload: ClientProfileCreate, current_user: User):
         data = self.prepare_documents(payload.model_dump())
+        data["custom_fields"], data["custom_field_schema"] = self.prepare_custom_fields(data["custom_fields"])
         profile = self.repository.create(created_by=current_user.id, **data, **self._fresh_review())
         ActivityLogService(self.db).log(
             actor=current_user,
@@ -152,6 +201,7 @@ class ClientProfileService:
             )
         old_documents = {field: getattr(profile, field) for field in CLIENT_DOCUMENT_FIELDS}
         data = self.prepare_documents(payload.model_dump(), profile)
+        data["custom_fields"], data["custom_field_schema"] = self.prepare_custom_fields(data["custom_fields"], profile)
         # Any edited content must go through every approval again.
         data.update(self._fresh_review())
         updated = self.repository.update(profile, **data)
@@ -185,7 +235,8 @@ class ClientProfileService:
                     detail=f"This profile is still waiting for approval from: {waiting}."
                     if waiting else "This profile is already approved.",
                 )
-            changes = {"status": ClientProfileStatus.approved}
+            changes = {"status": ClientProfileStatus.approved,
+                       "role_approvals": [*(profile.role_approvals or []), approval_entry(current_user)]}
             action = "client.owner_approve"
             description = f"Owner approved client profile for {_display_names(profile)}"
         else:

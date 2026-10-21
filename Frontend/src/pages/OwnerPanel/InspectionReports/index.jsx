@@ -7,8 +7,9 @@ import { DownloadIcon } from "../../TechnicianPanel/Icons"
 import InspectionForm from "../../TechnicianPanel/components/InspectionForm"
 import InspectionReport from "../../TechnicianPanel/components/InspectionReport"
 
-// canReview: may edit, mark checked / needs modifications, and delete any report.
-export default function InspectionReports({ token, canReview = true }) {
+// canReview: may edit, send back for modifications, and delete any report.
+// canCheck: may give the final "Mark Checked" — the owner only.
+export default function InspectionReports({ token, canReview = true, canCheck = true }) {
   const requestNumber = useRef(0)
   const [page, setPage] = useState(0)
   const [reports, setReports] = useState([])
@@ -273,6 +274,7 @@ export default function InspectionReports({ token, canReview = true }) {
                     "Edit"
                   )}
                 </button>
+                {canCheck && (
                 <button
                   type="button"
                   className="tp-reports-btn tp-reports-btn-checked"
@@ -289,10 +291,11 @@ export default function InspectionReports({ token, canReview = true }) {
                     "Mark Checked"
                   )}
                 </button>
+                )}
                 <button
                   type="button"
                   className="tp-reports-btn tp-reports-btn-modifications"
-                  disabled={busyId === report.id || report.status === "needs_modifications"}
+                  disabled={busyId === report.id || report.status === "needs_modifications" || (report.status === "checked" && !canCheck)}
                   onClick={() => handleStatusChange(report, "needs_modifications")}
                 >
                   {busyId === report.id && busyAction === "needs_modifications" ? (

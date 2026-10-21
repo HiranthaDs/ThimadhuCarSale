@@ -30,3 +30,11 @@ class InspectionReport(Base):
     form_data: Mapped[dict | None] = mapped_column(JSONB().with_variant(JSON(), "sqlite"), nullable=True)
     # Approvals of the current version before the owner checks it: {"role", "name", "at"}.
     role_approvals: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
+
+
+class InspectionReportFormSchema(Base):
+    __tablename__ = "inspection_report_form_schema"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default="default")
+    sections: Mapped[list] = mapped_column(JSONB().with_variant(JSON(), "sqlite"), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

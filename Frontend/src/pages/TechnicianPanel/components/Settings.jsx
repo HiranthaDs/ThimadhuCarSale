@@ -79,7 +79,7 @@ export default function Settings({ token }) {
             setError("")
             setSuccess("")
             setResetting(true)
-          }}>Forgot current password? Send an email code</button>
+          }}>Change password with an email code</button>
           <label className="tp-form-group">
             <span>New Password</span>
             <input

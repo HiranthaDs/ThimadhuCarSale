@@ -59,6 +59,11 @@ def migrate_schema():
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS purchasing_person_name varchar(255)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS extra_departments json"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS role_approvals json NOT NULL DEFAULT '[]'"))
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS custom_fields json NOT NULL DEFAULT '{}'"))
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS custom_field_schema json NOT NULL DEFAULT '[]'"))
+        conn.execute(text("ALTER TABLE client_profile_form_schema ADD COLUMN IF NOT EXISTS labels json NOT NULL DEFAULT '{}'"))
+        conn.execute(text("ALTER TABLE client_profile_form_schema ADD COLUMN IF NOT EXISTS hidden_fields json NOT NULL DEFAULT '[]'"))
+        conn.execute(text("ALTER TABLE client_profile_form_schema ADD COLUMN IF NOT EXISTS field_types json NOT NULL DEFAULT '{}'"))
         conn.execute(text("ALTER TABLE inspection_reports ADD COLUMN IF NOT EXISTS role_approvals json NOT NULL DEFAULT '[]'"))
         for dept in ("marketing", "technical", "purchasing"):
             # Carry over profiles saved with the old single department + person.

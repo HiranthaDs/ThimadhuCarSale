@@ -1,5 +1,9 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { getAccessOverview, resetEmployeeAccess, unlockCustomize, updateEmployeeAccess } from "../../../api/permissions"
+import { getReportFormSchema, saveReportFormSchema } from "../../../api/reports"
+import { DEFAULT_SECTIONS } from "../../TechnicianPanel/components/inspectionSchema"
+import { confirmDialog } from "../../../components/ConfirmDialog"
+import ClientFormEditor from "../ClientProfiles/ClientFormEditor"
 import "../../../components/ConfirmDialog.css"
 import "./Customize.css"
 
@@ -12,28 +16,52 @@ function sameKeys(a, b) {
 // The owner re-enters their password, picks an employee, then ticks what that
 // person can do. The owner always has full access; the CEO starts with full
 // access until the owner changes it.
-export default function Customize({ onCancel }) {
+const CUSTOMIZE_TABS = [
+  { key: "access", label: "Customize Access" },
+  { key: "inspection", label: "Inspection Report" },
+  { key: "client", label: "Edit Client Profile" },
+]
+
+export default function Customize({ onCancel, token }) {
   // Short-lived pass from the server; kept only while this page is open.
   const [unlockToken, setUnlockToken] = useState(null)
   const [notice, setNotice] = useState("")
+  const [activeTab, setActiveTab] = useState("access")
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set(["access"]))
 
-  if (!unlockToken) {
-    return (
-      <UnlockDialog
-        notice={notice}
-        onCancel={onCancel}
-        onUnlocked={(t) => { setNotice(""); setUnlockToken(t) }}
-      />
-    )
+  function selectTab(next) {
+    if (next === activeTab) return
+    setVisitedTabs((previous) => previous.has(next) ? previous : new Set([...previous, next]))
+    setActiveTab(next)
   }
+
   return (
-    <AccessDirectory
-      unlockToken={unlockToken}
-      onLocked={() => {
-        setUnlockToken(null)
-        setNotice("Your Customize session has ended. Enter your password again.")
-      }}
-    />
+    <div className="cz-workspace">
+      <nav className="cz-subnav" aria-label="Customize sections">
+        {CUSTOMIZE_TABS.map((tab) => <button
+          key={tab.key}
+          type="button"
+          className={`cz-subnav-item${activeTab === tab.key ? " cz-subnav-item-active" : ""}`}
+          aria-current={activeTab === tab.key ? "page" : undefined}
+          onClick={() => selectTab(tab.key)}
+        >{tab.label}</button>)}
+      </nav>
+      <div hidden={activeTab !== "access"}>
+        {unlockToken ? <AccessDirectory
+          unlockToken={unlockToken}
+          onLocked={() => {
+            setUnlockToken(null)
+            setNotice("Your Customize session has ended. Enter your password again.")
+          }}
+        /> : activeTab === "access" && <UnlockDialog
+          notice={notice}
+          onCancel={onCancel}
+          onUnlocked={(nextToken) => { setNotice(""); setUnlockToken(nextToken) }}
+        />}
+      </div>
+      {visitedTabs.has("inspection") && <div hidden={activeTab !== "inspection"}><ReportFormEditor /></div>}
+      {visitedTabs.has("client") && <div hidden={activeTab !== "client"}><ClientFormEditor token={token} /></div>}
+    </div>
   )
 }
 
@@ -68,7 +96,7 @@ function UnlockDialog({ notice, onCancel, onUnlocked }) {
 
   return (
     <div className="cd-overlay" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
-      <form className="cd-dialog" role="dialog" aria-modal="true" aria-labelledby="cz-unlock-title" onSubmit={handleSubmit}>
+      <form className="cd-dialog cz-access-unlock" role="dialog" aria-modal="true" aria-labelledby="cz-unlock-title" onSubmit={handleSubmit}>
         <div className="cd-icon" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="4" y="11" width="16" height="10" rx="2" />
@@ -137,20 +165,20 @@ function AccessDirectory({ unlockToken, onLocked }) {
 
   if (selected) {
     return (
-      <EmployeeAccess
-        key={selected.id}
-        unlockToken={unlockToken}
-        onLocked={onLocked}
-        employee={selected}
-        catalog={catalog}
-        onBack={() => setSelectedId(null)}
-        onSaved={handleSaved}
-      />
+        <EmployeeAccess
+          key={selected.id}
+          unlockToken={unlockToken}
+          onLocked={onLocked}
+          employee={selected}
+          catalog={catalog}
+          onBack={() => setSelectedId(null)}
+          onSaved={handleSaved}
+        />
     )
   }
 
   return (
-    <div className="tp-card cz-card">
+    <div className="tp-card cz-card cz-access-editor">
       <div className="tp-card-head">
         <div>
           <div className="tp-card-title">Customize Access</div>
@@ -162,7 +190,7 @@ function AccessDirectory({ unlockToken, onLocked }) {
       {error && <div className="tp-form-error">{error}</div>}
 
       {!loading && !error && (
-        <table className="tp-table">
+        <div className="cz-table-scroll"><table className="tp-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -189,10 +217,128 @@ function AccessDirectory({ unlockToken, onLocked }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   )
+}
+
+const FIELD_TYPES = ["text", "number", "date", "datetime", "textarea", "status", "yesno", "select", "multiphoto", "file", "signature"]
+
+export function ReportFormEditor() {
+  const topRef = useRef(null)
+  const bottomRef = useRef(null)
+  const [sections, setSections] = useState(DEFAULT_SECTIONS)
+  const [busy, setBusy] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+
+  useEffect(() => {
+    let active = true
+    getReportFormSchema().then((result) => {
+      if (active && result.sections) setSections(result.sections)
+    }).catch((err) => {
+      setError(err.message || "Could not load the report form.")
+    }).finally(() => active && setLoading(false))
+    return () => { active = false }
+  }, [])
+
+  function patchField(si, fi, changes) {
+    setSuccess("")
+    setSections((prev) => prev.map((section, i) => i !== si ? section : {
+      ...section, fields: section.fields.map((field, j) => j !== fi ? field : { ...field, ...changes }),
+    }))
+  }
+
+  function addField(si) {
+    const keyBase = `custom_${Date.now().toString(36)}`
+    setSections((prev) => prev.map((section, i) => i !== si ? section : {
+      ...section, fields: [...section.fields, { key: keyBase, label: "New field", type: "text" }],
+    }))
+  }
+
+  function removeField(si, fi) {
+    setSections((prev) => prev.map((section, i) => i !== si ? section : { ...section, fields: section.fields.filter((_, j) => j !== fi) }))
+  }
+
+  async function removeSection(si) {
+    const confirmed = await confirmDialog({
+      title: "Remove inspection section?",
+      message: "This removes the section and all its fields from the form when you save. Existing saved reports keep their layout.",
+      confirmLabel: "Remove section",
+      danger: true,
+    })
+    if (!confirmed) return
+    setSuccess("")
+    setSections((prev) => prev.filter((_, index) => index !== si))
+  }
+
+  async function save() {
+    setError(""); setSuccess(""); setBusy(true)
+    try {
+      await saveReportFormSchema(sections)
+      setSuccess("Inspection report form saved. New reports will use these fields.")
+    } catch (err) {
+      setError(err.message || "Could not save the report form.")
+    } finally { setBusy(false) }
+  }
+
+  async function resetToDefault() {
+    const confirmed = await confirmDialog({
+      title: "Reset inspection report form?",
+      message: "This restores the original form fields and removes your custom changes. Existing saved reports will keep their saved form layout.",
+      confirmLabel: "Reset form",
+      danger: true,
+    })
+    if (!confirmed) return
+    setError(""); setSuccess(""); setBusy(true)
+    try {
+      await saveReportFormSchema(DEFAULT_SECTIONS)
+      setSections(DEFAULT_SECTIONS)
+      setSuccess("Inspection report form restored to the default.")
+    } catch (err) {
+      setError(err.message || "Could not reset the report form.")
+    } finally { setBusy(false) }
+  }
+
+  return <div className="tp-card cz-card cz-report-editor cz-inspection-editor">
+    <div className="tp-card-head" ref={topRef}><div><div className="tp-card-title">Edit Inspection Report</div><div className="tp-muted cz-sub">Edit the existing form, add fields, and choose what type of answer each field accepts.</div></div>
+      <button type="button" className="cz-jump-bottom" onClick={() => bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" })} aria-label="Go to bottom of inspection report editor" title="Go to bottom">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v13m-5-5 5 5 5-5M5 21h14" /></svg>
+        <span>Bottom</span>
+      </button>
+    </div>
+    {loading ? <p>Loading report form…</p> : <>
+      {sections.map((section, si) => <div className="cz-form-section" key={si}>
+        <div className="cz-section-heading">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 9h8M8 13h8M8 17h5" /></svg>
+          <input className="cz-section-name" aria-label="Section name" value={section.title} onChange={(e) => setSections((prev) => prev.map((s, i) => i === si ? { ...s, title: e.target.value } : s))} />
+          {(section.custom === true || si >= DEFAULT_SECTIONS.length) && <button type="button" className="cz-remove-section" onClick={() => removeSection(si)} aria-label={`Remove ${section.title} section`}>Remove section</button>}
+        </div>
+        {section.fields.map((field, fi) => <div className="cz-form-field" key={field.key}>
+          <input aria-label="Field name" value={field.label} onChange={(e) => patchField(si, fi, { label: e.target.value })} />
+          <select aria-label="Field type" value={field.type} onChange={(e) => patchField(si, fi, { type: e.target.value, ...(e.target.value === "select" ? { options: field.options?.length ? field.options : ["Option 1", "Option 2"] } : {}) })}>
+          {[...FIELD_TYPES, ...(!FIELD_TYPES.includes(field.type) ? [field.type] : [])].map((type) => <option key={type} value={type}>{type === "multiphoto" ? "Image upload (multiple)" : type === "file" ? "Image / file upload" : type}</option>)}
+          </select>
+          {field.type === "select" ? <input aria-label="Options, comma separated" value={(field.options || []).join(", ")} onChange={(e) => patchField(si, fi, { options: e.target.value.split(",").map((v) => v.trim()).filter(Boolean) })} placeholder="Options, comma separated" /> : <span className="cz-options-spacer" aria-hidden="true" />}
+          <button type="button" className="tp-form-btn tp-form-btn-secondary cz-remove-field" onClick={() => removeField(si, fi)}>Remove</button>
+        </div>)}
+        <button type="button" className="tp-reports-btn cz-add-field" onClick={() => addField(si)}><span className="cz-add-icon" aria-hidden="true">+</span> Add field</button>
+      </div>)}
+      <button type="button" className="tp-reports-btn cz-add-section" onClick={() => setSections((prev) => [...prev, { title: "New section", fields: [], custom: true }])}><span className="cz-add-icon" aria-hidden="true">+</span> Add section</button>
+      <div className="cz-actions">
+        <button type="button" className="cz-jump-bottom cz-jump-top" onClick={() => topRef.current?.scrollIntoView({ behavior: "auto", block: "start" })} aria-label="Go to top of inspection report editor" title="Go to top">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V7m-5 5 5-5 5 5M5 3h14" /></svg>
+          <span>Top</span>
+        </button>
+        <button type="button" className="tp-form-btn tp-form-btn-secondary" disabled={busy} onClick={resetToDefault}>Reset to default</button>
+        <button type="button" className="tp-form-btn tp-form-btn-primary" disabled={busy} onClick={save}>{busy ? "Saving…" : "Save inspection form"}</button>
+      </div>
+    </>}
+    {error && <div className="tp-form-error">{error}</div>}{success && <div className="tp-form-success">{success}</div>}
+    <div ref={bottomRef} aria-hidden="true" />
+  </div>
 }
 
 function EmployeeAccess({ unlockToken, onLocked, employee, catalog, onBack, onSaved }) {
@@ -249,7 +395,7 @@ function EmployeeAccess({ unlockToken, onLocked, employee, catalog, onBack, onSa
   const roleLabel = ROLE_LABELS[employee.role] || employee.role
 
   return (
-    <div className="tp-card cz-card">
+    <div className="tp-card cz-card cz-access-editor">
       <button type="button" className="cz-back" onClick={onBack}>
         ← All employees
       </button>
@@ -264,7 +410,7 @@ function EmployeeAccess({ unlockToken, onLocked, employee, catalog, onBack, onSa
         </div>
       </div>
 
-      <table className="tp-table cz-table">
+      <div className="cz-table-scroll"><table className="tp-table cz-table">
         <thead>
           <tr>
             <th>Permission</th>
@@ -291,7 +437,7 @@ function EmployeeAccess({ unlockToken, onLocked, employee, catalog, onBack, onSa
             ))}
           </tbody>
         ))}
-      </table>
+      </table></div>
 
       <div className="cz-actions">
         {employee.customized && (

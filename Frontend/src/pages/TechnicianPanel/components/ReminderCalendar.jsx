@@ -169,8 +169,8 @@ export default function ReminderCalendar({ token, reminders, visible, onReminder
     <div className={`rc-panel${visible ? " rc-panel-visible" : ""}`}>
       <div className="rc-panel-head">
         <span className="rc-panel-title">Reminders</span>
-        <button type="button" className="tp-form-close" onClick={onClose} aria-label="Close">
-          ×
+        <button type="button" className="rc-close-button" onClick={onClose} aria-label="Close calendar" title="Close calendar">
+          &times;
         </button>
       </div>
 

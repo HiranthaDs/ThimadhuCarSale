@@ -5,6 +5,7 @@ import { confirmCloseForm, confirmDiscard, useUnsavedChanges } from "../../../co
 import { compressImage, fileToDataUrl, prepareUpload } from "../../../utils/image"
 import carDiagram from "../../../assets/car-diagram.png"
 import { MAX_PHOTOS_PER_FIELD, SECTIONS, STATUS_OPTIONS, buildInitialData, isFieldVisible, toPhotoList, withDefaults } from "./inspectionSchema"
+import { getReportFormSchema } from "../../../api/reports"
 
 function MultiPhotoField({ field, value, onChange }) {
   const { key, label } = field
@@ -575,11 +576,38 @@ function Field({ field, value, onChange, reasonValue, onReasonChange, marksValue
   )
 }
 
-export default function InspectionForm({ onClose, onSubmit, initialData }) {
-  const [data, setData] = useState(() => withDefaults(initialData))
+export default function InspectionForm({ onClose, onSubmit, initialData, active = true }) {
+  const savedSchema = initialData?._schema
+  const [sections, setSections] = useState(savedSchema || SECTIONS)
+  const [schemaLoaded, setSchemaLoaded] = useState(Boolean(savedSchema))
+  const [data, setData] = useState(() => withDefaults(initialData, savedSchema || SECTIONS))
   const [dirty, setDirty] = useState(false)
   const formId = useId()
   useUnsavedChanges(dirty, "inspection report")
+
+  useEffect(() => {
+    if (savedSchema || !active) return
+    let mounted = true
+    async function refreshSchema() {
+      try {
+        const { sections: configured } = await getReportFormSchema()
+        if (!mounted) return
+        const next = configured || SECTIONS
+        setSections(next)
+        setData((current) => withDefaults(current, next))
+      } catch {
+        if (mounted) setSections(SECTIONS)
+      } finally {
+        if (mounted) setSchemaLoaded(true)
+      }
+    }
+    refreshSchema()
+    window.addEventListener("thimadu:report-form-schema-changed", refreshSchema)
+    return () => {
+      mounted = false
+      window.removeEventListener("thimadu:report-form-schema-changed", refreshSchema)
+    }
+  }, [savedSchema, active])
 
   function update(key, value) {
     setDirty(true)
@@ -592,13 +620,13 @@ export default function InspectionForm({ onClose, onSubmit, initialData }) {
 
   async function handleReset() {
     if (!(await confirmDiscard())) return
-    setData({ ...buildInitialData(), scanNumber: data.scanNumber })
+    setData({ ...buildInitialData(sections), scanNumber: data.scanNumber })
     setDirty(false)
   }
 
   function handleSubmit(e) {
     e.preventDefault()
-    onSubmit?.(data)
+    onSubmit?.({ ...data, _schema: sections })
   }
 
   const form = (
@@ -618,7 +646,7 @@ export default function InspectionForm({ onClose, onSubmit, initialData }) {
       </div>
 
       <form id={formId} onSubmit={handleSubmit}>
-        {SECTIONS.map((section) => (
+        {!schemaLoaded ? <p className="tp-muted">Loading inspection form…</p> : sections.map((section) => (
           <div className="tp-form-section" key={section.title}>
             <div className="tp-form-section-title">{section.title}</div>
             <div className="tp-form-grid">

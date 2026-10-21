@@ -13,6 +13,13 @@ function toSession(user) {
   return { role: user.role, username: user.email, fullName: user.full_name, permissions: user.permissions || [] }
 }
 
+function sameSessionAccess(previous, next) {
+  if (!previous || previous.role !== next.role || previous.fullName !== next.fullName) return false
+  const before = [...previous.permissions].sort()
+  const after = [...next.permissions].sort()
+  return before.length === after.length && before.every((permission, index) => permission === after[index])
+}
+
 function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -30,13 +37,19 @@ function App() {
     // Pick up permission changes the owner made while this tab was in the background.
     const refresh = () => {
       if (document.visibilityState !== "visible") return
-      me().then(user => { if (active) setSession(prev => prev && toSession(user)) }).catch(() => {})
+      me().then(user => {
+        if (!active) return
+        const next = toSession(user)
+        setSession(previous => previous && (sameSessionAccess(previous, next) ? previous : next))
+      }).catch(() => {})
     }
     document.addEventListener("visibilitychange", refresh)
+    const accessRefresh = window.setInterval(refresh, 15000)
     return () => {
       active = false
       window.removeEventListener("thimadu:unauthorized", expired)
       document.removeEventListener("visibilitychange", refresh)
+      window.clearInterval(accessRefresh)
     }
   }, [])
 

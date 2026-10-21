@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react"
-import { approveClientProfile, deleteClientProfile, getClientProfile, listClientProfiles } from "../../../api/clients"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { approveClientProfile, deleteClientProfile, getClientProfile, getFinalizedClientProfile, listClientProfiles } from "../../../api/clients"
+import { downloadClientProfilePdf } from "./downloadClientProfile"
 import ClientProfileForm from "./ClientProfileForm"
 import { confirmDialog } from "../../../components/ConfirmDialog"
 import ApprovedBy from "../../../components/ApprovedBy"
@@ -45,8 +46,11 @@ export default function ClientProfiles({ token, role, can = allowAll, awaitingMe
   const [openMode, setOpenMode] = useState("view")
   const [openLoadError, setOpenLoadError] = useState("")
   const [actionError, setActionError] = useState("")
+  const [headerBottom, setHeaderBottom] = useState(0)
   // id + action ("delete" / "approve") of the row whose request is in flight.
   const [busy, setBusy] = useState(null)
+  const [downloadingId, setDownloadingId] = useState(null)
+  const [downloadProgress, setDownloadProgress] = useState("")
 
   // `silent` refreshes keep the table on screen instead of flashing "Loading…".
   async function refresh(q, { silent = false } = {}) {
@@ -69,6 +73,23 @@ export default function ClientProfiles({ token, role, can = allowAll, awaitingMe
     return () => { clearTimeout(timer); requestNumber.current += 1 }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, search, page, awaitingMe])
+
+  useLayoutEffect(() => {
+    if (!showForm && !openProfile) return
+    const header = document.querySelector(".od-app .od-greeting")
+    if (!header) return
+    const update = () => setHeaderBottom(Math.max(0, Math.ceil(header.getBoundingClientRect().bottom)))
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(header)
+    window.addEventListener("resize", update)
+    window.addEventListener("scroll", update, { passive: true })
+    return () => {
+      observer.disconnect()
+      window.removeEventListener("resize", update)
+      window.removeEventListener("scroll", update)
+    }
+  }, [showForm, openProfile])
 
   function handleCreated() {
     setShowForm(false)
@@ -124,6 +145,21 @@ export default function ClientProfiles({ token, role, can = allowAll, awaitingMe
     }
   }
 
+  async function handleDownload(id) {
+    setActionError("")
+    setDownloadingId(id)
+    setDownloadProgress("Preparing PDF…")
+    try {
+      const profile = await getFinalizedClientProfile(token, id)
+      await downloadClientProfilePdf(profile, setDownloadProgress)
+    } catch (err) {
+      setActionError(err.message || "Could not download the finalized client profile.")
+    } finally {
+      setDownloadingId(null)
+      setDownloadProgress("")
+    }
+  }
+
   return (
     <div>
       {!awaitingMe && !showForm && can("clients.create") && (
@@ -137,13 +173,13 @@ export default function ClientProfiles({ token, role, can = allowAll, awaitingMe
       {openLoadError && <div className="tp-form-error">{openLoadError}</div>}
 
       {showForm && (
-        <div className="cp-form-overlay">
+        <div className="cp-form-overlay" style={{ "--cp-header-bottom": `${headerBottom}px` }}>
           <ClientProfileForm token={token} onClose={() => setShowForm(false)} onCreated={handleCreated} />
         </div>
       )}
 
       {openProfile && (
-        <div className="cp-form-overlay">
+        <div className="cp-form-overlay" style={{ "--cp-header-bottom": `${headerBottom}px` }}>
           <ClientProfileForm
             token={token}
             profile={openProfile}
@@ -289,6 +325,17 @@ export default function ClientProfiles({ token, role, can = allowAll, awaitingMe
                             ) : (
                               "Delete"
                             )}
+                          </button>
+                        )}
+                        {p.status === "approved" && can("clients.view") && (
+                          <button
+                            type="button"
+                            className="tp-reports-btn cp-download-btn"
+                            disabled={downloadingId !== null}
+                            onClick={() => handleDownload(p.id)}
+                            title="Download finalized client profile PDF"
+                          >
+                            {downloadingId === p.id ? downloadProgress || "Preparing PDF…" : "Download PDF"}
                           </button>
                         )}
                       </div>

@@ -15,12 +15,14 @@ import logo from "../../../assets/logo.png"
 // The owner sees everything; the CEO uses the same panel but only sees what
 // the owner allowed them in Customize, and never Customize itself.
 const ownerNav = [
-  { label: "Dashboard", icon: DashboardIcon, view: "dashboard", permission: "accounts.manage" },
+  { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
   { label: "Client Profiles", icon: ClipboardIcon, view: "clients", permission: "clients.view" },
   { label: "Profile Approvals", icon: CheckBadgeIcon, view: "approvals", permission: "clients.approve" },
   { label: "Inspection Reports", icon: ReportsIcon, view: "reports", permission: "reports.view" },
+  { label: "Edit Inspection Report", icon: SlidersIcon, view: "report-form", permission: "reports.form.edit", delegateOnly: true },
   { label: "Inspection Report 2", icon: ReportsIcon, view: "reports2", permission: "reports2.view" },
   { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist", permission: "blacklist.view" },
+  { label: "Team Accounts", icon: UsersIcon, view: "accounts", permission: "accounts.manage" },
   { label: "Activity Log", icon: ReportsIcon, view: "activity", permission: "activity.view" },
   { label: "Customize", icon: SlidersIcon, view: "customize", ownerOnly: true },
   { label: "Settings", icon: SettingsIcon, view: "settings" },
@@ -29,8 +31,9 @@ const ownerNav = [
 // Admins, accountants and technicians see the sections the owner ticked for
 // their role in Customize; `permission` is the key that unlocks each item.
 const staffNav = [
-  { label: "Dashboard", icon: DashboardIcon, view: "dashboard", permission: "reports.create" },
+  { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
   { label: "Inspections", icon: ClipboardIcon, view: "inspections", permission: "reports.view" },
+  { label: "Edit Inspection Report", icon: SlidersIcon, view: "report-form", permission: "reports.form.edit" },
   { label: "Inspection Report 2", icon: ReportsIcon, view: "reports2", permission: "reports2.view" },
   { label: "Client Profiles", icon: ClipboardIcon, view: "clients", permission: "clients.view" },
   { label: "Profile Approvals", icon: CheckBadgeIcon, view: "approvals", permission: "clients.approve" },
@@ -40,16 +43,18 @@ const staffNav = [
 ]
 
 export function navItemsFor(role, permissions = []) {
-  if (role === "owner") return ownerNav
+  if (role === "owner") return ownerNav.filter((item) => !item.delegateOnly)
   const items = role === "ceo" ? ownerNav.filter((item) => !item.ownerOnly) : staffNav
   return items.filter((item) => !item.permission || permissions.includes(item.permission))
 }
 
-export default function Sidebar({ role = "technician", permissions, username, onLogout, activeView, onNavigate, mobileOpen: mobileOpenProp, onMobileOpenChange }) {
+export default function Sidebar({ role = "technician", permissions, username, onLogout, activeView, onNavigate, mobileOpen: mobileOpenProp, onMobileOpenChange, approvalCount }) {
   const navItems = navItemsFor(role, permissions)
   const [mobileOpenState, setMobileOpenState] = useState(false)
   const mobileOpen = mobileOpenProp ?? mobileOpenState
   const setMobileOpen = onMobileOpenChange ?? setMobileOpenState
+  const grouped = role === "owner" || role === "ceo"
+  const firstAdmin = navItems.find(item => ["accounts", "activity", "customize", "settings"].includes(item.view))?.view
 
   return (
     <>
@@ -58,6 +63,9 @@ export default function Sidebar({ role = "technician", permissions, username, on
       )}
 
       <aside className={`tp-sidebar${mobileOpen ? " tp-sidebar-open" : ""}`}>
+        <div className="tp-sidebar-curve tp-sidebar-curve-top" aria-hidden="true" />
+        <div className="tp-sidebar-curve tp-sidebar-curve-bottom" aria-hidden="true" />
+        <div className="tp-sidebar-content">
         <div className="tp-brand">
           <div className="tp-brand-icon">
             <img src={logo} alt="Thimadu Auto Trading" />
@@ -77,13 +85,16 @@ export default function Sidebar({ role = "technician", permissions, username, on
         </div>
 
         <nav className="tp-nav">
+          {grouped && <div className="od-nav-label">Operations</div>}
           {navItems.map(({ label, icon: Icon, view, chevron }) => {
             const isActive = view ? view === activeView : label === "Dashboard" && !activeView
             return (
+              <div key={label}>
+              {grouped && view === firstAdmin && <div className="od-nav-label od-nav-divider">Administration</div>}
               <a
-                key={label}
                 className={`tp-nav-item${isActive ? " tp-nav-item-active" : ""}`}
                 href="#"
+                aria-current={isActive ? "page" : undefined}
                 onClick={(e) => {
                   e.preventDefault()
                   if (view && onNavigate) onNavigate(view)
@@ -92,13 +103,16 @@ export default function Sidebar({ role = "technician", permissions, username, on
               >
                 <Icon />
                 {label}
+                {view === "approvals" && approvalCount > 0 && <span className="od-nav-count">{approvalCount}</span>}
                 {chevron && <ChevronIcon className="tp-chev" />}
               </a>
+              </div>
             )
           })}
         </nav>
 
         <div className="tp-sidebar-user">
+          {grouped && <span className="od-avatar">{(username || "User").split(/\s+/).map(word => word[0]).slice(0, 2).join("").toUpperCase()}</span>}
           <div className="tp-sidebar-user-info">
             <div className="tp-sidebar-user-name">{username || "User"}</div>
             <div className="tp-sidebar-user-role">{role}</div>
@@ -106,6 +120,7 @@ export default function Sidebar({ role = "technician", permissions, username, on
           <button type="button" className="tp-logout-btn" onClick={onLogout} aria-label="Log out">
             <LogoutIcon />
           </button>
+        </div>
         </div>
       </aside>
     </>

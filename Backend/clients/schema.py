@@ -43,6 +43,7 @@ def _na_if_blank(value: str | None) -> str:
 
 
 class ClientProfileCreate(BaseModel):
+    custom_fields: dict[str, str | bool | None] = Field(default_factory=dict, max_length=100)
     # Local client details
     has_local_client: bool = False
     local_client_name: str | None = Field(default=None, max_length=255)
@@ -174,6 +175,8 @@ class ClientProfileOut(PrivateMediaResponse):
     role_approvals: list[ApprovalOut] = []
     # Roles that still need to approve before the owner (only while pending_ceo).
     waiting_for: list[str] = []
+    custom_fields: dict[str, str | bool | None] = {}
+    custom_field_schema: list[dict] = []
 
     has_local_client: bool
     local_client_name: str | None

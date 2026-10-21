@@ -1,0 +1,46 @@
+﻿.lg-branding { position: relative; isolation: isolate; overflow: hidden; min-width: 0; display: flex; flex-direction: column; color: #fff; background: linear-gradient(145deg, #020914 0%, #06152c 48%, #082a60 100%); }
+.lg-branding::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(#000 0%, #000 39%, transparent 65%), radial-gradient(ellipse at 50% 67%, #008cff20, transparent 56%); }
+.lg-brand-curves { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
+.lg-brand-curves i { position: absolute; display: block; }
+.lg-ribbon-top { width: 92%; height: 86%; top: -37%; right: -65%; border: 30px solid #075bff; border-left-width: 18px; border-radius: 48% 45% 49% 50%; transform: rotate(-30deg); background: linear-gradient(135deg, #001334, #0047d8); box-shadow: -6px 2px 0 #008cff, -9px 3px 1px #00c8ff99, -22px 8px 38px #075bff35, inset 9px -5px 18px #001947; }
+.lg-ribbon-bottom { width: 107%; height: 61%; bottom: -43%; right: -38%; border: 32px solid #075bff; border-top-width: 23px; border-radius: 49%; transform: rotate(-37deg); background: #00338f; box-shadow: 0 -4px 0 #008cff, 0 -6px 1px #00c8ff88, 0 -19px 32px #075bff32, inset 0 14px 24px #001333; }
+.lg-flow-line { width: 92%; height: 68%; left: -73%; top: 16%; border: 1px solid #008cff; border-radius: 49%; transform: rotate(-35deg); box-shadow: 2px 0 8px #008cff66; }
+.lg-flow-line-two { left: -70%; top: 18%; opacity: .45; }
+/* Remove the black bitmap rectangle visually while preserving the official logo.
+   Blend the identity layer itself so it includes the curves behind its stacking context. */
+.lg-brand-identity { position: relative; z-index: 3; mix-blend-mode: screen; text-align: center; padding: 12px 35px 0; }
+.lg-official-logo { display: block; width: min(100%, 310px); height: auto; object-fit: contain; margin: 0 auto; }
+.lg-brand-tagline { margin: -18px 0 0; font-size: 10px; font-weight: 650; letter-spacing: 3.7px; line-height: 2; color: #389aff; }
+.lg-brand-tagline span { display: block; }
+.lg-vehicle-scene { position: relative; z-index: 1; flex: 1; min-height: 290px; margin: -3px 0 0; overflow: hidden; mask-image: linear-gradient(transparent, #000 14%, #000 78%, transparent); }
+.lg-vehicle-scene img { display: block; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 65%; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 94%, transparent); }
+.lg-vehicle-light { position: absolute; bottom: 17%; left: 12%; width: 60%; height: 2px; background: linear-gradient(90deg, transparent, #00c8ff66, transparent); box-shadow: 0 0 24px 7px #008cff12; }
+.lg-brand-bottom { position: relative; z-index: 3; padding: 8px 30px 30px; }
+.lg-brand-features { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding: 0; }
+.lg-brand-features li { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 3px 10px; text-align: center; font-size: 10px; line-height: 1.6; color: #eaf4ff; }
+.lg-brand-features li + li { border-left: 1px solid #4f9bff40; }
+.lg-feature-symbol { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid #1688ff80; border-radius: 50%; color: #46c7ff; background: linear-gradient(145deg, #1688ff21, #06152c80); box-shadow: inset 0 1px 0 #ffffff12, 0 0 18px #008cff12; }
+.lg-feature-symbol svg { width: 18px; height: 18px; }
+.lg-brand-statement { margin: 25px 0 0; text-align: center; font-size: 8px; letter-spacing: 1.8px; line-height: 1.7; color: #68adff; }
+.lg-brand-statement::before { content: ""; display: block; width: 34px; height: 2px; margin: 0 auto 13px; background: #1688ff; box-shadow: 0 0 8px #008cff80; }
+@media (min-width: 1500px) { .lg-brand-identity { padding-top: 22px; } .lg-brand-bottom { padding-bottom: 38px; } }
+@media (min-width: 901px) and (max-width: 1150px) { .lg-official-logo { width: 270px; } .lg-brand-tagline { font-size: 9px; letter-spacing: 2.5px; } .lg-brand-bottom { padding-inline: 16px; } .lg-brand-features li { font-size: 9px; padding-inline: 6px; } }
+@media (max-width: 900px) {
+  .lg-brand-identity { padding: 0 24px 25px; }
+  .lg-official-logo { width: 210px; }
+  .lg-brand-tagline { margin-top: -17px; font-size: 8px; letter-spacing: 2.8px; }
+  .lg-vehicle-scene, .lg-brand-bottom, .lg-flow-line { display: none; }
+  .lg-ribbon-top { width: 60%; height: 220%; top: -150%; right: -40%; }
+  .lg-ribbon-bottom { width: 60%; height: 160%; bottom: -145%; right: -20%; }
+}
+@media (max-width: 480px) { .lg-official-logo { width: 180px; } .lg-brand-identity { padding-bottom: 20px; } .lg-brand-tagline { font-size: 7px; margin-top: -17px; } }
+
+@media (min-width: 901px) and (max-height: 850px) {
+  .lg-brand-identity { padding-top: 0; }
+  .lg-official-logo { width: 250px; }
+  .lg-brand-tagline { margin-top: -15px; font-size: 9px; }
+  .lg-vehicle-scene { min-height: 235px; }
+  .lg-brand-bottom { padding-bottom: 22px; }
+  .lg-brand-statement { margin-top: 20px; }
+}
+@media (max-width: 900px) { .lg-branding::before { background: #000; } }

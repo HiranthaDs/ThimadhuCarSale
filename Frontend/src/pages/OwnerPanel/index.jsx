@@ -6,7 +6,7 @@ import { confirmDialog } from "../../components/ConfirmDialog"
 import ClientProfiles from "./ClientProfiles"
 import VehicleBlacklist from "./VehicleBlacklist"
 import ActivityLog from "./ActivityLog"
-import Customize from "./Customize"
+import Customize, { ReportFormEditor } from "./Customize"
 import { confirmDiscard } from "../../components/unsavedChanges"
 import InspectionReports from "./InspectionReports"
 import InspectionReports2 from "./InspectionReports/InspectionReports2"
@@ -15,23 +15,38 @@ import InspectionReport from "../TechnicianPanel/components/InspectionReport"
 import Settings from "../TechnicianPanel/components/Settings"
 import "../TechnicianPanel/TechnicianPanel.css"
 import "./ClientProfiles/ClientProfiles.css"
+import Dashboard from "./Dashboard"
+import useOverview from "./Dashboard/useOverview"
+import "./Dashboard/Dashboard.css"
+import "./Dashboard/Greeting.css"
 
 const initialForm = { email: "", fullName: "", password: "", role: "technician" }
 
 // Used by the owner (full access) and the CEO (only what the owner allowed in Customize).
 export default function OwnerPanel({ role: userRole = "owner", permissions = [], username, token, onLogout }) {
   const can = (key) => userRole === "owner" || permissions.includes(key)
-  const allowedViews = navItemsFor(userRole, permissions).map((item) => item.view)
+  const navItems = navItemsFor(userRole, permissions)
+  const allowedViews = navItems.map((item) => item.view)
   const [selectedView, setView] = useState("dashboard")
+  const [visitedViews, setVisitedViews] = useState(() => new Set(["dashboard"]))
   // Where to go back to if the owner cancels Customize's password popup.
   const [viewBeforeCustomize, setViewBeforeCustomize] = useState("dashboard")
   // Fall back to the first allowed section if the owner has since removed this one.
   const view = allowedViews.includes(selectedView) ? selectedView : allowedViews[0]
+  const accessKey = `${userRole}:${permissions.join(",")}`
   const canManageAccounts = can("accounts.manage")
+  useEffect(() => {
+    setVisitedViews((previous) => {
+      const next = new Set([...previous].filter((visited) => allowedViews.includes(visited)))
+      next.add(view)
+      return next.size === previous.size && [...previous].every((visited) => next.has(visited)) ? previous : next
+    })
+  }, [view, accessKey])
 
   async function navigate(next) {
     if (!(await confirmDiscard())) return
     if (next === "customize" && view !== "customize") setViewBeforeCustomize(view)
+    setVisitedViews((previous) => previous.has(next) ? previous : new Set([...previous, next]))
     setView(next)
   }
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -40,6 +55,8 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
   const [listError, setListError] = useState("")
 
   const [deletingId, setDeletingId] = useState(null)
+  const [updatingId, setUpdatingId] = useState(null)
+  const overview = useOverview({ token, role: userRole, permissions })
 
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
@@ -105,6 +122,8 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
   }
 
   async function toggleActive(user) {
+    if (updatingId) return
+    setUpdatingId(user.id)
     const nextActive = !user.is_active
     setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, is_active: nextActive } : u)))
     try {
@@ -112,6 +131,8 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
     } catch (err) {
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, is_active: user.is_active } : u)))
       setListError(err.message || "Could not update account.")
+    } finally {
+      setUpdatingId(null)
     }
   }
 
@@ -136,7 +157,7 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
   }
 
   return (
-    <div className="tp-app">
+    <div className="tp-app od-app">
       <Sidebar
         role={userRole}
         permissions={permissions}
@@ -144,21 +165,26 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
         onLogout={onLogout}
         activeView={view}
         onNavigate={navigate}
+        approvalCount={overview.approvals?.count}
         mobileOpen={mobileOpen}
         onMobileOpenChange={setMobileOpen}
       />
 
       <main className="tp-main">
         <Hero
+          variant="dashboard"
+          role={userRole}
           name={username || "Owner"}
           desc="Here's an overview of your dealership today."
           token={token}
+          tag={navItems.find((item) => item.view === view)?.label}
           onMenuClick={() => setMobileOpen(true)}
         />
 
-        {view === "clients" ? (
+        {visitedViews.has("clients") && <div hidden={view !== "clients"}>
           <ClientProfiles token={token} role={userRole} can={can} />
-        ) : view === "approvals" ? (
+        </div>}
+        {visitedViews.has("approvals") && <div hidden={view !== "approvals"}>
           <ClientProfiles
             token={token}
             role={userRole}
@@ -167,60 +193,41 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
             title="Profile Approvals"
             emptyLabel="No client profiles are waiting for your approval."
           />
-        ) : view === "reports" ? (
-          <>
-            {can("reports.create") && (
+        </div>}
+        {visitedViews.has("reports") && <div hidden={view !== "reports"}>
+          {can("reports.create") && (
             <button
               type="button"
               className="tp-inspection-btn"
               onClick={() => {
-                if (showReportForm) {
-                  closeReportForm()
-                } else {
-                  setReportData(null)
-                  setShowReportForm(true)
-                }
+                if (showReportForm) closeReportForm()
+                else { setReportData(null); setShowReportForm(true) }
               }}
             >
               {showReportForm ? "Close Inspection Report" : "+ Inspection Report"}
             </button>
-            )}
-
-            {showReportForm && (
-              <InspectionForm onClose={closeReportForm} onSubmit={handleReportSubmit} />
-            )}
-
-            {/* Hidden while a new report is being written or previewed; it
-                remounts (and reloads, including the new report) afterwards. */}
-            {!showReportForm && !reportData && <InspectionReports token={token} canReview={can("reports.review")} />}
-          </>
-        ) : view === "reports2" ? (
+          )}
+          {showReportForm && <InspectionForm active={view === "reports"} onClose={closeReportForm} onSubmit={handleReportSubmit} />}
+          {!showReportForm && !reportData && <InspectionReports token={token} canReview={can("reports.review")} canCheck={userRole === "owner"} />}
+        </div>}
+        {visitedViews.has("reports2") && <div hidden={view !== "reports2"}>
           <InspectionReports2 token={token} canCreate={can("reports2.create")} />
-        ) : view === "blacklist" ? (
+        </div>}
+        {visitedViews.has("report-form") && <div hidden={view !== "report-form"}><ReportFormEditor /></div>}
+        {visitedViews.has("blacklist") && <div hidden={view !== "blacklist"}>
           <VehicleBlacklist token={token} can={can} />
-        ) : view === "activity" ? (
+        </div>}
+        {visitedViews.has("activity") && <div hidden={view !== "activity"}>
           <ActivityLog token={token} />
-        ) : view === "customize" ? (
-          <Customize onCancel={() => setView(viewBeforeCustomize)} />
-        ) : view === "settings" ? (
+        </div>}
+        {visitedViews.has("customize") && <div hidden={view !== "customize"}>
+          <Customize token={token} onCancel={() => setView(viewBeforeCustomize)} />
+        </div>}
+        {visitedViews.has("settings") && <div hidden={view !== "settings"}>
           <Settings token={token} />
-        ) : (
-          <>
-        {!showCreateForm && (
-          <button
-            type="button"
-            className="tp-inspection-btn"
-            onClick={() => {
-              setFormError("")
-              setFormSuccess("")
-              setShowCreateForm(true)
-            }}
-          >
-            + Create Account
-          </button>
-        )}
-
-        {showCreateForm && (
+        </div>}
+        {(visitedViews.has("dashboard") || visitedViews.has("accounts")) && <div hidden={view !== "dashboard" && view !== "accounts"}>
+        {view === "accounts" && showCreateForm && (
           <div className="tp-card" style={{ maxWidth: 640, marginBottom: 20 }}>
             <div className="tp-card-head">
               <div className="tp-card-title">Create Account</div>
@@ -230,7 +237,7 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
                 onClick={() => setShowCreateForm(false)}
                 aria-label="Close"
               >
-                ×
+                &times;
               </button>
             </div>
 
@@ -280,74 +287,20 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
 
               <div className="tp-form-actions" style={{ gridTemplateColumns: "1fr", marginTop: 15 }}>
                 <button type="submit" className="tp-form-btn tp-form-btn-primary" disabled={submitting}>
-                  {submitting ? "Creating…" : "Create Account"}
+                  {submitting ? "Creating..." : "Create Account"}
                 </button>
               </div>
             </form>
           </div>
         )}
 
-        <div className="tp-card" style={{ maxWidth: 780 }}>
-          <div className="tp-card-head">
-            <div className="tp-card-title">Team Accounts</div>
-          </div>
-
-          {loadingUsers && <p>Loading accounts…</p>}
-          {listError && <div className="tp-form-error">{listError}</div>}
-
-          {!loadingUsers && !listError && (
-            <table className="tp-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Active</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td>{u.full_name}</td>
-                    <td className="tp-muted">{u.email}</td>
-                    <td style={{ textTransform: "capitalize" }}>{u.role}</td>
-                    <td>
-                      {u.role !== "owner" ? (
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={u.is_active}
-                          aria-label={u.is_active ? "Deactivate account" : "Activate account"}
-                          className={`tp-switch${u.is_active ? " tp-switch-on" : ""}`}
-                          onClick={() => toggleActive(u)}
-                        >
-                          <span className="tp-switch-knob" />
-                        </button>
-                      ) : (
-                        <span className="tp-muted">—</span>
-                      )}
-                    </td>
-                    <td>
-                      {u.role !== "owner" && (
-                        <button
-                          type="button"
-                          className="tp-reports-btn tp-reports-btn-danger"
-                          disabled={deletingId === u.id}
-                          onClick={() => handleDeleteUser(u)}
-                        >
-                          {deletingId === u.id ? "Deleting…" : "Delete"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-          </>
-        )}
+        <Dashboard users={users} loading={loadingUsers} error={listError} retryUsers={refreshUsers}
+          overview={overview} onNavigate={navigate}
+          userRole={userRole} permissions={permissions}
+          accountsOnly={view === "accounts"} success={formSuccess}
+          onCreate={() => { setFormError(""); setFormSuccess(""); setShowCreateForm(true) }}
+          onToggle={toggleActive} onDelete={handleDeleteUser} deletingId={deletingId} updatingId={updatingId} />
+        </div>}
       </main>
 
       {reportData && !showReportForm && (

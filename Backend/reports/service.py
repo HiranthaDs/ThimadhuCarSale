@@ -328,7 +328,11 @@ class ReportService:
             raise ValueError("This report isn't waiting for your approval.")
         return self.annotate(self.repository.add_role_approval(report, user))
 
-    def set_status(self, report, status: str):
+    def set_status(self, report, status: str, user):
+        # Checking a report is the owner's final confirmation, and only the
+        # owner can change a report once it is checked.
+        if (status == STATUS_CHECKED or report.status == STATUS_CHECKED) and user.role != UserRole.owner:
+            raise PermissionError("Only the owner can give the final check on a report.")
         if status == STATUS_CHECKED:
             waiting = self.annotate(report).waiting_for
             if waiting:

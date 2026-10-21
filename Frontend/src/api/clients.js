@@ -1,4 +1,12 @@
-import { apiRequest } from "./client"
+import { BASE_URL, apiRequest } from "./client"
+
+export function getClientFormSchema(token) {
+  return apiRequest("/clients/form-schema", { token })
+}
+
+export function saveClientFormSchema(token, fields, labels, hiddenFields, fieldTypes) {
+  return apiRequest("/clients/form-schema", { method: "PUT", token, body: { fields, labels, hidden_fields: hiddenFields, field_types: fieldTypes } })
+}
 
 export function createClientProfile(token, payload) {
   return apiRequest("/clients/", { method: "POST", token, body: payload })
@@ -12,6 +20,23 @@ export function listClientProfiles(token, q, page = 0, { awaitingMe = false } = 
 
 export function getClientProfile(token, id) {
   return apiRequest(`/clients/${id}`, { token })
+}
+
+export function getFinalizedClientProfile(token, id) {
+  return apiRequest(`/clients/${id}/finalized`, { token })
+}
+
+export async function getFinalizedClientImage(id, field, index) {
+  let response
+  try {
+    response = await fetch(`${BASE_URL}/clients/${id}/finalized-image/${encodeURIComponent(field)}/${index}`, {
+      credentials: "include",
+    })
+  } catch {
+    throw new Error("Could not reach the server while downloading profile images.")
+  }
+  if (!response.ok) throw new Error(`Could not load a profile image (${response.status}).`)
+  return response.blob()
 }
 
 export function updateClientProfile(token, id, payload) {
