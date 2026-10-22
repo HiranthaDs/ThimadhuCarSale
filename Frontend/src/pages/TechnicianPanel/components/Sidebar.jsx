@@ -17,6 +17,7 @@ import logo from "../../../assets/logo.png"
 const ownerNav = [
   { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
   { label: "Client Profiles", icon: ClipboardIcon, view: "clients", permission: "clients.view" },
+  { label: "Edit Client Profile Form", icon: SlidersIcon, view: "client-form", permission: "clients.form.edit", delegateOnly: true },
   { label: "Profile Approvals", icon: CheckBadgeIcon, view: "approvals", permission: "clients.approve" },
   { label: "Inspection Reports", icon: ReportsIcon, view: "reports", permission: "reports.view" },
   { label: "Edit Inspection Report", icon: SlidersIcon, view: "report-form", permission: "reports.form.edit", delegateOnly: true },
@@ -36,6 +37,7 @@ const staffNav = [
   { label: "Edit Inspection Report", icon: SlidersIcon, view: "report-form", permission: "reports.form.edit" },
   { label: "Inspection Report 2", icon: ReportsIcon, view: "reports2", permission: "reports2.view" },
   { label: "Client Profiles", icon: ClipboardIcon, view: "clients", permission: "clients.view" },
+  { label: "Edit Client Profile Form", icon: SlidersIcon, view: "client-form", permission: "clients.form.edit" },
   { label: "Profile Approvals", icon: CheckBadgeIcon, view: "approvals", permission: "clients.approve" },
   { label: "Vehicle Blacklist", icon: CheckBadgeIcon, view: "blacklist", permission: "blacklist.view" },
   { label: "Activity Log", icon: ReportsIcon, view: "activity", permission: "activity.view" },

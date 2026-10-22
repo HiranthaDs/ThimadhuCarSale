@@ -6,7 +6,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from botocore.exceptions import ClientError
 from sqlalchemy.orm import Session
 
-from auth.dependencies import require_owner, require_permission
+from auth.dependencies import require_permission
 from auth.model import User
 from clients.schema import (
     ClientProfileCreate,
@@ -57,14 +57,14 @@ SCALAR_INPUT_TYPES = {"text", "email", "tel", "number", "date", "textarea"}
 
 
 @router.get("/form-schema")
-def get_client_form_schema(db: Session = Depends(get_db), current_user: User = Depends(require_permission("clients.view", "clients.create", "clients.edit"))):
+def get_client_form_schema(db: Session = Depends(get_db), current_user: User = Depends(require_permission("clients.view", "clients.create", "clients.edit", "clients.form.edit"))):
     saved = db.get(ClientProfileFormSchema, "default")
     return {"fields": saved.fields if saved else [], "labels": saved.labels if saved else {},
             "hidden_fields": saved.hidden_fields if saved else [], "field_types": saved.field_types if saved else {}}
 
 
 @router.put("/form-schema")
-def update_client_form_schema(payload: dict, db: Session = Depends(get_db), current_user: User = Depends(require_owner)):
+def update_client_form_schema(payload: dict, db: Session = Depends(get_db), current_user: User = Depends(require_permission("clients.form.edit"))):
     fields = payload.get("fields") if isinstance(payload, dict) else None
     if not isinstance(fields, list) or len(fields) > 100:
         raise HTTPException(400, "The form can have at most 100 custom fields.")

@@ -8,6 +8,7 @@ import Inspections from "../TechnicianPanel/components/Inspections"
 import Settings from "../TechnicianPanel/components/Settings"
 import ActivityLog from "../OwnerPanel/ActivityLog"
 import ClientProfiles from "../OwnerPanel/ClientProfiles"
+import ClientFormEditor from "../OwnerPanel/ClientProfiles/ClientFormEditor"
 import InspectionReports2 from "../OwnerPanel/InspectionReports/InspectionReports2"
 import VehicleBlacklist from "../OwnerPanel/VehicleBlacklist"
 import Dashboard from "../OwnerPanel/Dashboard"
@@ -148,6 +149,7 @@ export default function StaffPanel({ role, permissions = [], username, token, on
 
         {visitedViews.has("reports2") && <div hidden={view !== "reports2"}><InspectionReports2 token={token} canCreate={can("reports2.create")} /></div>}
         {visitedViews.has("report-form") && <div hidden={view !== "report-form"}><ReportFormEditor /></div>}
+        {can("clients.form.edit") && visitedViews.has("client-form") && <div hidden={view !== "client-form"}><ClientFormEditor token={token} /></div>}
 
         {visitedViews.has("clients") && <div hidden={view !== "clients"}><ClientProfiles token={token} role={role} can={can} /></div>}
 

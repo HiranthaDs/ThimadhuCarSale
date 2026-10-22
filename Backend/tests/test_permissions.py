@@ -11,12 +11,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from auth.dependencies import require_permission
+from auth.dependencies import get_current_user, require_permission
 from auth.model import User, UserRole
 from auth.router import router as auth_router
 from clients.model import ClientProfileStatus
 from clients.schema import ClientProfileCreate
 from clients.service import ClientProfileService
+from clients.router import router as clients_router
 from core.database import Base, get_db
 from permissions.router import router as permissions_router
 from permissions.catalog import DEFAULT_PERMISSIONS, PERMISSION_KEYS
@@ -80,6 +81,33 @@ class PermissionTests(unittest.TestCase):
         with self.assertRaises(HTTPException):
             self.service.update(self.owner.id, [], self.owner)
         self.assertTrue(self.allowed(self.owner, "accounts.manage"))
+
+    def test_client_form_editor_can_be_granted_and_revoked_per_employee(self):
+        technician = self.add_user(UserRole.technician)
+        other = self.add_user(UserRole.technician)
+        self.app = FastAPI()
+        self.app.include_router(clients_router)
+        self.app.dependency_overrides[get_db] = lambda: self.db
+        self.app.dependency_overrides[get_current_user] = lambda: technician
+        payload = {"fields": [{"key": "custom_notes", "label": "Notes", "tab": "client_details", "type": "text"}]}
+
+        def request(method, body=None):
+            return CustomizeUnlockTests.request(self, "/clients/form-schema", body, method=method)
+
+        self.assertEqual(request("PUT", payload)[0], 403)
+        self.service.update(technician.id, ["clients.form.edit"], self.owner)
+        self.assertEqual(request("PUT", payload)[0], 200)
+        status, schema, _ = request("GET")
+        self.assertEqual(status, 200)
+        self.assertEqual(schema["fields"][0]["key"], "custom_notes")
+        self.assertFalse(self.allowed(technician, "clients.edit"))
+
+        self.app.dependency_overrides[get_current_user] = lambda: other
+        self.assertEqual(request("PUT", payload)[0], 403)
+        self.app.dependency_overrides[get_current_user] = lambda: technician
+        self.service.update(technician.id, [], self.owner)
+        self.assertEqual(request("PUT", payload)[0], 403)
+        self.assertEqual(request("GET")[0], 403)
 
     def test_ceo_starts_with_everything_and_owner_can_restrict(self):
         ceo = self.add_user(UserRole.ceo)

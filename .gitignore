@@ -49,6 +49,7 @@ desktop.ini
 logs/
 
 # ---------- Large / generated assets not meant for the repo ----------
+/docs/
 Inspection.pdf
 /index.html
 /inspection_demo.html

@@ -4,6 +4,7 @@ import Hero from "../TechnicianPanel/components/Hero"
 import { createUser, deleteUser, listUsers, setUserActive } from "../../api/auth"
 import { confirmDialog } from "../../components/ConfirmDialog"
 import ClientProfiles from "./ClientProfiles"
+import ClientFormEditor from "./ClientProfiles/ClientFormEditor"
 import VehicleBlacklist from "./VehicleBlacklist"
 import ActivityLog from "./ActivityLog"
 import Customize, { ReportFormEditor } from "./Customize"
@@ -214,6 +215,7 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
           <InspectionReports2 token={token} canCreate={can("reports2.create")} />
         </div>}
         {visitedViews.has("report-form") && <div hidden={view !== "report-form"}><ReportFormEditor /></div>}
+        {can("clients.form.edit") && visitedViews.has("client-form") && <div hidden={view !== "client-form"}><ClientFormEditor token={token} /></div>}
         {visitedViews.has("blacklist") && <div hidden={view !== "blacklist"}>
           <VehicleBlacklist token={token} can={can} />
         </div>}

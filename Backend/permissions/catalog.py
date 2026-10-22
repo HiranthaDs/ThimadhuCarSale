@@ -15,6 +15,7 @@ PERMISSIONS = (
     _perm("clients.view", "Client Profiles", "View"),
     _perm("clients.create", "Client Profiles", "Create", "clients.view"),
     _perm("clients.edit", "Client Profiles", "Edit (until approved)", "clients.view"),
+    _perm("clients.form.edit", "Client Profiles", "Edit client profile form (add and change fields)"),
     _perm("clients.approve", "Client Profiles", "Approve (required before the owner)", "clients.view"),
     _perm("clients.delete", "Client Profiles", "Delete", "clients.view"),
     _perm("blacklist.view", "Vehicle Blacklist", "View"),
