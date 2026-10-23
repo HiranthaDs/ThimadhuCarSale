@@ -50,6 +50,7 @@ def migrate_schema():
         conn.execute(text("DROP TABLE IF EXISTS role_permissions"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts integer NOT NULL DEFAULT 0"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until timestamptz"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS former_name varchar(255)"))
         conn.execute(text("ALTER TABLE vehicle_blacklist ADD COLUMN IF NOT EXISTS mileage varchar(60)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS previous_owner_name varchar(255)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS scan_report_1_upload text"))

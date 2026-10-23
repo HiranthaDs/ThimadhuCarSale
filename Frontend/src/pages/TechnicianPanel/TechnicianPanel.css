@@ -259,6 +259,7 @@
 /* Sidebar is position: fixed, so it's removed from the grid's item list;
    pin main to the second column explicitly instead of relying on auto-placement. */
 .tp-main { grid-column: 2; padding: 20px 24px 40px; min-width: 0; }
+.tp-main > [hidden] { display: none !important; }
 .tp-topbar { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
 .tp-search {
   flex: 1;

@@ -72,7 +72,7 @@ function App() {
     {/* Panels use this flag for an authenticated view; it contains no credential. */}
     <Suspense fallback={<p role="status">Loading workspace...</p>}>
     <ActivePanel role={session.role} permissions={session.permissions} username={session.fullName || session.username}
-      token={true} onLogout={handleLogout} />
+      token={true} onLogout={handleLogout} onNameChanged={(user) => setSession(toSession(user))} />
     </Suspense>
   </>
 }

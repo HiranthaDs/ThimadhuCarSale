@@ -20,7 +20,7 @@ export default function Dashboard({ users, loading, error, retryUsers, overview,
     document.addEventListener("keydown", key)
     return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", key) }
   }, [menuId])
-  const filtered = users.filter(user => (!role || user.role === role) && `${user.full_name} ${user.email}`.toLowerCase().includes(search.toLowerCase()))
+  const filtered = users.filter(user => (!role || user.role === role) && `${user.full_name} ${user.former_name || ""} ${user.email}`.toLowerCase().includes(search.toLowerCase()))
   const pages = Math.max(1, Math.ceil(filtered.length / 8))
   const currentPage = Math.min(page, pages - 1)
   const rows = filtered.slice(currentPage * 8, currentPage * 8 + 8)
@@ -50,7 +50,7 @@ export default function Dashboard({ users, loading, error, retryUsers, overview,
         <div className="od-table-scroll" ref={tableRef}>
           <table className="od-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th className="od-action-heading">Actions</th></tr></thead><tbody>
             {loading ? <tr><td colSpan={5} className="od-empty" role="status">Loading team accounts...</td></tr> : rows.length === 0 ? <tr><td colSpan={5} className="od-empty">{error ? "Accounts are unavailable." : "No team members match your search."}</td></tr> : rows.map(user => <tr key={user.id}>
-              <td><div className="od-person"><span className="od-avatar">{initials(user.full_name)}</span><span>{user.full_name}</span></div></td><td className="od-email">{user.email}</td><td><span className={`od-role od-role-${user.role}`}>{roles[user.role] || user.role}</span></td><td><span className={`od-status ${user.role === "owner" ? "od-protected" : user.is_active ? "od-active" : "od-inactive"}`}><span aria-hidden="true">{user.role === "owner" ? "\u25a3" : "\u25cf"}</span>{user.role === "owner" ? "Protected" : user.is_active ? "Active" : "Inactive"}</span></td>
+              <td><div className="od-person"><span className="od-avatar">{initials(user.full_name)}</span><span>{user.full_name}{user.former_name && user.former_name !== user.full_name ? ` (formerly ${user.former_name})` : ""}</span></div></td><td className="od-email">{user.email}</td><td><span className={`od-role od-role-${user.role}`}>{roles[user.role] || user.role}</span></td><td><span className={`od-status ${user.role === "owner" ? "od-protected" : user.is_active ? "od-active" : "od-inactive"}`}><span aria-hidden="true">{user.role === "owner" ? "\u25a3" : "\u25cf"}</span>{user.role === "owner" ? "Protected" : user.is_active ? "Active" : "Inactive"}</span></td>
               <td className="od-account-actions">{user.role === "owner" ? <span className="od-protected-dash" aria-label="Owner account is protected">—</span> : <><button className="od-more" data-account-id={user.id} aria-label={`Actions for ${user.full_name}`} aria-expanded={menuId === user.id} onClick={() => setMenuId(menuId === user.id ? null : user.id)} disabled={deletingId === user.id || updatingId === user.id}>&#8942;</button>{menuId === user.id && <div className="od-row-menu"><button onClick={() => { setMenuId(null); onToggle(user) }}>{user.is_active ? "Deactivate account" : "Activate account"}</button><button className="od-danger" onClick={() => { setMenuId(null); onDelete(user) }}>Delete account</button></div>}</>}</td>
             </tr>)}
           </tbody></table>

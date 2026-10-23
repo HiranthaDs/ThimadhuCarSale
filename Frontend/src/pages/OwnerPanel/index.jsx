@@ -9,6 +9,7 @@ import VehicleBlacklist from "./VehicleBlacklist"
 import ActivityLog from "./ActivityLog"
 import Customize, { ReportFormEditor } from "./Customize"
 import { confirmDiscard } from "../../components/unsavedChanges"
+import RefreshPageButton from "../../components/RefreshPageButton"
 import InspectionReports from "./InspectionReports"
 import InspectionReports2 from "./InspectionReports/InspectionReports2"
 import InspectionForm from "../TechnicianPanel/components/InspectionForm"
@@ -24,12 +25,13 @@ import "./Dashboard/Greeting.css"
 const initialForm = { email: "", fullName: "", password: "", role: "technician" }
 
 // Used by the owner (full access) and the CEO (only what the owner allowed in Customize).
-export default function OwnerPanel({ role: userRole = "owner", permissions = [], username, token, onLogout }) {
+export default function OwnerPanel({ role: userRole = "owner", permissions = [], username, token, onLogout, onNameChanged }) {
   const can = (key) => userRole === "owner" || permissions.includes(key)
   const navItems = navItemsFor(userRole, permissions)
   const allowedViews = navItems.map((item) => item.view)
   const [selectedView, setView] = useState("dashboard")
   const [visitedViews, setVisitedViews] = useState(() => new Set(["dashboard"]))
+  const [refreshRevision, setRefreshRevision] = useState(0)
   // Where to go back to if the owner cancels Customize's password popup.
   const [viewBeforeCustomize, setViewBeforeCustomize] = useState("dashboard")
   // Fall back to the first allowed section if the owner has since removed this one.
@@ -49,6 +51,20 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
     if (next === "customize" && view !== "customize") setViewBeforeCustomize(view)
     setVisitedViews((previous) => previous.has(next) ? previous : new Set([...previous, next]))
     setView(next)
+  }
+
+  async function refreshPage() {
+    if (!(await confirmDiscard())) return
+    if (view === "reports") {
+      setShowReportForm(false)
+      setReportData(null)
+    }
+    if (view === "accounts") {
+      setShowCreateForm(false)
+      refreshUsers()
+    }
+    overview.retry()
+    setRefreshRevision(value => value + 1)
   }
   const [mobileOpen, setMobileOpen] = useState(false)
   const [users, setUsers] = useState([])
@@ -173,6 +189,7 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
 
       <main className="tp-main">
         <Hero
+          key={refreshRevision}
           variant="dashboard"
           role={userRole}
           name={username || "Owner"}
@@ -181,11 +198,12 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
           tag={navItems.find((item) => item.view === view)?.label}
           onMenuClick={() => setMobileOpen(true)}
         />
+        <RefreshPageButton onRefresh={refreshPage} />
 
-        {visitedViews.has("clients") && <div hidden={view !== "clients"}>
+        {visitedViews.has("clients") && <div key={`clients:${view === "clients" ? refreshRevision : 0}`} hidden={view !== "clients"}>
           <ClientProfiles token={token} role={userRole} can={can} />
         </div>}
-        {visitedViews.has("approvals") && <div hidden={view !== "approvals"}>
+        {visitedViews.has("approvals") && <div key={`approvals:${view === "approvals" ? refreshRevision : 0}`} hidden={view !== "approvals"}>
           <ClientProfiles
             token={token}
             role={userRole}
@@ -195,7 +213,7 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
             emptyLabel="No client profiles are waiting for your approval."
           />
         </div>}
-        {visitedViews.has("reports") && <div hidden={view !== "reports"}>
+        {visitedViews.has("reports") && <div key={`reports:${view === "reports" ? refreshRevision : 0}`} hidden={view !== "reports"}>
           {can("reports.create") && (
             <button
               type="button"
@@ -211,24 +229,24 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
           {showReportForm && <InspectionForm active={view === "reports"} onClose={closeReportForm} onSubmit={handleReportSubmit} />}
           {!showReportForm && !reportData && <InspectionReports token={token} canReview={can("reports.review")} canCheck={userRole === "owner"} />}
         </div>}
-        {visitedViews.has("reports2") && <div hidden={view !== "reports2"}>
+        {visitedViews.has("reports2") && <div key={`reports2:${view === "reports2" ? refreshRevision : 0}`} hidden={view !== "reports2"}>
           <InspectionReports2 token={token} canCreate={can("reports2.create")} />
         </div>}
-        {visitedViews.has("report-form") && <div hidden={view !== "report-form"}><ReportFormEditor /></div>}
-        {can("clients.form.edit") && visitedViews.has("client-form") && <div hidden={view !== "client-form"}><ClientFormEditor token={token} /></div>}
-        {visitedViews.has("blacklist") && <div hidden={view !== "blacklist"}>
+        {visitedViews.has("report-form") && <div key={`report-form:${view === "report-form" ? refreshRevision : 0}`} hidden={view !== "report-form"}><ReportFormEditor /></div>}
+        {can("clients.form.edit") && visitedViews.has("client-form") && <div key={`client-form:${view === "client-form" ? refreshRevision : 0}`} hidden={view !== "client-form"}><ClientFormEditor token={token} /></div>}
+        {visitedViews.has("blacklist") && <div key={`blacklist:${view === "blacklist" ? refreshRevision : 0}`} hidden={view !== "blacklist"}>
           <VehicleBlacklist token={token} can={can} />
         </div>}
-        {visitedViews.has("activity") && <div hidden={view !== "activity"}>
+        {visitedViews.has("activity") && <div key={`activity:${view === "activity" ? refreshRevision : 0}`} hidden={view !== "activity"}>
           <ActivityLog token={token} />
         </div>}
-        {visitedViews.has("customize") && <div hidden={view !== "customize"}>
+        {view === "customize" && <div key={`customize:${refreshRevision}`}>
           <Customize token={token} onCancel={() => setView(viewBeforeCustomize)} />
         </div>}
-        {visitedViews.has("settings") && <div hidden={view !== "settings"}>
-          <Settings token={token} />
+        {visitedViews.has("settings") && <div key={`settings:${view === "settings" ? refreshRevision : 0}`} hidden={view !== "settings"}>
+          <Settings token={token} currentName={username} onNameChanged={(user) => { onNameChanged?.(user); if (canManageAccounts) refreshUsers() }} />
         </div>}
-        {(visitedViews.has("dashboard") || visitedViews.has("accounts")) && <div hidden={view !== "dashboard" && view !== "accounts"}>
+        {(visitedViews.has("dashboard") || visitedViews.has("accounts")) && <div key={`dashboard-accounts:${view === "dashboard" || view === "accounts" ? refreshRevision : 0}`} hidden={view !== "dashboard" && view !== "accounts"}>
         {view === "accounts" && showCreateForm && (
           <div className="tp-card" style={{ maxWidth: 640, marginBottom: 20 }}>
             <div className="tp-card-head">

@@ -92,6 +92,17 @@ class SecurityTests(unittest.TestCase):
         self.assertEqual(self.request("/auth/logout",cookie=cookie,origin=None)[0],403)
         self.assertEqual(self.request("/auth/logout",cookie=cookie)[0],204)
         self.assertEqual(self.request("/auth/me",method="GET",cookie=cookie)[0],401)
+    def test_name_change_shows_previous_name_and_keeps_session(self):
+        cookie=self.login()
+        status,body,_=self.request("/auth/me/name",{"full_name":"  New   Owner  "},method="PATCH",cookie=cookie)
+        self.assertEqual(status,200)
+        self.assertEqual(body["full_name"],"New Owner")
+        self.assertEqual(body["former_name"],"Owner")
+        self.assertEqual(self.request("/auth/me",method="GET",cookie=cookie)[1]["full_name"],"New Owner")
+        status,body,_=self.request("/auth/me/name",{"full_name":"Final Owner"},method="PATCH",cookie=cookie)
+        self.assertEqual(status,200)
+        self.assertEqual(body["former_name"],"New Owner")
+        self.assertEqual(self.request("/auth/me/name",{"full_name":"   "},method="PATCH",cookie=cookie)[0],422)
     def test_shared_rate_limit(self):
         consume(self.db,"test","caller",1,60)
         with Session(self.engine) as second:

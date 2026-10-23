@@ -39,6 +39,14 @@ export function changePassword(token, { currentPassword, newPassword }) {
   })
 }
 
+export function changeName(token, fullName) {
+  return apiRequest("/auth/me/name", {
+    method: "PATCH",
+    token,
+    body: { full_name: fullName },
+  })
+}
+
 
 export function requestPasswordOtp({ token, email }) {
   return apiRequest(token ? "/auth/password-otp" : "/auth/forgot-password", {

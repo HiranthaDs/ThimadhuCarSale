@@ -15,6 +15,7 @@ import Dashboard from "../OwnerPanel/Dashboard"
 import useOverview from "../OwnerPanel/Dashboard/useOverview"
 import { getReport } from "../../api/reports"
 import { confirmDiscard } from "../../components/unsavedChanges"
+import RefreshPageButton from "../../components/RefreshPageButton"
 import "../TechnicianPanel/TechnicianPanel.css"
 import "../OwnerPanel/ClientProfiles/ClientProfiles.css"
 import "../OwnerPanel/Dashboard/Dashboard.css"
@@ -22,12 +23,13 @@ import "../OwnerPanel/Dashboard/Greeting.css"
 
 // The panel for admins, accountants and technicians. Which sections and
 // actions appear comes from the permissions the owner set in Customize.
-export default function StaffPanel({ role, permissions = [], username, token, onLogout }) {
+export default function StaffPanel({ role, permissions = [], username, token, onLogout, onNameChanged }) {
   const can = (key) => permissions.includes(key)
   const navItems = navItemsFor(role, permissions)
   const allowedViews = navItems.map((item) => item.view)
   const [selectedView, setSelectedView] = useState(null)
   const [visitedViews, setVisitedViews] = useState(() => new Set(["dashboard"]))
+  const [refreshRevision, setRefreshRevision] = useState(0)
   // Fall back to the first allowed section if the owner has since removed this one.
   const view = allowedViews.includes(selectedView) ? selectedView : allowedViews[0]
   const accessKey = `${role}:${permissions.join(",")}`
@@ -55,6 +57,18 @@ export default function StaffPanel({ role, permissions = [], username, token, on
     if (!(await confirmDiscard())) return
     setVisitedViews((previous) => previous.has(next) ? previous : new Set([...previous, next]))
     setSelectedView(next)
+  }
+
+  async function refreshPage() {
+    if (!(await confirmDiscard())) return
+    if (view === "inspections") {
+      setShowForm(false)
+      setReportData(null)
+      setEditingReportId(null)
+      setEditError("")
+    }
+    overview.retry()
+    setRefreshRevision(value => value + 1)
   }
 
   async function closeForm() {
@@ -96,6 +110,7 @@ export default function StaffPanel({ role, permissions = [], username, token, on
 
       <main className="tp-main">
         <Hero
+          key={refreshRevision}
           variant="dashboard"
           role={role}
           name={username || "User"}
@@ -104,8 +119,9 @@ export default function StaffPanel({ role, permissions = [], username, token, on
           tag={navItems.find((item) => item.view === view)?.label}
           onMenuClick={() => setMobileOpen(true)}
         />
+        <RefreshPageButton onRefresh={refreshPage} />
 
-        {visitedViews.has("dashboard") && <div hidden={view !== "dashboard"}>
+        {visitedViews.has("dashboard") && <div key={`dashboard:${view === "dashboard" ? refreshRevision : 0}`} hidden={view !== "dashboard"}>
             <Dashboard
               users={[]}
               loading={false}
@@ -119,7 +135,7 @@ export default function StaffPanel({ role, permissions = [], username, token, on
             />
         </div>}
 
-        {visitedViews.has("inspections") && <div hidden={view !== "inspections"}>
+        {visitedViews.has("inspections") && <div key={`inspections:${view === "inspections" ? refreshRevision : 0}`} hidden={view !== "inspections"}>
             {editError && <div className="tp-form-error">{editError}</div>}
             {can("reports.create") && <button
               type="button"
@@ -147,13 +163,13 @@ export default function StaffPanel({ role, permissions = [], username, token, on
             )}
         </div>}
 
-        {visitedViews.has("reports2") && <div hidden={view !== "reports2"}><InspectionReports2 token={token} canCreate={can("reports2.create")} /></div>}
-        {visitedViews.has("report-form") && <div hidden={view !== "report-form"}><ReportFormEditor /></div>}
-        {can("clients.form.edit") && visitedViews.has("client-form") && <div hidden={view !== "client-form"}><ClientFormEditor token={token} /></div>}
+        {visitedViews.has("reports2") && <div key={`reports2:${view === "reports2" ? refreshRevision : 0}`} hidden={view !== "reports2"}><InspectionReports2 token={token} canCreate={can("reports2.create")} /></div>}
+        {visitedViews.has("report-form") && <div key={`report-form:${view === "report-form" ? refreshRevision : 0}`} hidden={view !== "report-form"}><ReportFormEditor /></div>}
+        {can("clients.form.edit") && visitedViews.has("client-form") && <div key={`client-form:${view === "client-form" ? refreshRevision : 0}`} hidden={view !== "client-form"}><ClientFormEditor token={token} /></div>}
 
-        {visitedViews.has("clients") && <div hidden={view !== "clients"}><ClientProfiles token={token} role={role} can={can} /></div>}
+        {visitedViews.has("clients") && <div key={`clients:${view === "clients" ? refreshRevision : 0}`} hidden={view !== "clients"}><ClientProfiles token={token} role={role} can={can} /></div>}
 
-        {visitedViews.has("approvals") && <div hidden={view !== "approvals"}>
+        {visitedViews.has("approvals") && <div key={`approvals:${view === "approvals" ? refreshRevision : 0}`} hidden={view !== "approvals"}>
           <ClientProfiles
             token={token}
             role={role}
@@ -164,11 +180,11 @@ export default function StaffPanel({ role, permissions = [], username, token, on
           />
         </div>}
 
-        {visitedViews.has("blacklist") && <div hidden={view !== "blacklist"}><VehicleBlacklist token={token} can={can} /></div>}
+        {visitedViews.has("blacklist") && <div key={`blacklist:${view === "blacklist" ? refreshRevision : 0}`} hidden={view !== "blacklist"}><VehicleBlacklist token={token} can={can} /></div>}
 
-        {visitedViews.has("activity") && <div hidden={view !== "activity"}><ActivityLog token={token} /></div>}
+        {visitedViews.has("activity") && <div key={`activity:${view === "activity" ? refreshRevision : 0}`} hidden={view !== "activity"}><ActivityLog token={token} /></div>}
 
-        {visitedViews.has("settings") && <div hidden={view !== "settings"}><Settings token={token} /></div>}
+        {visitedViews.has("settings") && <div key={`settings:${view === "settings" ? refreshRevision : 0}`} hidden={view !== "settings"}><Settings token={token} currentName={username} onNameChanged={onNameChanged} /></div>}
       </main>
 
       {reportData && !showForm && (

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from auth.dependencies import get_current_user, require_origin, require_permission, rate_auth
 from auth.model import User, AuthSession
-from auth.schema import ChangePasswordRequest, LoginRequest, TokenResponse, UserCreateRequest, UserOut
+from auth.schema import ChangeNameRequest, ChangePasswordRequest, LoginRequest, TokenResponse, UserCreateRequest, UserOut
 from auth.service import AuthService
 from auth.password_reset import PasswordResetService, challenge_response, deliver_challenge
 from auth.schema import BrowserSessionResponse, SessionUserOut
@@ -66,6 +66,13 @@ def change_password(
     current_user: User = Depends(get_current_user),
 ):
     return AuthService(db).change_password(payload, current_user)
+
+
+@router.patch("/me/name", response_model=SessionUserOut)
+def change_name(payload: ChangeNameRequest, db: Session = Depends(get_db),
+                current_user: User = Depends(get_current_user)):
+    user = AuthService(db).change_name(payload, current_user)
+    return _session_user(db, user)
 
 
 @router.post("/users", response_model=UserOut, status_code=status.HTTP_201_CREATED)

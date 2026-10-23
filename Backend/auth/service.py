@@ -11,7 +11,7 @@ from activity.service import ActivityLogService
 from auth.model import AuthSession, ResetChallenge, PasswordReset, User, UserRole
 from core.rate_limit import consume
 from auth.repository import UserRepository
-from auth.schema import ChangePasswordRequest, LoginRequest, TokenResponse, UserCreateRequest
+from auth.schema import ChangeNameRequest, ChangePasswordRequest, LoginRequest, TokenResponse, UserCreateRequest
 from core.config import get_settings
 from core.security import create_access_token, hash_password, verify_password, password_version
 
@@ -142,6 +142,27 @@ class AuthService:
         from clients.service import ClientProfileService
 
         ClientProfileService(self.db).advance_ready_profiles()
+
+    def change_name(self, payload: ChangeNameRequest, current_user: User) -> User:
+        user = self.db.scalar(
+            select(User).where(User.id == current_user.id).with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found.")
+        if user.full_name == payload.full_name:
+            return user
+        previous_name = user.full_name
+        user.full_name = payload.full_name
+        user.former_name = previous_name
+        ActivityLogService(self.db).log(
+            actor=user,
+            action="user.change_name",
+            entity_type="user",
+            entity_id=user.id,
+            description=f"{previous_name} ({user.email}) changed their name to {user.full_name}",
+        )
+        return user
 
     def change_password(self, payload: ChangePasswordRequest, current_user: User) -> User:
         consume(self.db, "password-change-user", str(current_user.id), 5, 300)

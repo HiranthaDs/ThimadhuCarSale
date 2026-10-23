@@ -1,8 +1,13 @@
 import { useState } from "react"
 import PasswordReset from "../../../components/PasswordReset"
-import { changePassword } from "../../../api/auth"
+import { changeName, changePassword } from "../../../api/auth"
 
-export default function Settings({ token }) {
+export default function Settings({ token, currentName = "", onNameChanged }) {
+  const [nameDraft, setNameDraft] = useState({ source: currentName, value: currentName })
+  const fullName = nameDraft.source === currentName ? nameDraft.value : currentName
+  const [nameSubmitting, setNameSubmitting] = useState(false)
+  const [nameError, setNameError] = useState("")
+  const [nameSuccess, setNameSuccess] = useState("")
   const [resetting, setResetting] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -10,6 +15,32 @@ export default function Settings({ token }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+
+  async function handleNameSubmit(e) {
+    e.preventDefault()
+    setNameError("")
+    setNameSuccess("")
+    const nextName = fullName.trim().replace(/\s+/g, " ")
+    if (!nextName) {
+      setNameError("Enter your name.")
+      return
+    }
+    if (nextName === currentName) {
+      setNameSuccess("Your name is already up to date.")
+      return
+    }
+    setNameSubmitting(true)
+    try {
+      const user = await changeName(token, nextName)
+      setNameDraft({ source: user.full_name, value: user.full_name })
+      onNameChanged?.(user)
+      setNameSuccess("Name updated successfully.")
+    } catch (err) {
+      setNameError(err.message || "Could not update your name.")
+    } finally {
+      setNameSubmitting(false)
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -55,7 +86,25 @@ export default function Settings({ token }) {
   }
 
   return (
-    <div className="tp-card" style={{ maxWidth: 480 }}>
+    <div style={{ maxWidth: 480 }}>
+    <div className="tp-card" style={{ marginBottom: 20 }}>
+      <div className="tp-card-head"><div className="tp-card-title">Change Name</div></div>
+      <form onSubmit={handleNameSubmit}>
+        <label className="tp-form-group">
+          <span>Full Name</span>
+          <input type="text" required maxLength={255} autoComplete="name" value={fullName}
+            onChange={(e) => setNameDraft({ source: currentName, value: e.target.value })} />
+        </label>
+        {nameError && <div className="tp-form-error" role="alert">{nameError}</div>}
+        {nameSuccess && <div className="tp-form-success" role="status">{nameSuccess}</div>}
+        <div className="tp-form-actions" style={{ gridTemplateColumns: "1fr", marginTop: 15 }}>
+          <button type="submit" className="tp-form-btn tp-form-btn-primary" disabled={nameSubmitting}>
+            {nameSubmitting ? "Updating..." : "Update Name"}
+          </button>
+        </div>
+      </form>
+    </div>
+    <div className="tp-card">
       <div className="tp-card-head">
         <div className="tp-card-title">Change Password</div>
       </div>
@@ -113,6 +162,7 @@ export default function Settings({ token }) {
           </button>
         </div>
       </form>
+    </div>
     </div>
   )
 }

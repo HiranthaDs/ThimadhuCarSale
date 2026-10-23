@@ -48,9 +48,22 @@ class UserOut(BaseModel):
     id: uuid.UUID
     email: EmailStr
     full_name: str
+    former_name: str | None = None
     role: UserRole
     is_active: bool
     created_at: datetime
+
+
+class ChangeNameRequest(BaseModel):
+    full_name: str = Field(min_length=1, max_length=255)
+
+    @field_validator("full_name")
+    @classmethod
+    def clean_name(cls, value: str) -> str:
+        name = " ".join(value.split())
+        if not name:
+            raise ValueError("Name cannot be blank.")
+        return name
 
 
 class ChangePasswordRequest(BaseModel):
