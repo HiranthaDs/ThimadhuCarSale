@@ -64,7 +64,7 @@ export default function Sidebar({ role = "technician", permissions, username, on
         <div className="tp-sidebar-backdrop" onClick={() => setMobileOpen(false)} aria-hidden="true" />
       )}
 
-      <aside className={`tp-sidebar${mobileOpen ? " tp-sidebar-open" : ""}`}>
+      <aside id="app-sidebar" className={`tp-sidebar${mobileOpen ? " tp-sidebar-open" : ""}`}>
         <div className="tp-sidebar-curve tp-sidebar-curve-top" aria-hidden="true" />
         <div className="tp-sidebar-curve tp-sidebar-curve-bottom" aria-hidden="true" />
         <div className="tp-sidebar-content">
@@ -97,10 +97,10 @@ export default function Sidebar({ role = "technician", permissions, username, on
                 className={`tp-nav-item${isActive ? " tp-nav-item-active" : ""}`}
                 href="#"
                 aria-current={isActive ? "page" : undefined}
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.preventDefault()
-                  if (view && onNavigate) onNavigate(view)
-                  setMobileOpen(false)
+                  const changed = view && onNavigate ? await onNavigate(view) : true
+                  if (changed !== false) setMobileOpen(false)
                 }}
               >
                 <Icon />

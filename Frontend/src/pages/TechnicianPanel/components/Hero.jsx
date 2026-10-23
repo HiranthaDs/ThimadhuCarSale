@@ -29,7 +29,7 @@ function GreetingIcon({ period }) {
   </span>
 }
 
-export default function Hero({ name = "Admin", role, desc = "Here's what's happening with your dealership today.", token, tag, onMenuClick, variant }) {
+export default function Hero({ name = "Admin", role, desc = "Here's what's happening with your dealership today.", token, tag, onMenuClick, menuOpen = false, variant }) {
   const [now, setNow] = useState(() => new Date())
   const [reminders, setReminders] = useState([])
   const [mounted, setMounted] = useState(false) // panel is in the DOM
@@ -112,8 +112,10 @@ export default function Hero({ name = "Admin", role, desc = "Here's what's happe
       </div>}
       <button
         type="button"
-        className={`tp-hero-menu-btn${mounted ? " tp-hero-menu-btn-hidden" : ""}`}
+        className="tp-hero-menu-btn"
         aria-label="Open menu"
+        aria-expanded={menuOpen}
+        aria-controls="app-sidebar"
         onClick={onMenuClick}
       >
         <span />

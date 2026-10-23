@@ -47,10 +47,11 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
   }, [view, accessKey])
 
   async function navigate(next) {
-    if (!(await confirmDiscard())) return
+    if (!(await confirmDiscard())) return false
     if (next === "customize" && view !== "customize") setViewBeforeCustomize(view)
     setVisitedViews((previous) => previous.has(next) ? previous : new Set([...previous, next]))
     setView(next)
+    return true
   }
 
   async function refreshPage() {
@@ -197,6 +198,7 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
           token={token}
           tag={navItems.find((item) => item.view === view)?.label}
           onMenuClick={() => setMobileOpen(true)}
+          menuOpen={mobileOpen}
         />
         <RefreshPageButton onRefresh={refreshPage} />
 

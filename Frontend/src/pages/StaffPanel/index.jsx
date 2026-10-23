@@ -54,9 +54,10 @@ export default function StaffPanel({ role, permissions = [], username, token, on
   }
 
   async function navigate(next) {
-    if (!(await confirmDiscard())) return
+    if (!(await confirmDiscard())) return false
     setVisitedViews((previous) => previous.has(next) ? previous : new Set([...previous, next]))
     setSelectedView(next)
+    return true
   }
 
   async function refreshPage() {
@@ -118,6 +119,7 @@ export default function StaffPanel({ role, permissions = [], username, token, on
           token={token}
           tag={navItems.find((item) => item.view === view)?.label}
           onMenuClick={() => setMobileOpen(true)}
+          menuOpen={mobileOpen}
         />
         <RefreshPageButton onRefresh={refreshPage} />
 

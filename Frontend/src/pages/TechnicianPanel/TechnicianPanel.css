@@ -495,7 +495,7 @@
   position: absolute;
   top: 14px;
   left: 14px;
-  z-index: 3;
+  z-index: 10;
   width: 38px;
   height: 38px;
   border-radius: 10px;
@@ -514,7 +514,6 @@
   outline: none;
   box-shadow: 0 0 10px 2px rgba(26, 86, 219, 0.5);
 }
-.tp-hero-menu-btn-hidden { visibility: hidden; pointer-events: none; }
 .tp-hero-menu-btn span { display: block; width: 18px; height: 2px; background: var(--tp-red); border-radius: 2px; box-shadow: 0 0 4px rgba(26, 86, 219, 0.9); }
 
 .tp-sidebar-close {
