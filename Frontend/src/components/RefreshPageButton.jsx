@@ -1,7 +1,9 @@
 import "./RefreshPageButton.css"
+import PwaInstallButton from "./PwaInstallButton"
 
-export default function RefreshPageButton({ onRefresh }) {
+export default function RefreshPageButton({ onRefresh, showInstall = false }) {
   return <div className="page-refresh-bar">
+    {showInstall && <PwaInstallButton />}
     <button type="button" className="page-refresh-button" onClick={onRefresh}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M20 11a8 8 0 1 0-2.3 6.7" />

@@ -1,7 +1,8 @@
-.pwa-install-control { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin: 0 0 16px; }
+.pwa-install-control { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .pwa-install-button { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 8px 14px; border: 1px solid #0757f6; border-radius: 8px; background: #0757f6; color: #fff; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; box-shadow: 0 3px 10px #0757f626; }
 .pwa-install-button:hover { background: #0349d5; }
 .pwa-install-button:focus-visible { outline: 3px solid #8db5ff; outline-offset: 2px; }
 .pwa-install-button:disabled { opacity: .65; cursor: wait; }
+.pwa-install-button-installed:disabled { cursor: default; }
 .pwa-install-button svg { width: 17px; height: 17px; }
 .pwa-install-control p { max-width: 330px; margin: 0; color: #4d5d83; font-size: 12px; text-align: right; }

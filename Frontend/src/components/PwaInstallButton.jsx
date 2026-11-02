@@ -25,10 +25,10 @@ export default function PwaInstallButton() {
     }
   }, [])
 
-  if (!desktop || installed) return null
+  if (!desktop) return null
 
   async function install() {
-    if (installing) return
+    if (installing || installed) return
     if (!prompt) {
       setHelp(true)
       return
@@ -47,9 +47,9 @@ export default function PwaInstallButton() {
   }
 
   return <div className="pwa-install-control">
-    <button type="button" className="pwa-install-button" onClick={install} disabled={installing}>
+    <button type="button" className={`pwa-install-button${installed ? ' pwa-install-button-installed' : ''}`} onClick={install} disabled={installing || installed}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 17v3h16v-3" /></svg>
-      {installing ? 'Opening installer…' : 'Install desktop app'}
+      {installed ? 'App installed' : installing ? 'Opening installer…' : 'Install desktop app'}
     </button>
     {help && <p role="status">To install, open your browser menu and choose <strong>Install Thimadu</strong> or <strong>Install app</strong>.</p>}
   </div>

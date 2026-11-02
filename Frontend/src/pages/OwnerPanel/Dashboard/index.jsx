@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react"
 import { CustomersIcon, UsersIcon, ClipboardIcon, CheckBadgeIcon, SearchIcon } from "../../TechnicianPanel/Icons"
-import PwaInstallButton from "../../../components/PwaInstallButton"
 
 const roles = { owner: "Owner", ceo: "CEO", admin: "Admin", accountant: "Accountant", technician: "Technician" }
 function ClockIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></svg> }
@@ -41,7 +40,6 @@ export default function Dashboard({ users, loading, error, retryUsers, overview,
   const report1Pending = overview.reportsApprovalAllowed ? overview.reports?.review : overview.reports?.pending
   const report2Pending = overview.reports2ApprovalAllowed ? overview.reports2?.review : overview.reports2?.pending
   return <div className={`od-dashboard${accountsOnly ? "" : " od-overview"}`}>
-    {!accountsOnly && <PwaInstallButton />}
     {!accountsOnly && stats.length > 0 && <div className="od-stats">{stats.map(({ label, value, detail, icon: Icon, color, storage }) => <article className={`od-stat${storage ? " od-storage-stat" : ""}`} key={label}><span className={`od-stat-icon od-${color}`}><Icon /></span><div><h2>{label}</h2><strong>{value}</strong>{storage && overview.storageUsage && <div className="od-stat-storage-track" role="progressbar" aria-label="Used portion of included R2 storage allowance" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(overview.storageUsage.used_bytes / overview.storageUsage.included_free_bytes * 100))}><span style={{ width: `${Math.min(100, overview.storageUsage.used_bytes / overview.storageUsage.included_free_bytes * 100)}%` }} /></div>}<p>{detail}</p>{storage && overview.errors.storageUsage && <button className="od-text-button" onClick={overview.retry}>Retry</button>}</div></article>)}</div>}
     <div className={`od-dashboard-grid${accountsOnly ? " od-accounts-only" : ""}`}>
       {accountsOnly && <section className="od-card od-team" aria-labelledby="od-team-title">

@@ -200,7 +200,7 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
           onMenuClick={() => setMobileOpen(true)}
           menuOpen={mobileOpen}
         />
-        <RefreshPageButton onRefresh={refreshPage} />
+        <RefreshPageButton onRefresh={refreshPage} showInstall={view === "dashboard"} />
 
         {visitedViews.has("clients") && <div key={`clients:${view === "clients" ? refreshRevision : 0}`} hidden={view !== "clients"}>
           <ClientProfiles token={token} role={userRole} can={can} />

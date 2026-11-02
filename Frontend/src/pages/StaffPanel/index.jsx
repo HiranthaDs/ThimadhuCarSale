@@ -121,7 +121,7 @@ export default function StaffPanel({ role, permissions = [], username, token, on
           onMenuClick={() => setMobileOpen(true)}
           menuOpen={mobileOpen}
         />
-        <RefreshPageButton onRefresh={refreshPage} />
+        <RefreshPageButton onRefresh={refreshPage} showInstall={view === "dashboard"} />
 
         {visitedViews.has("dashboard") && <div key={`dashboard:${view === "dashboard" ? refreshRevision : 0}`} hidden={view !== "dashboard"}>
             <Dashboard
