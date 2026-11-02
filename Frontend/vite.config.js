@@ -12,8 +12,8 @@ export default defineConfig({
     tailwindcss(),
     react(),
     VitePWA({
-      // New builds download in the background and take over on the next load.
-      registerType: 'autoUpdate',
+      // Let users finish unsaved forms before activating a new build.
+      registerType: 'prompt',
       includeAssets: ['favicon.png', 'favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Thimadu Auto Trading',
@@ -35,7 +35,7 @@ export default defineConfig({
         // Cache only the app shell (JS/CSS/images). API calls go to a different
         // origin and carry private data, so there is deliberately no runtime
         // caching rule for them: they always hit the network.
-        globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+        globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2,webp}'],
         // The PDF libraries (jsPDF, html2canvas) are large; allow them into the precache.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         navigateFallback: '/index.html',

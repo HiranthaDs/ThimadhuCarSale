@@ -4,6 +4,7 @@ const OwnerPanel = lazy(() => import("./pages/OwnerPanel"))
 const StaffPanel = lazy(() => import("./pages/StaffPanel"))
 import { me, logout } from "./api/auth"
 import { confirmLogout } from "./components/unsavedChanges"
+import "./components/pwaInstallPrompt"
 
 // The CEO uses the owner panel, limited to what the owner allows in Customize.
 // Every other role uses the staff panel, shaped by the same permissions.
