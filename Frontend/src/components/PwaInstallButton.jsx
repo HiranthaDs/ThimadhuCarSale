@@ -2,26 +2,25 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { clearInstallPrompt, getInstallPrompt, subscribeInstallPrompt } from './pwaInstallPrompt'
 import './PwaInstallButton.css'
 
-const desktopQuery = '(min-width: 768px) and (pointer: fine)'
+function isMobileDevice() {
+  if (navigator.userAgentData?.mobile === true) return true
+  if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) return true
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+}
 
 export default function PwaInstallButton() {
   const prompt = useSyncExternalStore(subscribeInstallPrompt, getInstallPrompt, () => null)
-  const [desktop, setDesktop] = useState(false)
+  const [desktop] = useState(() => !isMobileDevice())
   const [installed, setInstalled] = useState(false)
   const [installing, setInstalling] = useState(false)
   const [help, setHelp] = useState(false)
 
   useEffect(() => {
-    const media = window.matchMedia(desktopQuery)
-    const updateDesktop = () => setDesktop(media.matches)
-    updateDesktop()
-    media.addEventListener('change', updateDesktop)
     const updateInstalled = () => setInstalled(window.matchMedia('(display-mode: standalone)').matches)
     updateInstalled()
     const onInstalled = () => setInstalled(true)
     window.addEventListener('appinstalled', onInstalled)
     return () => {
-      media.removeEventListener('change', updateDesktop)
       window.removeEventListener('appinstalled', onInstalled)
     }
   }, [])
