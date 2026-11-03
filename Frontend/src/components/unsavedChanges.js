@@ -3,6 +3,9 @@ import { confirmDialog } from "./ConfirmDialog"
 
 // Forms that currently hold unsaved entries: id -> what would be lost.
 const dirtyForms = new Map()
+const notifyDirtyForms = () => window.dispatchEvent(new Event("thimadu:unsaved-changes"))
+
+export const hasUnsavedChanges = () => dirtyForms.size > 0
 
 // Closing or refreshing the browser tab: the browser shows its own "Leave site?" prompt.
 window.addEventListener("beforeunload", (e) => {
@@ -18,7 +21,8 @@ export function useUnsavedChanges(isDirty, label) {
   useEffect(() => {
     if (!isDirty) return undefined
     dirtyForms.set(id, label)
-    return () => { dirtyForms.delete(id) }
+    notifyDirtyForms()
+    return () => { dirtyForms.delete(id); notifyDirtyForms() }
   }, [id, isDirty, label])
 }
 
@@ -34,7 +38,7 @@ export async function confirmDiscard() {
     cancelLabel: "Keep editing",
     danger: true,
   })
-  if (discard) dirtyForms.clear()
+  if (discard) { dirtyForms.clear(); notifyDirtyForms() }
   return discard
 }
 
@@ -48,7 +52,7 @@ export async function confirmCloseForm(label) {
     cancelLabel: "Keep editing",
     danger: unsaved,
   })
-  if (close) dirtyForms.clear()
+  if (close) { dirtyForms.clear(); notifyDirtyForms() }
   return close
 }
 
@@ -64,6 +68,6 @@ export async function confirmLogout() {
     cancelLabel: "Cancel",
     danger: unsaved,
   })
-  if (logout) dirtyForms.clear()
+  if (logout) { dirtyForms.clear(); notifyDirtyForms() }
   return logout
 }

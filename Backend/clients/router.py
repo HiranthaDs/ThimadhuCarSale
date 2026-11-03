@@ -45,6 +45,18 @@ BUILTIN_FIELD_LABELS = {
                 "Customer Down Payment"),
 }
 BUILTIN_LABEL_KEYS = {f"{tab}:{label}" for tab, labels in BUILTIN_FIELD_LABELS.items() for label in labels}
+CLIENT_REPEATED_PLACEMENTS = {
+    "Client Name", "Phone Number", "NIC Number", "NIC Photo",
+    "Passport Number", "Passport Photo", "Other document Number",
+    "Other document Photo", "Handover Selfie",
+}
+CUSTOM_FIELD_ANCHORS = (
+    {f"{tab}:{label}" for tab, labels in BUILTIN_FIELD_LABELS.items() if tab != "client_details"
+     for label in labels if tab != "department" or label not in {"Department", "Person's Name"}}
+    | {"client_details:Local Client", "client_details:Foreign Client", "client_details:Country"}
+    | {f"client_details:{label}:{instance}" for label in CLIENT_REPEATED_PLACEMENTS
+       for instance in ("local", "foreign")}
+)
 SCALAR_FIELD_LABELS = {
     "client_details": ("Client Name", "Phone Number", "NIC Number", "Passport Number", "Other document Number"),
     "document": ("Type", "Chassis Number", "Vehicle Number"),
@@ -83,10 +95,13 @@ def update_client_form_schema(payload: dict, db: Session = Depends(get_db), curr
         if not isinstance(field, dict):
             raise HTTPException(400, "Invalid form field.")
         key, label, tab, kind = (field.get(name) for name in ("key", "label", "tab", "type"))
+        after = field.get("after", "")
         if (not isinstance(key, str) or not key.startswith("custom_") or len(key) > 80
                 or not key.replace("_", "").isalnum() or key in keys
                 or not isinstance(label, str) or not label.strip() or len(label) > 120
-                or tab not in CUSTOM_FIELD_TABS or kind not in CUSTOM_FIELD_TYPES):
+                or tab not in CUSTOM_FIELD_TABS or kind not in CUSTOM_FIELD_TYPES
+                or not isinstance(after, str) or (after and (after not in CUSTOM_FIELD_ANCHORS
+                    or not after.startswith(f"{tab}:")))):
             raise HTTPException(400, "Every field needs a unique key, label, tab, and supported type.")
         options = field.get("options", [])
         if kind in ("radio", "select"):
@@ -96,7 +111,7 @@ def update_client_form_schema(payload: dict, db: Session = Depends(get_db), curr
                     or len({v.strip() for v in options}) != len(options)):
                 raise HTTPException(400, f"{kind.title()} fields need 1 to {max_options} options.")
         keys.add(key)
-        clean.append({"key": key, "label": label.strip(), "tab": tab, "type": kind,
+        clean.append({"key": key, "label": label.strip(), "tab": tab, "type": kind, "after": after,
                       "options": [v.strip() for v in options] if kind in ("radio", "select") else []})
     saved = db.get(ClientProfileFormSchema, "default")
     labels = payload.get("labels", saved.labels if saved else {})

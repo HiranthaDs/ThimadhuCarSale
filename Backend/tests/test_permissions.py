@@ -162,6 +162,22 @@ class PermissionTests(unittest.TestCase):
         payload["field_types"]["payment:Loan Amount"]["options"].append("Fourth")
         self.assertEqual(CustomizeUnlockTests.request(self, "/clients/form-schema", payload, method="PUT")[0], 400)
 
+    def test_added_client_field_can_be_placed_between_existing_fields(self):
+        self.app = FastAPI()
+        self.app.include_router(clients_router)
+        self.app.dependency_overrides[get_db] = lambda: self.db
+        self.app.dependency_overrides[get_current_user] = lambda: self.owner
+        payload = {"fields": [{"key": "custom_age", "label": "Age", "tab": "client_details",
+                               "type": "number", "after": "client_details:Client Name:local"}]}
+        save = lambda body: CustomizeUnlockTests.request(self, "/clients/form-schema", body, method="PUT")
+        self.assertEqual(save(payload)[0], 200)
+        _, definitions = ClientProfileService(self.db).prepare_custom_fields({"custom_age": "42"})
+        self.assertEqual(definitions[0]["after"], "client_details:Client Name:local")
+        payload["fields"][0]["after"] = "client_details:Client Name"
+        self.assertEqual(save(payload)[0], 400)
+        payload["fields"][0]["after"] = "payment:Loan Amount"
+        self.assertEqual(save(payload)[0], 400)
+
     def test_registration_status_standard_radio_options_save_to_native_field(self):
         self.app = FastAPI()
         self.app.include_router(clients_router)

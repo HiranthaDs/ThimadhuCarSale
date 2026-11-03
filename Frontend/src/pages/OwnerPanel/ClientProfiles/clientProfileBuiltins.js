@@ -41,6 +41,30 @@ export const BUILTIN_FIELDS = {
 
 export const builtinKey = (tab, label) => `${tab}:${label}`
 
+const CLIENT_SHARED_ANSWERS = [
+  "Client Name", "Phone Number", "NIC Number", "NIC Photo",
+  "Passport Number", "Passport Photo", "Other document Number",
+  "Other document Photo", "Handover Selfie",
+]
+
+// Placement keys match the places where the creation form renders fields.
+export function builtinPlacementOptions(tab, labels = {}) {
+  const option = (label, instance) => {
+    const base = builtinKey(tab, label)
+    return { key: instance ? `${base}:${instance}` : base,
+      label: `${instance === "local" ? "Local · " : instance === "foreign" ? "Foreign · " : ""}${labels[base] || label}` }
+  }
+  if (tab === "client_details") return [
+    option("Local Client"),
+    ...CLIENT_SHARED_ANSWERS.map((label) => option(label, "local")),
+    option("Foreign Client"), option("Country"),
+    ...CLIENT_SHARED_ANSWERS.map((label) => option(label, "foreign")),
+  ]
+  return (BUILTIN_FIELDS[tab] || [])
+    .filter(([label]) => tab !== "department" || !["Department", "Person's Name"].includes(label))
+    .map(([label]) => option(label))
+}
+
 // These existing fields can use any of the editor's input types. Their
 // converted answers are stored separately from the original fixed columns.
 // These controls change which other fields appear, so they keep their native

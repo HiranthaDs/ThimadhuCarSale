@@ -600,7 +600,8 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
   function builtinField(label, nativeField, instance) {
     const key = builtinKey(activeTab, label)
     const answerKey = instance ? `${key}:${instance}` : key
-    if (!isEdit && builtinHidden.includes(key)) return null
+    const attachPlacedFields = (element) => <>{element}{placedFieldsAfter(answerKey)}</>
+    if (!isEdit && builtinHidden.includes(key)) return attachPlacedFields(null)
     const defaultDisplayType = (BUILTIN_FIELDS[activeTab] || []).find(([name]) => name === label)?.[1]
     const defaultType = defaultDisplayType ? defaultBuiltinType(defaultDisplayType) : "text"
     const previousSetting = profile?.custom_field_schema?.find((field) => field.key === answerKey)
@@ -611,13 +612,21 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
       const values = { registered: "registered", unregistered: "unregistered", "open book": "open_book" }
       const options = setting.options.map((option) => ({ value: values[option.trim().toLowerCase()], label: option }))
       if (options.length && options.every((option) => option.value)) {
-        return <RadioField label={label} value={form.registration_type} onChange={(value) => set("registration_type", value)} options={options} />
+        return attachPlacedFields(<RadioField label={label} value={form.registration_type} onChange={(value) => set("registration_type", value)} options={options} />)
       }
     }
     if (!setting || (typeof setting === "string" && (type === defaultType
-      || (["text", "textarea"].includes(defaultType) && ["text", "email", "tel", "number", "date", "textarea"].includes(type))))) return nativeField
+      || (["text", "textarea"].includes(defaultType) && ["text", "email", "tel", "number", "date", "textarea"].includes(type))))) return attachPlacedFields(nativeField)
     const options = builtinOptions(setting)
-    return customField({ key: answerKey, label: labelFor(label), tab: activeTab, type, options })
+    return attachPlacedFields(customField({ key: answerKey, label: labelFor(label), tab: activeTab, type, options }))
+  }
+
+  function placedFieldsAfter(anchor) {
+    const placed = customFields.filter((field) => field.tab === activeTab && field.after === anchor)
+    if (!placed.length) return null
+    return <BuiltinLabelsContext.Provider value={{ tab: "", labels: {}, hidden: [], fieldTypes: {} }}>
+      {placed.map(customField)}
+    </BuiltinLabelsContext.Provider>
   }
 
   function customField(field) {
@@ -721,6 +730,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
               />
               {labelFor("Local Client")}
             </label>}
+            {placedFieldsAfter(builtinKey("client_details", "Local Client"))}
             {isVisible("Local Client") && form.has_local_client && (
               <div className="cp-client-block">
                 <div className="tp-form-row">
@@ -754,6 +764,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
               />
               {labelFor("Foreign Client")}
             </label>}
+            {placedFieldsAfter(builtinKey("client_details", "Foreign Client"))}
             {isVisible("Foreign Client") && form.has_foreign_client && (
               <div className="cp-client-block">
                 <div className="tp-form-row">
@@ -988,10 +999,10 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
             </div>
           </div>
         )}
-        {customFields.some((field) => field.tab === activeTab) && <div className="tp-form-section cp-custom-fields">
+        {customFields.some((field) => field.tab === activeTab && !field.after) && <div className="tp-form-section cp-custom-fields">
           <h3>Additional details</h3>
           <BuiltinLabelsContext.Provider value={{ tab: "", labels: {}, hidden: [], fieldTypes: {} }}>
-            <div className="tp-form-row">{customFields.filter((field) => field.tab === activeTab).map(customField)}</div>
+            <div className="tp-form-row">{customFields.filter((field) => field.tab === activeTab && !field.after).map(customField)}</div>
           </BuiltinLabelsContext.Provider>
         </div>}
         </fieldset>

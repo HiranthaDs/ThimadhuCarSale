@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { getClientFormSchema, saveClientFormSchema } from "../../../api/clients"
 import { TABS } from "./clientProfileSchema"
-import { BUILTIN_FIELDS, isFlexibleBuiltin, builtinInputTypes, builtinKey, builtinOptions, builtinType, defaultBuiltinType } from "./clientProfileBuiltins"
+import { BUILTIN_FIELDS, builtinPlacementOptions, isFlexibleBuiltin, builtinInputTypes, builtinKey, builtinOptions, builtinType, defaultBuiltinType } from "./clientProfileBuiltins"
 import { confirmDialog } from "../../../components/ConfirmDialog"
 import { useUnsavedChanges } from "../../../components/unsavedChanges"
 import "../Customize/Customize.css"
@@ -108,7 +108,7 @@ export default function ClientFormEditor({ token }) {
 
   function add(tab) {
     const key = `custom_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
-    change([...fields, { key, tab, label: "New field", type: "text", options: [] }])
+    change([...fields, { key, tab, label: "New field", type: "text", options: [], after: "" }])
   }
 
   async function remove(key) {
@@ -167,7 +167,7 @@ export default function ClientFormEditor({ token }) {
   return <div className="tp-card cz-card cz-report-editor cp-form-editor">
     <div className="tp-card-head" ref={topRef}><div>
       <div className="tp-card-title">Edit Client Profile</div>
-      <div className="tp-muted cz-sub">Edit or remove existing fields, and add new fields to any step. Saved profiles keep their data.</div>
+      <div className="tp-muted cz-sub">Edit existing fields and add new ones. Use “Place field” to insert a new field between existing fields. Saved profiles keep their data.</div>
     </div>
       <button type="button" className="cz-jump-bottom" onClick={() => bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" })} aria-label="Go to bottom of client profile editor" title="Go to bottom">
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v13m-5-5 5 5 5-5M5 21h14" /></svg>
@@ -203,10 +203,16 @@ export default function ClientFormEditor({ token }) {
         })}>
           {TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
+        <label className="cp-editor-position">Place field
+          <select aria-label={`${field.label} position`} value={field.after || ""} onChange={(e) => patch(field.key, { after: e.target.value })}>
+            <option value="">At end of step</option>
+            {builtinPlacementOptions(tab.key, labels).map((place) => <option key={place.key} value={place.key}>After {place.label}</option>)}
+          </select>
+        </label>
         {["radio", "select"].includes(field.type) && <ChoiceOptions options={field.options || ["Option 1"]} max={field.type === "radio" ? 3 : 20} onChange={(options) => patch(field.key, { options })} />}
         <button type="button" className="tp-form-btn tp-form-btn-secondary" onClick={() => remove(field.key)}>Remove</button>
       </div>)}
-      <button type="button" className="tp-reports-btn" onClick={() => add(tab.key)}>+ Add field</button>
+      <button type="button" className="tp-reports-btn" onClick={() => add(tab.key)}>+ Add field, then choose its place</button>
     </section>)}
     <div className="cz-actions">
       <button type="button" className="cz-jump-bottom cz-jump-top" onClick={() => topRef.current?.scrollIntoView({ behavior: "auto", block: "start" })} aria-label="Go to top of client profile editor" title="Go to top">
