@@ -43,7 +43,7 @@ def _na_if_blank(value: str | None) -> str:
 
 
 class ClientProfileCreate(BaseModel):
-    custom_fields: dict[str, str | bool | None] = Field(default_factory=dict, max_length=100)
+    custom_fields: dict[str, str | bool | None] = Field(default_factory=dict, max_length=200)
     # Local client details
     has_local_client: bool = False
     local_client_name: str | None = Field(default=None, max_length=255)
@@ -136,6 +136,12 @@ class ClientProfileCreate(BaseModel):
 
     @model_validator(mode="after")
     def fill_blank_fields_with_na(self):
+        # Unregistered vehicles have no plate; use their chassis/VIN as the
+        # saved vehicle identifier so reports can still be found by number.
+        if not (self.vehicle_number or "").strip() and (self.chassis_number or "").strip():
+            if len(self.chassis_number.strip()) > 60:
+                raise ValueError("The chassis/VIN must be at most 60 characters when used as the vehicle number.")
+            self.vehicle_number = self.chassis_number.strip()
         if self.has_local_client:
             self.local_client_name = _na_if_blank(self.local_client_name)
             self.local_client_phone = _na_if_blank(self.local_client_phone)

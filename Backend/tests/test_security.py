@@ -32,12 +32,14 @@ from core.rate_limit import consume
 from core.r2_client import (upload_report_pdf, existing_reference, private_url,
                            canonical_url, delete_form_attachment, delete_report_pdf)
 from reports.model import InspectionReport
-from reports.service import ReportService, _offload_form_data
+from reports.service import ReportService, _offload_form_data, report_identifier
 from reports.router import router as reports_router
 from reports.repository import ReportRepository
 from clients.model import ClientProfile, ClientProfileStatus
-from clients.schema import ClientProfileUpdate
+from clients.schema import ClientProfileCreate, ClientProfileUpdate
 from clients.service import ClientProfileService
+from blacklist.schema import VehicleBlacklistCreate, VehicleBlacklistUpdate
+from blacklist.service import VehicleBlacklistService
 from activity.model import ActivityLog
 import main  # Register all application models, without running migrations.
 
@@ -143,6 +145,30 @@ class SecurityTests(unittest.TestCase):
         status,body,_=self.request(f"/reports/{report.id}",method="GET",cookie=cookie)
         self.assertEqual(status,200);self.assertTrue(body["editable"])
         self.assertTrue(body["url"].startswith("https://"));self.assertIn("X-Amz-Signature",body["url"])
+
+    def test_unregistered_vehicle_uses_vin_as_saved_identifier(self):
+        vin = "JH4KA4650MC012345"
+        self.assertEqual(report_identifier(" ABC-123 ", {"vin": vin}), "ABC-123")
+        self.assertEqual(report_identifier(" ", {"vin": f" {vin} "}), vin)
+        self.assertEqual(ClientProfileCreate(vehicle_number=" ", chassis_number=vin).vehicle_number, vin)
+        with patch("reports.service.upload_report_pdf", return_value="r2://reports/vin.pdf"):
+            report = ReportService(self.db, self.user).upload_pdf(
+                pdf(), created_by=self.user.id, registration_number=" ", form_data={"vin": vin, "registrationNumber": ""})
+        self.assertEqual(report.registration_number, vin)
+        self.assertEqual(report.form_data["registrationNumber"], "")
+        updated = ReportService(self.db, self.user).update_fields(report, registration_number=" ")
+        self.assertEqual(updated.registration_number, vin)
+
+    def test_blacklist_location_is_saved_and_searchable(self):
+        service = VehicleBlacklistService(self.db)
+        entry = service.create(VehicleBlacklistCreate(vehicle_number="ABC-123", location="Colombo Yard"), self.user)
+        self.assertEqual(entry.location, "Colombo Yard")
+        self.assertEqual([item.id for item in service.list_all("Colombo")], [entry.id])
+        entry.mileage = "9000"  # Historical value remains when location is edited.
+        self.db.commit()
+        updated = service.update(entry.id, VehicleBlacklistUpdate(vehicle_number="ABC-123", location="Kandy Branch"), self.user)
+        self.assertEqual(updated.location, "Kandy Branch")
+        self.assertEqual(updated.mileage, "9000")
     def test_private_url_roundtrip(self):
         stored="r2://reports/a.pdf"
         # The application config is isolated; signing requires no network.

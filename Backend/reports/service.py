@@ -107,6 +107,16 @@ def is_scan2(registration_number: str | None) -> bool:
     return (registration_number or "").strip().lower().endswith((SCAN2_SUFFIX.lower(), LEGACY_COPY_SUFFIX.lower()))
 
 
+def report_identifier(registration_number: str | None, form_data: dict[str, Any] | None = None) -> str | None:
+    """Use the VIN to identify an inspection report when no plate is entered."""
+    plate = (registration_number or "").strip()
+    vin = (form_data or {}).get("vin")
+    identifier = plate or (vin.strip() if isinstance(vin, str) else "")
+    if len(identifier) > 60:
+        raise HTTPException(400, "Registration number or VIN must be at most 60 characters.")
+    return identifier or None
+
+
 def scan2_name(registration_number: str) -> str:
     """"CBE-1245" -> "CBE-1245-Inspection Report 2" (idempotent)."""
     base = registration_number.strip()
@@ -163,6 +173,7 @@ class ReportService:
         technician_name: str | None = None,
         form_data: dict[str, Any] | None = None,
     ):
+        registration_number = report_identifier(registration_number, form_data)
         content = validate_file(content, "application/pdf", get_settings().max_report_pdf_bytes)
         public_id = str(uuid.uuid4())
         url = upload_report_pdf(content, public_id)
@@ -194,6 +205,8 @@ class ReportService:
         self.require_editor(report, current_user)
         if report.status == STATUS_CHECKED:
             raise PermissionError("This report has already been checked and can no longer be edited.")
+
+        registration_number = report_identifier(registration_number, form_data)
 
         # A copy keeps its Inspection Report 2 suffix even though the form itself
         # carries the plain vehicle registration number.
@@ -294,6 +307,9 @@ class ReportService:
     def update_fields(self, report, *, registration_number=None, vehicle_title=None, buyer_name=None):
         if report.status == STATUS_CHECKED:
             raise PermissionError("This report has already been checked and can no longer be edited.")
+        registration_number = report_identifier(registration_number, report.form_data)
+        if is_scan2(report.registration_number):
+            registration_number = scan2_name(registration_number or report.registration_number)
         return self.repository.update(
             report,
             registration_number=registration_number,

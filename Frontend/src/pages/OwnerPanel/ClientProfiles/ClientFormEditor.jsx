@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { getClientFormSchema, saveClientFormSchema } from "../../../api/clients"
 import { TABS } from "./clientProfileSchema"
-import { BUILTIN_FIELDS, builtinInputTypes, builtinKey, defaultBuiltinType } from "./clientProfileBuiltins"
+import { BUILTIN_FIELDS, isFlexibleBuiltin, builtinInputTypes, builtinKey, builtinOptions, builtinType, defaultBuiltinType } from "./clientProfileBuiltins"
 import { confirmDialog } from "../../../components/ConfirmDialog"
 import { useUnsavedChanges } from "../../../components/unsavedChanges"
 import "../Customize/Customize.css"
@@ -13,6 +13,21 @@ const TYPES = [
   ["radio", "Radio buttons"], ["select", "Dropdown"], ["image", "Image upload"],
   ["multi_image", "Multiple images"], ["file", "Image / PDF upload"],
 ]
+
+const DEFAULT_RADIO_OPTIONS = {
+  "Registration Status": ["Registered", "Unregistered", "Open Book"],
+  "Third Person Involved?": ["No", "Yes"],
+}
+
+function ChoiceOptions({ options, max, onChange }) {
+  return <div className="cp-editor-options">
+    {options.map((option, index) => <div className="cp-editor-option" key={index}>
+      <input aria-label={`Option ${index + 1}`} value={option} maxLength={80} onChange={(e) => onChange(options.map((item, i) => i === index ? e.target.value : item))} />
+      <button type="button" disabled={options.length === 1} onClick={() => onChange(options.filter((_, i) => i !== index))}>Remove option</button>
+    </div>)}
+    <button type="button" disabled={options.length >= max} onClick={() => onChange([...options, `Option ${options.length + 1}`])}>+ Add option ({options.length}/{max})</button>
+  </div>
+}
 
 export default function ClientFormEditor({ token }) {
   const topRef = useRef(null)
@@ -60,7 +75,16 @@ export default function ClientFormEditor({ token }) {
   }
 
   function patchBuiltinType(key, value) {
-    setFieldTypes((previous) => ({ ...previous, [key]: value }))
+    const label = key.split(":").slice(1).join(":")
+    setFieldTypes((previous) => ({ ...previous, [key]: ["radio", "select"].includes(value)
+      ? { type: value, options: builtinOptions(previous[key], DEFAULT_RADIO_OPTIONS[label] || ["Option 1", "Option 2"]).slice(0, value === "radio" ? 3 : 20) }
+      : value }))
+    setDirty(true)
+    setSuccess("")
+  }
+
+  function patchBuiltinOptions(key, options) {
+    setFieldTypes((previous) => ({ ...previous, [key]: { type: builtinType(previous[key], "radio"), options } }))
     setDirty(true)
     setSuccess("")
   }
@@ -155,13 +179,18 @@ export default function ClientFormEditor({ token }) {
       <h4 className="cp-editor-group-title">Existing fields</h4>
       {(BUILTIN_FIELDS[tab.key] || []).map(([defaultLabel, type]) => {
         const key = builtinKey(tab.key, defaultLabel)
-        const allowedTypes = builtinInputTypes(type)
+        const allowedTypes = isFlexibleBuiltin(tab.key, defaultLabel)
+          ? TYPES.map(([value]) => value).concat(type === "Searchable selection" ? ["searchable"] : [])
+          : builtinInputTypes(type)
+        const selectedType = builtinType(fieldTypes[key], defaultBuiltinType(type))
+        const options = builtinOptions(fieldTypes[key], DEFAULT_RADIO_OPTIONS[defaultLabel] || ["Option 1", "Option 2"])
         const removed = hiddenFields.includes(key)
         return <div className={`cp-editor-field cp-editor-builtin${removed ? " cp-editor-removed" : ""}`} key={key}>
           <input aria-label={`${defaultLabel} label`} value={labels[key] ?? defaultLabel} maxLength={120} onChange={(e) => patchLabel(key, e.target.value)} />
-          <select aria-label={`${defaultLabel} input type`} value={fieldTypes[key] || defaultBuiltinType(type)} disabled={allowedTypes.length === 1} onChange={(e) => patchBuiltinType(key, e.target.value)}>
+          <select aria-label={`${defaultLabel} input type`} value={selectedType} disabled={allowedTypes.length === 1} onChange={(e) => patchBuiltinType(key, e.target.value)}>
             {allowedTypes.map((value) => <option key={value} value={value}>{TYPES.find(([candidate]) => candidate === value)?.[1] || type}</option>)}
           </select>
+          {["radio", "select"].includes(selectedType) && allowedTypes.length > 1 && <ChoiceOptions options={options} max={selectedType === "radio" ? 3 : 20} onChange={(next) => patchBuiltinOptions(key, next)} />}
           <button type="button" className={`tp-form-btn tp-form-btn-secondary${removed ? " cp-editor-restore" : ""}`} onClick={() => toggleBuiltin(key)}>{removed ? "Restore" : "Remove"}</button>
         </div>
       })}
@@ -174,7 +203,7 @@ export default function ClientFormEditor({ token }) {
         })}>
           {TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
-        {["radio", "select"].includes(field.type) && <input aria-label="Options, comma separated" placeholder="Options, comma separated" value={(field.options || []).join(", ")} onChange={(e) => patch(field.key, { options: e.target.value.split(",").map((v) => v.trim()).filter(Boolean) })} />}
+        {["radio", "select"].includes(field.type) && <ChoiceOptions options={field.options || ["Option 1"]} max={field.type === "radio" ? 3 : 20} onChange={(options) => patch(field.key, { options })} />}
         <button type="button" className="tp-form-btn tp-form-btn-secondary" onClick={() => remove(field.key)}>Remove</button>
       </div>)}
       <button type="button" className="tp-reports-btn" onClick={() => add(tab.key)}>+ Add field</button>

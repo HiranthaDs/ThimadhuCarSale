@@ -54,6 +54,15 @@ SCALAR_FIELD_LABELS = {
 }
 SCALAR_FIELD_KEYS = {f"{tab}:{label}" for tab, labels in SCALAR_FIELD_LABELS.items() for label in labels}
 SCALAR_INPUT_TYPES = {"text", "email", "tel", "number", "date", "textarea"}
+STRUCTURAL_BUILTIN_KEYS = {
+    "client_details:Local Client", "client_details:Foreign Client",
+    "client_details:Identification Document", "client_details:NIC",
+    "client_details:Passport", "client_details:Other document",
+    "client_details:No document", "previous_owner:Third Person Involved?",
+    "department:Department", "department:Person's Name",
+}
+FLEXIBLE_BUILTIN_KEYS = BUILTIN_LABEL_KEYS - STRUCTURAL_BUILTIN_KEYS
+BUILTIN_EDIT_TYPES = CUSTOM_FIELD_TYPES | {"searchable"}
 
 
 @router.get("/form-schema")
@@ -81,9 +90,11 @@ def update_client_form_schema(payload: dict, db: Session = Depends(get_db), curr
             raise HTTPException(400, "Every field needs a unique key, label, tab, and supported type.")
         options = field.get("options", [])
         if kind in ("radio", "select"):
-            if (not isinstance(options, list) or not 1 <= len(options) <= 20
-                    or any(not isinstance(v, str) or not v.strip() or len(v) > 80 for v in options)):
-                raise HTTPException(400, "Radio and selection fields need 1 to 20 options.")
+            max_options = 3 if kind == "radio" else 20
+            if (not isinstance(options, list) or not 1 <= len(options) <= max_options
+                    or any(not isinstance(v, str) or not v.strip() or len(v) > 80 for v in options)
+                    or len({v.strip() for v in options}) != len(options)):
+                raise HTTPException(400, f"{kind.title()} fields need 1 to {max_options} options.")
         keys.add(key)
         clean.append({"key": key, "label": label.strip(), "tab": tab, "type": kind,
                       "options": [v.strip() for v in options] if kind in ("radio", "select") else []})
@@ -100,9 +111,25 @@ def update_client_form_schema(payload: dict, db: Session = Depends(get_db), curr
             or len(hidden) != len(set(hidden))):
         raise HTTPException(400, "Removed fields must refer to existing client profile fields.")
     field_types = payload.get("field_types", saved.field_types if saved else {})
-    if (not isinstance(field_types, dict) or len(field_types) > len(SCALAR_FIELD_KEYS)
-            or any(key not in SCALAR_FIELD_KEYS or not isinstance(value, str) or value not in SCALAR_INPUT_TYPES
-                   for key, value in field_types.items())):
+    def valid_builtin_type(key, value):
+        if key in SCALAR_FIELD_KEYS and isinstance(value, str) and value in SCALAR_INPUT_TYPES:
+            return True
+        if key not in FLEXIBLE_BUILTIN_KEYS:
+            return False
+        if isinstance(value, str):
+            return value in BUILTIN_EDIT_TYPES and (value != "searchable" or key in {
+                "previous_owner:Inspection Report 1", "previous_owner:Inspection Report 2",
+                "client_details:Country"})
+        if not isinstance(value, dict) or set(value) != {"type", "options"}:
+            return False
+        kind, options = value["type"], value["options"]
+        return (kind in ("radio", "select") and isinstance(options, list)
+                and 1 <= len(options) <= (3 if kind == "radio" else 20)
+                and all(isinstance(option, str) and 0 < len(option.strip()) <= 80 for option in options)
+                and len({option.strip() for option in options}) == len(options))
+
+    if (not isinstance(field_types, dict) or len(field_types) > len(SCALAR_FIELD_KEYS | FLEXIBLE_BUILTIN_KEYS)
+            or any(not valid_builtin_type(key, value) for key, value in field_types.items())):
         raise HTTPException(400, "An existing field cannot use that input type.")
     if saved:
         saved.fields = clean

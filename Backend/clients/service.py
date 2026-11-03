@@ -23,6 +23,45 @@ CLIENT_DOCUMENT_FIELDS = tuple(
     f for f in IMAGE_FIELDS if f not in ("scan_report_1_image", "scan_report_2_image")
 )
 
+PREVIOUS_OWNER_DEFAULT_TYPES = {
+    "Previous Owner Name": "text", "NIC": "text", "Phone Number": "text",
+    "Registration Status": "radio", "Detailed Selfie Photo": "image", "In-Writing Letter": "image",
+    "Inspection Report 1": "searchable", "Inspection Report 2": "searchable",
+    "Scan Report 1 (Upload)": "file", "Scan Report 2 (Upload)": "file",
+    "Garage Bill": "multi_image", "Modification": "multi_image", "Others": "textarea",
+    "Third Person Involved?": "radio", "Third Person Document": "image", "Handover Selfie": "image",
+}
+
+BUILTIN_ANSWER_TYPES = {
+    "client_details": {
+        "Client Name": "text", "Phone Number": "text",
+        "NIC Number": "text", "NIC Photo": "multi_image",
+        "Passport Number": "text", "Passport Photo": "multi_image",
+        "Other document Number": "text", "Other document Photo": "multi_image",
+        "Handover Selfie": "image", "Country": "searchable",
+    },
+    "document": {
+        "CR Document": "multi_image", "Revenue License": "multi_image",
+        "Type": "text", "Chassis Number": "text", "Vehicle Number": "text",
+    },
+    "previous_owner": {key: value for key, value in PREVIOUS_OWNER_DEFAULT_TYPES.items()
+                       if key != "Third Person Involved?"},
+    "department": {"Marketing": "text", "Technical": "text", "Purchasing": "text"},
+    "payment": {
+        "Leasing Company": "text", "Bank Officer Name": "text",
+        "File Signed Date": "date", "Payment Date": "date", "DO Date": "date",
+        "Customer Advanced Date": "date", "Vehicle Handover Date": "date",
+        "Purchasing Date": "date", "Selling Price": "number",
+        "Loan Amount": "number", "Customer Down Payment": "number",
+    },
+}
+
+CLIENT_DETAILS_REPEATED = {
+    "Client Name", "Phone Number", "NIC Number", "NIC Photo",
+    "Passport Number", "Passport Photo", "Other document Number",
+    "Other document Photo", "Handover Selfie",
+}
+
 
 def _offload_documents(data: dict, allowed=()) -> dict:
     """Upload any base64 document/photo fields to R2, replacing them with URLs."""
@@ -78,6 +117,29 @@ class ClientProfileService:
         # Keep fields already stored on a profile readable after the owner removes
         # them from the form used for new profiles.
         definitions = {field["key"]: field for field in (saved.fields or [])} if saved else {}
+        if saved and profile is None:
+            for tab, fields in BUILTIN_ANSWER_TYPES.items():
+                for label, default_type in fields.items():
+                    base_key = f"{tab}:{label}"
+                    setting = (saved.field_types or {}).get(base_key)
+                    if not setting:
+                        continue
+                    kind = setting if isinstance(setting, str) else setting["type"]
+                    if (base_key == "previous_owner:Registration Status" and isinstance(setting, dict)
+                            and kind == "radio" and all(option.strip().lower() in
+                                {"registered", "unregistered", "open book"}
+                                for option in setting.get("options", []))):
+                        continue
+                    if ((kind == default_type or (default_type in {"text", "textarea"}
+                                                 and kind in {"text", "email", "tel", "number", "date", "textarea"}))
+                            and not isinstance(setting, dict)):
+                        continue
+                    suffixes = ("local", "foreign") if tab == "client_details" and label in CLIENT_DETAILS_REPEATED else (None,)
+                    for suffix in suffixes:
+                        key = f"{base_key}:{suffix}" if suffix else base_key
+                        definitions[key] = {"key": key, "label": (saved.labels or {}).get(base_key, label),
+                                            "tab": tab, "type": kind,
+                                            "options": setting.get("options", []) if isinstance(setting, dict) else []}
         if profile:
             definitions.update({field["key"]: field for field in (profile.custom_field_schema or [])})
         previous = profile.custom_fields or {} if profile else {}

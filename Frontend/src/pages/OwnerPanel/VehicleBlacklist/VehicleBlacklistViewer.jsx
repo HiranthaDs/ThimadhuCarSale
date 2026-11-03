@@ -41,8 +41,8 @@ export default function VehicleBlacklistViewer({ entry, startIndex = 0, onClose 
             <dd>{entry.vehicle_number || "—"}</dd>
           </div>
           <div>
-            <dt>Mileage</dt>
-            <dd>{entry.mileage || "—"}</dd>
+            <dt>Location</dt>
+            <dd>{entry.location || "—"}</dd>
           </div>
           <div>
             <dt>Added</dt>

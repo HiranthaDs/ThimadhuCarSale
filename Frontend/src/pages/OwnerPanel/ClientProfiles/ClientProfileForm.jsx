@@ -7,7 +7,7 @@ import { COUNTRIES } from "./countries"
 import { isSafeMediaUrl } from "../../../utils/safeUrl"
 import { compressImage, prepareUpload } from "../../../utils/image"
 import DatePicker from "../../../components/DatePicker"
-import { builtinKey } from "./clientProfileBuiltins"
+import { builtinKey, builtinType, builtinOptions, defaultBuiltinType, BUILTIN_FIELDS } from "./clientProfileBuiltins"
 
 const BuiltinLabelsContext = createContext({ tab: "", labels: {}, hidden: [], fieldTypes: {} })
 
@@ -17,7 +17,7 @@ function useBuiltinSettings(label, defaultType) {
   return {
     displayLabel: labels[key] || label,
     visible: !hidden.includes(key),
-    inputType: fieldTypes[key] || defaultType,
+    inputType: builtinType(fieldTypes[key], defaultType),
   }
 }
 
@@ -496,7 +496,7 @@ const DOCUMENT_KINDS = [
 
 const DOCUMENT_IMAGE_LIMITS = { nic: 2, passport: 5, other: 10 }
 
-function DocumentPicker({ prefix, form, set }) {
+function DocumentPicker({ prefix, form, set, renderBuiltin }) {
   const { tab, labels, hidden } = useContext(BuiltinLabelsContext)
   const labelFor = (label) => labels[builtinKey(tab, label)] || label
   const isVisible = (label) => !hidden.includes(builtinKey(tab, label))
@@ -525,17 +525,17 @@ function DocumentPicker({ prefix, form, set }) {
       </div>
       {DOCUMENT_KINDS.filter((d) => types.includes(d.key)).map((d) => (
         <div className="tp-form-row" key={d.key}>
-          <TextField
+          {renderBuiltin(`${d.label} Number`, <TextField
             label={`${d.label} Number`}
             value={form[`${prefix}_client_${d.key}_number`]}
             onChange={(v) => set(`${prefix}_client_${d.key}_number`, v)}
-          />
-          <MultiImageField
+          />, prefix)}
+          {renderBuiltin(`${d.label} Photo`, <MultiImageField
             label={`${d.label} Photo`}
             max={DOCUMENT_IMAGE_LIMITS[d.key]}
             value={form[`${prefix}_client_${d.key}_image`]}
             onChange={(v) => set(`${prefix}_client_${d.key}_image`, v)}
-          />
+          />, prefix)}
         </div>
       ))}
     </div>
@@ -549,7 +549,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
   const [dirty, setDirty] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
-  const [customFields, setCustomFields] = useState(profile?.custom_field_schema || [])
+  const [customFields, setCustomFields] = useState((profile?.custom_field_schema || []).filter((field) => field.key?.startsWith("custom_")))
   const [builtinLabels, setBuiltinLabels] = useState({})
   const [builtinHidden, setBuiltinHidden] = useState([])
   const [builtinFieldTypes, setBuiltinFieldTypes] = useState({})
@@ -564,7 +564,9 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
       getClientFormSchema(token).then((data) => {
         if (!active) return
         const merged = new Map((data.fields || []).map((field) => [field.key, field]))
-        for (const field of profile?.custom_field_schema || []) merged.set(field.key, field)
+        for (const field of profile?.custom_field_schema || []) {
+          if (field.key?.startsWith("custom_")) merged.set(field.key, field)
+        }
         setCustomFields([...merged.values()])
         setBuiltinLabels(data.labels || {})
         setBuiltinHidden(data.hidden_fields || [])
@@ -595,13 +597,36 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
   const labelFor = (label) => builtinLabels[builtinKey(activeTab, label)] || label
   const isVisible = (label) => isEdit || !builtinHidden.includes(builtinKey(activeTab, label))
 
+  function builtinField(label, nativeField, instance) {
+    const key = builtinKey(activeTab, label)
+    const answerKey = instance ? `${key}:${instance}` : key
+    if (!isEdit && builtinHidden.includes(key)) return null
+    const defaultDisplayType = (BUILTIN_FIELDS[activeTab] || []).find(([name]) => name === label)?.[1]
+    const defaultType = defaultDisplayType ? defaultBuiltinType(defaultDisplayType) : "text"
+    const previousSetting = profile?.custom_field_schema?.find((field) => field.key === answerKey)
+    const setting = isEdit ? previousSetting && { type: previousSetting.type, options: previousSetting.options } : builtinFieldTypes[key]
+    const type = builtinType(setting, defaultType)
+    if (!isEdit && activeTab === "previous_owner" && label === "Registration Status"
+        && type === "radio" && Array.isArray(setting?.options)) {
+      const values = { registered: "registered", unregistered: "unregistered", "open book": "open_book" }
+      const options = setting.options.map((option) => ({ value: values[option.trim().toLowerCase()], label: option }))
+      if (options.length && options.every((option) => option.value)) {
+        return <RadioField label={label} value={form.registration_type} onChange={(value) => set("registration_type", value)} options={options} />
+      }
+    }
+    if (!setting || (typeof setting === "string" && (type === defaultType
+      || (["text", "textarea"].includes(defaultType) && ["text", "email", "tel", "number", "date", "textarea"].includes(type))))) return nativeField
+    const options = builtinOptions(setting)
+    return customField({ key: answerKey, label: labelFor(label), tab: activeTab, type, options })
+  }
+
   function customField(field) {
     const value = form.custom_fields[field.key] ?? (field.type === "checkbox" ? false : "")
     const onChange = (next) => setCustom(field.key, next)
     if (field.type === "image") return <ImageField key={field.key} label={field.label} value={value} onChange={onChange} />
     if (field.type === "multi_image") return <MultiImageField key={field.key} label={field.label} value={value} onChange={onChange} max={10} readOnly={readOnly} />
     if (field.type === "file") return <FileField key={field.key} label={field.label} value={value} onChange={onChange} readOnly={readOnly} />
-    if (field.type === "checkbox") return <label key={field.key} className="cp-radio-option cp-client-toggle"><input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} />{field.label}</label>
+    if (field.type === "checkbox") return <label key={field.key} className="cp-radio-option cp-client-toggle"><input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} />{labelFor(field.label)}</label>
     if (field.type === "radio") return <RadioField key={field.key} label={field.label} value={value} onChange={onChange} options={(field.options || []).map((option) => ({ value: option, label: option }))} />
     if (field.type === "select") return <SelectField key={field.key} label={field.label} value={value} onChange={onChange} options={[{ value: "", label: "Select…" }, ...(field.options || []).map((option) => ({ value: option, label: option }))]} />
     if (field.type === "textarea") return <label key={field.key} className="tp-form-group tp-form-group-full"><span>{field.label}</span><textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)} /></label>
@@ -699,24 +724,24 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
             {isVisible("Local Client") && form.has_local_client && (
               <div className="cp-client-block">
                 <div className="tp-form-row">
-                  <TextField
+                  {builtinField("Client Name", <TextField
                     label="Client Name"
                     value={form.local_client_name}
                     onChange={(v) => set("local_client_name", v)}
-                  />
-                  <TextField
+                  />, "local")}
+                  {builtinField("Phone Number", <TextField
                     label="Phone Number"
                     value={form.local_client_phone}
                     onChange={(v) => set("local_client_phone", v)}
-                  />
+                  />, "local")}
                 </div>
-                <DocumentPicker prefix="local" form={form} set={set} />
+                <DocumentPicker prefix="local" form={form} set={set} renderBuiltin={builtinField} />
                 <div className="tp-form-row cp-handover-row">
-                  <ImageField
+                  {builtinField("Handover Selfie", <ImageField
                     label="Handover Selfie"
                     value={form.local_client_handover_selfie_image}
                     onChange={(v) => set("local_client_handover_selfie_image", v)}
-                  />
+                  />, "local")}
                 </div>
               </div>
             )}
@@ -732,29 +757,29 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
             {isVisible("Foreign Client") && form.has_foreign_client && (
               <div className="cp-client-block">
                 <div className="tp-form-row">
-                  <TextField
+                  {builtinField("Client Name", <TextField
                     label="Client Name"
                     value={form.foreign_client_name}
                     onChange={(v) => set("foreign_client_name", v)}
-                  />
-                  <CountrySelect
+                  />, "foreign")}
+                  {builtinField("Country", <CountrySelect
                     label="Country"
                     value={form.foreign_client_country}
                     onChange={(v) => set("foreign_client_country", v)}
-                  />
-                  <TextField
+                  />)}
+                  {builtinField("Phone Number", <TextField
                     label="Phone Number"
                     value={form.foreign_client_phone}
                     onChange={(v) => set("foreign_client_phone", v)}
-                  />
+                  />, "foreign")}
                 </div>
-                <DocumentPicker prefix="foreign" form={form} set={set} />
+                <DocumentPicker prefix="foreign" form={form} set={set} renderBuiltin={builtinField} />
                 <div className="tp-form-row cp-handover-row">
-                  <ImageField
+                  {builtinField("Handover Selfie", <ImageField
                     label="Handover Selfie"
                     value={form.foreign_client_handover_selfie_image}
                     onChange={(v) => set("foreign_client_handover_selfie_image", v)}
-                  />
+                  />, "foreign")}
                 </div>
               </div>
             )}
@@ -764,18 +789,18 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
         {activeTab === "document" && (
           <div className="tp-form-section">
             <div className="tp-form-row">
-              <MultiImageField label="CR Document" max={2} value={form.cr_document_image} onChange={(v) => set("cr_document_image", v)} />
-              <MultiImageField
+              {builtinField("CR Document", <MultiImageField label="CR Document" max={2} value={form.cr_document_image} onChange={(v) => set("cr_document_image", v)} />)}
+              {builtinField("Revenue License", <MultiImageField
                 label="Revenue License"
                 max={2}
                 value={form.revenue_license_image}
                 onChange={(v) => set("revenue_license_image", v)}
-              />
+              />)}
             </div>
             <div className="tp-form-row">
-              <TextField label="Type" value={form.vehicle_type} onChange={(v) => set("vehicle_type", v)} />
-              <TextField label="Chassis Number" value={form.chassis_number} onChange={(v) => set("chassis_number", v)} />
-              <TextField label="Vehicle Number" value={form.vehicle_number} onChange={(v) => set("vehicle_number", v)} />
+              {builtinField("Type", <TextField label="Type" value={form.vehicle_type} onChange={(v) => set("vehicle_type", v)} />)}
+              {builtinField("Chassis Number", <TextField label="Chassis Number" value={form.chassis_number} onChange={(v) => set("chassis_number", v)} />)}
+              {builtinField("Vehicle Number", <TextField label="Vehicle Number" value={form.vehicle_number} onChange={(v) => set("vehicle_number", v)} placeholder="Leave blank to use chassis/VIN" />)}
             </div>
           </div>
         )}
@@ -783,69 +808,70 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
         {activeTab === "previous_owner" && (
           <div className="tp-form-section">
             <div className="tp-form-row">
-              <TextField label="Previous Owner Name" value={form.previous_owner_name} onChange={(v) => set("previous_owner_name", v)} />
-              <TextField label="NIC" value={form.previous_owner_nic} onChange={(v) => set("previous_owner_nic", v)} />
-              <TextField label="Phone Number" value={form.previous_owner_phone} onChange={(v) => set("previous_owner_phone", v)} />
-              <RadioField
+              {builtinField("Previous Owner Name", <TextField label="Previous Owner Name" value={form.previous_owner_name} onChange={(v) => set("previous_owner_name", v)} />)}
+              {builtinField("NIC", <TextField label="NIC" value={form.previous_owner_nic} onChange={(v) => set("previous_owner_nic", v)} />)}
+              {builtinField("Phone Number", <TextField label="Phone Number" value={form.previous_owner_phone} onChange={(v) => set("previous_owner_phone", v)} />)}
+              {builtinField("Registration Status", <RadioField
                 label="Registration Status"
                 value={form.registration_type}
                 onChange={(v) => set("registration_type", v)}
                 options={[
                   { value: "registered", label: "Registered" },
+                  { value: "unregistered", label: "Unregistered" },
                   { value: "open_book", label: "Open Book" },
                 ]}
-              />
+              />)}
             </div>
             <div className="tp-form-row">
-              <ImageField
+              {builtinField("Detailed Selfie Photo", <ImageField
                 label="Detailed Selfie Photo"
                 value={form.previous_owner_selfie_image}
                 onChange={(v) => set("previous_owner_selfie_image", v)}
-              />
-              <ImageField
+              />)}
+              {builtinField("In-Writing Letter", <ImageField
                 label="In-Writing Letter"
                 value={form.in_writing_letter_image}
                 onChange={(v) => set("in_writing_letter_image", v)}
-              />
+              />)}
             </div>
             <div className="tp-form-row">
-              <ScanReportField
+              {builtinField("Inspection Report 1", <ScanReportField
                 token={token}
                 label="Inspection Report 1"
                 value={form.scan_report_1_image}
                 onChange={(v) => set("scan_report_1_image", v)}
-                vehicleNumber={form.vehicle_number}
+                vehicleNumber={form.vehicle_number?.trim() || form.chassis_number?.trim() || ""}
                 readOnly={readOnly}
-              />
-              <ScanReportField
+              />)}
+              {builtinField("Inspection Report 2", <ScanReportField
                 token={token}
                 label="Inspection Report 2"
                 value={form.scan_report_2_image}
                 onChange={(v) => set("scan_report_2_image", v)}
-                vehicleNumber={form.vehicle_number}
+                vehicleNumber={form.vehicle_number?.trim() || form.chassis_number?.trim() || ""}
                 readOnly={readOnly}
-              />
+              />)}
             </div>
             <div className="tp-form-row">
-              <FileField
+              {builtinField("Scan Report 1 (Upload)", <FileField
                 label="Scan Report 1 (Upload)"
                 value={form.scan_report_1_upload}
                 onChange={(v) => set("scan_report_1_upload", v)}
                 readOnly={readOnly}
-              />
-              <FileField
+              />)}
+              {builtinField("Scan Report 2 (Upload)", <FileField
                 label="Scan Report 2 (Upload)"
                 value={form.scan_report_2_upload}
                 onChange={(v) => set("scan_report_2_upload", v)}
                 readOnly={readOnly}
-              />
+              />)}
             </div>
             <div className="tp-form-row">
-              <MultiImageField label="Garage Bill" max={10} value={form.garage_bill_image} onChange={(v) => set("garage_bill_image", v)} />
-              <MultiImageField label="Modification" max={10} value={form.modification_image} onChange={(v) => set("modification_image", v)} />
+              {builtinField("Garage Bill", <MultiImageField label="Garage Bill" max={10} value={form.garage_bill_image} onChange={(v) => set("garage_bill_image", v)} />)}
+              {builtinField("Modification", <MultiImageField label="Modification" max={10} value={form.modification_image} onChange={(v) => set("modification_image", v)} />)}
             </div>
-            <TextField type="textarea" label="Others" value={form.other_notes} onChange={(v) => set("other_notes", v)} />
-            <RadioField
+            {builtinField("Others", <TextField type="textarea" label="Others" value={form.other_notes} onChange={(v) => set("other_notes", v)} />)}
+            {builtinField("Third Person Involved?", <RadioField
               label="Third Person Involved?"
               value={form.third_person_involved ? "yes" : "no"}
               onChange={(v) => set("third_person_involved", v === "yes")}
@@ -853,19 +879,19 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
                 { value: "no", label: "No" },
                 { value: "yes", label: "Yes" },
               ]}
-            />
+            />)}
             {form.third_person_involved && (
               <div className="tp-form-row">
-                <ImageField
+                {builtinField("Third Person Document", <ImageField
                   label="Third Person Document"
                   value={form.third_person_image}
                   onChange={(v) => set("third_person_image", v)}
-                />
-                <ImageField
+                />)}
+                {builtinField("Handover Selfie", <ImageField
                   label="Handover Selfie"
                   value={form.handover_selfie_image}
                   onChange={(v) => set("handover_selfie_image", v)}
-                />
+                />)}
               </div>
             )}
           </div>
@@ -879,12 +905,12 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
               { key: "purchasing", label: "Purchasing" },
             ].map((d) => (
               <div className="tp-form-row" key={d.key}>
-                <TextField
+                {builtinField(d.label, <TextField
                   label={d.label}
                   placeholder="Person's name"
                   value={form[`${d.key}_person_name`]}
                   onChange={(v) => set(`${d.key}_person_name`, v)}
-                />
+                />)}
               </div>
             ))}
             {form.extra_departments.map((d, i) => (
@@ -927,38 +953,38 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
         {activeTab === "payment" && (
           <div className="tp-form-section">
             <div className="tp-form-row">
-              <TextField label="Leasing Company" value={form.leasing_company} onChange={(v) => set("leasing_company", v)} />
-              <TextField label="Bank Officer Name" value={form.bank_officer_name} onChange={(v) => set("bank_officer_name", v)} />
+              {builtinField("Leasing Company", <TextField label="Leasing Company" value={form.leasing_company} onChange={(v) => set("leasing_company", v)} />)}
+              {builtinField("Bank Officer Name", <TextField label="Bank Officer Name" value={form.bank_officer_name} onChange={(v) => set("bank_officer_name", v)} />)}
             </div>
             <div className="tp-form-row">
-              <TextField type="date" label="File Signed Date" value={form.file_signed_date} onChange={(v) => set("file_signed_date", v)} />
-              <TextField type="date" label="Payment Date" value={form.payment_date} onChange={(v) => set("payment_date", v)} />
-              <TextField type="date" label="DO Date" value={form.do_date} onChange={(v) => set("do_date", v)} />
+              {builtinField("File Signed Date", <TextField type="date" label="File Signed Date" value={form.file_signed_date} onChange={(v) => set("file_signed_date", v)} />)}
+              {builtinField("Payment Date", <TextField type="date" label="Payment Date" value={form.payment_date} onChange={(v) => set("payment_date", v)} />)}
+              {builtinField("DO Date", <TextField type="date" label="DO Date" value={form.do_date} onChange={(v) => set("do_date", v)} />)}
             </div>
             <div className="tp-form-row">
-              <TextField
+              {builtinField("Customer Advanced Date", <TextField
                 type="date"
                 label="Customer Advanced Date"
                 value={form.customer_advanced_date}
                 onChange={(v) => set("customer_advanced_date", v)}
-              />
-              <TextField
+              />)}
+              {builtinField("Vehicle Handover Date", <TextField
                 type="date"
                 label="Vehicle Handover Date"
                 value={form.vehicle_handover_date}
                 onChange={(v) => set("vehicle_handover_date", v)}
-              />
-              <TextField type="date" label="Purchasing Date" value={form.purchasing_date} onChange={(v) => set("purchasing_date", v)} />
+              />)}
+              {builtinField("Purchasing Date", <TextField type="date" label="Purchasing Date" value={form.purchasing_date} onChange={(v) => set("purchasing_date", v)} />)}
             </div>
             <div className="tp-form-row">
-              <TextField type="number" label="Selling Price" value={form.selling_price} onChange={(v) => set("selling_price", v)} />
-              <TextField type="number" label="Loan Amount" value={form.loan_amount} onChange={(v) => set("loan_amount", v)} />
-              <TextField
+              {builtinField("Selling Price", <TextField type="number" label="Selling Price" value={form.selling_price} onChange={(v) => set("selling_price", v)} />)}
+              {builtinField("Loan Amount", <TextField type="number" label="Loan Amount" value={form.loan_amount} onChange={(v) => set("loan_amount", v)} />)}
+              {builtinField("Customer Down Payment", <TextField
                 type="number"
                 label="Customer Down Payment"
                 value={form.customer_down_payment}
                 onChange={(v) => set("customer_down_payment", v)}
-              />
+              />)}
             </div>
           </div>
         )}

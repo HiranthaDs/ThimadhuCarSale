@@ -17,7 +17,7 @@ function CalculatorIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="3" /><path d="M8 6h8M8 11h1m6 0h1m-8 4h1m6 0h1m-8 4h1m6 0h1" /></svg>
 }
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, notice = "" }) {
   const [resetting, setResetting] = useState(false)
   const [email, setEmail] = useState("")
   const [resetSuccess, setResetSuccess] = useState("")
@@ -63,6 +63,7 @@ export default function Login({ onLogin }) {
               <div className="lg-form-eyebrow">WELCOME BACK</div>
               <h2 id="lg-welcome">Sign in to your<br />workspace<span>.</span></h2>
               <p className="lg-welcome-sub">Access your Thimadu Auto Trading account and continue managing your dealership.</p>
+              {notice && <div className="lg-error" role="alert">{notice}</div>}
 
               <div className="lg-input-group">
                 <label className="lg-field-label" htmlFor="login-email">Email address</label>

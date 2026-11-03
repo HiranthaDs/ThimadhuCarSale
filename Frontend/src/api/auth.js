@@ -1,11 +1,13 @@
-import { apiRequest } from "./client"
+import { advanceAuthEpoch, apiRequest } from "./client"
 
-export function login(email, password) {
-  return apiRequest("/auth/login", { method: "POST", body: { email, password } })
+export async function login(email, password) {
+  const result = await apiRequest("/auth/login", { method: "POST", body: { email, password }, notifyOnUnauthorized: false })
+  advanceAuthEpoch()
+  return result
 }
 
-export function me(token) {
-  return apiRequest("/auth/me", { token })
+export function me() {
+  return apiRequest("/auth/me", { notifyOnUnauthorized: false })
 }
 
 export function createUser(token, { email, fullName, password, role }) {
@@ -64,6 +66,8 @@ export function resetPasswordWithOtp({ token, email, otp, newPassword, challenge
   })
 }
 
-export function logout() {
-  return apiRequest("/auth/logout", { method: "POST" })
+export async function logout() {
+  const result = await apiRequest("/auth/logout", { method: "POST" })
+  advanceAuthEpoch()
+  return result
 }

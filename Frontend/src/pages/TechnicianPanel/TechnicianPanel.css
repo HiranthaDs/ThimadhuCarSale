@@ -1460,6 +1460,7 @@ input[type="file"]:disabled::file-selector-button {
   font: inherit; font-size: 13px; cursor: pointer;
 }
 .tp-diagram-swatch i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+.tp-diagram-swatch .tp-diagram-highlight-icon { border-radius: 3px; border: 1px solid currentColor; }
 .tp-diagram-swatch input[type="color"] { width: 22px; height: 22px; padding: 0; border: none; background: none; }
 .tp-diagram-swatch.is-active { border-color: #3b43f0; box-shadow: 0 0 0 2px rgba(59, 67, 240, 0.25); }
 .tp-diagram-size { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }

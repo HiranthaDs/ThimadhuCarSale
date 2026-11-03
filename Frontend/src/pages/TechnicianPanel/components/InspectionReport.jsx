@@ -129,7 +129,7 @@ export default function InspectionReport({ data, vehicleTitle, token, reportId, 
 
       const blob = pdf.output("blob")
 
-      const registrationNumber = data.registrationNumber || ""
+      const registrationNumber = data.registrationNumber?.trim() || data.vin?.trim() || ""
       const fileName = `${registrationNumber || vehicleTitle || "inspection-report"}${data.scanNumber === 2 ? "-Inspection Report 2" : ""}.pdf`
       const file = new File([blob], fileName, { type: "application/pdf" })
       const buyerName = [data.buyerFirstName, data.buyerLastName].filter(Boolean).join(" ")

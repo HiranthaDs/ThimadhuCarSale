@@ -3,13 +3,13 @@ import { createBlacklistEntry, updateBlacklistEntry } from "../../../api/blackli
 import CameraButton from "../../../components/CameraCapture"
 import { compressImage } from "../../../utils/image"
 
-const initialForm = { vehicle_number: "", mileage: "", remarks: "", images: [] }
+const initialForm = { vehicle_number: "", location: "", remarks: "", images: [] }
 
 function formFromEntry(entry) {
   if (!entry) return initialForm
   return {
     vehicle_number: entry.vehicle_number || "",
-    mileage: entry.mileage || "",
+    location: entry.location || "",
     remarks: entry.remarks || "",
     images: entry.images.map((img) => img.image),
   }
@@ -37,7 +37,7 @@ export default function VehicleBlacklistForm({ token, entry, onClose, onCreated,
     try {
       const payload = {
         vehicle_number: form.vehicle_number || null,
-        mileage: form.mileage || null,
+        location: form.location.trim() || null,
         remarks: form.remarks || null,
         images: form.images,
       }
@@ -73,11 +73,13 @@ export default function VehicleBlacklistForm({ token, entry, onClose, onCreated,
             />
           </label>
           <label className="tp-form-group">
-            <span>Mileage (km)</span>
+            <span>Location</span>
             <input
               type="text"
-              value={form.mileage}
-              onChange={(e) => set("mileage", e.target.value)}
+              value={form.location}
+              maxLength={120}
+              placeholder="Enter a location name"
+              onChange={(e) => set("location", e.target.value)}
             />
           </label>
         </div>

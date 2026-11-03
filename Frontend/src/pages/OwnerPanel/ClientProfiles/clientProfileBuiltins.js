@@ -41,6 +41,26 @@ export const BUILTIN_FIELDS = {
 
 export const builtinKey = (tab, label) => `${tab}:${label}`
 
+// These existing fields can use any of the editor's input types. Their
+// converted answers are stored separately from the original fixed columns.
+// These controls change which other fields appear, so they keep their native
+// behavior. Every answer field can be changed to any supported input type.
+const STRUCTURAL_FIELDS = new Set([
+  "client_details:Local Client", "client_details:Foreign Client",
+  "client_details:Identification Document", "client_details:NIC",
+  "client_details:Passport", "client_details:Other document",
+  "client_details:No document", "previous_owner:Third Person Involved?",
+  "department:Department", "department:Person's Name",
+])
+
+export const isFlexibleBuiltin = (tab, label) => !STRUCTURAL_FIELDS.has(builtinKey(tab, label))
+
+export const builtinType = (setting, fallback) => typeof setting === "string"
+  ? setting : setting?.type || fallback
+
+export const builtinOptions = (setting, fallback = []) => Array.isArray(setting?.options)
+  ? setting.options : fallback
+
 const FIXED_TYPES = {
   "Number": "number", "Date picker": "date", "Checkbox": "checkbox",
   "Checkbox group": "checkbox", "Radio buttons": "radio",

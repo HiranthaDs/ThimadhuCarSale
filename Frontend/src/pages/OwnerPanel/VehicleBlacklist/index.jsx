@@ -117,7 +117,7 @@ export default function VehicleBlacklist({ token, can = allowAll }) {
           </svg>
           <input
             type="text"
-            placeholder="Search by vehicle number, mileage, remarks…"
+            placeholder="Search by vehicle number, location, remarks…"
             aria-label="Search blacklist"
             value={search}
             onChange={(e) => { setPage(0); setSearch(e.target.value) }}
@@ -137,7 +137,7 @@ export default function VehicleBlacklist({ token, can = allowAll }) {
             <thead>
               <tr>
                 <th>Vehicle Number</th>
-                <th>Mileage</th>
+                <th>Location</th>
                 <th>Remarks</th>
                 <th>Images</th>
                 <th>Added</th>
@@ -155,7 +155,7 @@ export default function VehicleBlacklist({ token, can = allowAll }) {
               {entries.map((entry) => (
                 <tr key={entry.id}>
                   <td>{entry.vehicle_number || "—"}</td>
-                  <td className="tp-muted">{entry.mileage || "—"}</td>
+                  <td className="tp-muted">{entry.location || "—"}</td>
                   <td className="tp-muted">{entry.remarks || "—"}</td>
                   <td>
                     {entry.images.length > 0 ? (

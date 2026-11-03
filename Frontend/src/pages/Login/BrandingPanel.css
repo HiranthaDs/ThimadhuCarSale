@@ -25,7 +25,7 @@
 .lg-brand-statement::before { content: ""; display: block; width: 34px; height: 2px; margin: 0 auto 13px; background: #1688ff; box-shadow: 0 0 8px #008cff80; }
 @media (min-width: 1500px) { .lg-brand-identity { padding-top: 22px; } .lg-brand-bottom { padding-bottom: 38px; } }
 @media (min-width: 901px) and (max-width: 1150px) { .lg-official-logo { width: 270px; } .lg-brand-tagline { font-size: 9px; letter-spacing: 2.5px; } .lg-brand-bottom { padding-inline: 16px; } .lg-brand-features li { font-size: 9px; padding-inline: 6px; } }
-@media (max-width: 900px) {
+@media (max-width: 900px), (max-device-width: 600px), (pointer: coarse) and (max-width: 1100px) and (orientation: portrait) {
   .lg-brand-identity { padding: 0 24px 25px; }
   .lg-official-logo { width: 210px; }
   .lg-brand-tagline { margin-top: -17px; font-size: 8px; letter-spacing: 2.8px; }
@@ -33,7 +33,7 @@
   .lg-ribbon-top { width: 60%; height: 220%; top: -150%; right: -40%; }
   .lg-ribbon-bottom { width: 60%; height: 160%; bottom: -145%; right: -20%; }
 }
-@media (max-width: 480px) { .lg-official-logo { width: 180px; } .lg-brand-identity { padding-bottom: 20px; } .lg-brand-tagline { font-size: 7px; margin-top: -17px; } }
+@media (max-width: 480px), (max-device-width: 600px) { .lg-official-logo { width: 180px; } .lg-brand-identity { padding-bottom: 20px; } .lg-brand-tagline { font-size: 7px; margin-top: -17px; } }
 
 @media (min-width: 901px) and (max-height: 850px) {
   .lg-brand-identity { padding-top: 0; }
@@ -43,4 +43,13 @@
   .lg-brand-bottom { padding-bottom: 22px; }
   .lg-brand-statement { margin-top: 20px; }
 }
-@media (max-width: 900px) { .lg-branding::before { background: #000; } }
+@media (max-width: 900px), (max-device-width: 600px), (pointer: coarse) and (max-width: 1100px) and (orientation: portrait) { .lg-branding::before { background: #000; } }
+@media (max-width: 600px), (max-device-width: 600px) {
+  .lg-branding { height: 126px; min-height: 126px; flex: none; background: linear-gradient(125deg, #020914, #082d64); }
+  .lg-branding::before { background: radial-gradient(ellipse at 50% 120%, #075bff55, transparent 65%); }
+  .lg-brand-identity { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 8px 12px; }
+  .lg-official-logo { width: 150px; height: 85px; object-fit: contain; }
+  .lg-brand-tagline { margin: -7px 0 0; font-size: 7px; letter-spacing: 1.6px; line-height: 1.45; }
+  .lg-ribbon-top { opacity: .35; }
+  .lg-ribbon-bottom { opacity: .25; }
+}

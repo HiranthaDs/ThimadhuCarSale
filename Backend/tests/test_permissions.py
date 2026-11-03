@@ -3,6 +3,7 @@ import asyncio
 import json
 import unittest
 import uuid
+from types import SimpleNamespace
 
 # The reset module installs isolated configuration before application imports.
 import test_password_reset as reset_tests
@@ -108,6 +109,72 @@ class PermissionTests(unittest.TestCase):
         self.service.update(technician.id, [], self.owner)
         self.assertEqual(request("PUT", payload)[0], 403)
         self.assertEqual(request("GET")[0], 403)
+
+    def test_existing_field_override_and_three_radio_choices(self):
+        self.app = FastAPI()
+        self.app.include_router(clients_router)
+        self.app.dependency_overrides[get_db] = lambda: self.db
+        self.app.dependency_overrides[get_current_user] = lambda: self.owner
+        payload = {"fields": [], "field_types": {
+            "previous_owner:Previous Owner Name": {"type": "radio", "options": ["One", "Two", "Three"]},
+            "previous_owner:Detailed Selfie Photo": "text",
+        }}
+
+        def save(body):
+            return CustomizeUnlockTests.request(self, "/clients/form-schema", body, method="PUT")
+
+        self.assertEqual(save(payload)[0], 200)
+        values, definitions = ClientProfileService(self.db).prepare_custom_fields({
+            "previous_owner:Previous Owner Name": "Three",
+            "previous_owner:Detailed Selfie Photo": "A note",
+        })
+        self.assertEqual(values["previous_owner:Previous Owner Name"], "Three")
+        self.assertEqual(len([field for field in definitions if field["key"].startswith("previous_owner:")]), 2)
+        old_profile = SimpleNamespace(custom_fields={}, custom_field_schema=[])
+        _, old_definitions = ClientProfileService(self.db).prepare_custom_fields({}, old_profile)
+        self.assertFalse(any(field["key"].startswith("previous_owner:") for field in old_definitions))
+        payload["field_types"]["previous_owner:Previous Owner Name"]["options"].append("Four")
+        self.assertEqual(save(payload)[0], 400)
+
+    def test_existing_customer_and_payment_fields_can_change_type(self):
+        self.app = FastAPI()
+        self.app.include_router(clients_router)
+        self.app.dependency_overrides[get_db] = lambda: self.db
+        self.app.dependency_overrides[get_current_user] = lambda: self.owner
+        payload = {"fields": [{"key": "custom_reference", "label": "Reference", "tab": "payment", "type": "text"}],
+                   "field_types": {
+                       "payment:Loan Amount": {"type": "radio", "options": ["Cash", "Loan", "Other"]},
+                       "client_details:Client Name": "image",
+                       "document:CR Document": "text",
+                   }}
+        status, _, _ = CustomizeUnlockTests.request(self, "/clients/form-schema", payload, method="PUT")
+        self.assertEqual(status, 200)
+        values, definitions = ClientProfileService(self.db).prepare_custom_fields({
+            "payment:Loan Amount": "Loan", "client_details:Client Name:local": "",
+            "client_details:Client Name:foreign": "", "document:CR Document": "A note",
+            "custom_reference": "ABC",
+        })
+        self.assertEqual(values["payment:Loan Amount"], "Loan")
+        self.assertEqual({field["key"] for field in definitions}, {
+            "payment:Loan Amount", "client_details:Client Name:local",
+            "client_details:Client Name:foreign", "document:CR Document", "custom_reference",
+        })
+        payload["field_types"]["payment:Loan Amount"]["options"].append("Fourth")
+        self.assertEqual(CustomizeUnlockTests.request(self, "/clients/form-schema", payload, method="PUT")[0], 400)
+
+    def test_registration_status_standard_radio_options_save_to_native_field(self):
+        self.app = FastAPI()
+        self.app.include_router(clients_router)
+        self.app.dependency_overrides[get_db] = lambda: self.db
+        self.app.dependency_overrides[get_current_user] = lambda: self.owner
+        payload = {"fields": [], "field_types": {"previous_owner:Registration Status": {
+            "type": "radio", "options": ["Registered", "Unregistered", "Open Book"],
+        }}}
+        self.assertEqual(CustomizeUnlockTests.request(self, "/clients/form-schema", payload, method="PUT")[0], 200)
+        parsed = ClientProfileCreate(registration_type="unregistered")
+        self.assertEqual(parsed.registration_type.value, "unregistered")
+        _, definitions = ClientProfileService(self.db).prepare_custom_fields({})
+        self.assertNotIn("previous_owner:Registration Status", {field["key"] for field in definitions})
 
     def test_ceo_starts_with_everything_and_owner_can_restrict(self):
         ceo = self.add_user(UserRole.ceo)

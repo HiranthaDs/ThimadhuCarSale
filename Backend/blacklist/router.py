@@ -25,7 +25,7 @@ def create_blacklist_entry(
 def list_blacklist_entries(
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0, le=100000),
-    q: str | None = Query(default=None, max_length=120, description="Search across vehicle number, mileage, remarks."),
+    q: str | None = Query(default=None, max_length=120, description="Search across vehicle number, location, remarks."),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("blacklist.view")),
 ):

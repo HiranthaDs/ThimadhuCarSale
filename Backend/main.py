@@ -52,6 +52,7 @@ def migrate_schema():
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until timestamptz"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS former_name varchar(255)"))
         conn.execute(text("ALTER TABLE vehicle_blacklist ADD COLUMN IF NOT EXISTS mileage varchar(60)"))
+        conn.execute(text("ALTER TABLE vehicle_blacklist ADD COLUMN IF NOT EXISTS location varchar(120)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS previous_owner_name varchar(255)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS scan_report_1_upload text"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS scan_report_2_upload text"))
@@ -90,6 +91,9 @@ def migrate_schema():
         if conn.execute(text("SELECT 1 FROM pg_enum WHERE enumlabel = 'pending_accountant' "
                               "AND enumtypid = 'client_profile_status'::regtype")).first():
             conn.execute(text("ALTER TYPE client_profile_status RENAME VALUE 'pending_accountant' TO 'pending_ceo'"))
+        if not conn.execute(text("SELECT 1 FROM pg_enum WHERE enumlabel = 'unregistered' "
+                                 "AND enumtypid = 'registration_type'::regtype")).first():
+            conn.execute(text("ALTER TYPE registration_type ADD VALUE 'unregistered'"))
         if not conn.execute(text("SELECT 1 FROM pg_enum WHERE enumlabel = 'admin' "
                                  "AND enumtypid = 'user_role'::regtype")).first():
             conn.execute(text("ALTER TYPE user_role ADD VALUE 'admin'"))

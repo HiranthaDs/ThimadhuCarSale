@@ -3,6 +3,7 @@ import Login from "./pages/Login"
 const OwnerPanel = lazy(() => import("./pages/OwnerPanel"))
 const StaffPanel = lazy(() => import("./pages/StaffPanel"))
 import { me, logout } from "./api/auth"
+import { currentAuthEpoch } from "./api/client"
 import { confirmLogout } from "./components/unsavedChanges"
 import "./components/pwaInstallPrompt"
 
@@ -25,16 +26,43 @@ function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [sessionNotice, setSessionNotice] = useState("")
 
   useEffect(() => {
     let active = true
     // Remove credentials saved by older versions. Sessions now use an HttpOnly cookie.
     try { localStorage.removeItem("thimadu_session") } catch { /* Storage may be disabled. */ }
-    const expired = () => { setSession(null); setError("") }
+    const expired = () => {
+      // A 401 from an old in-flight request can arrive after a new login.
+      // Confirm the current cookie before clearing the new session.
+      const epoch = currentAuthEpoch()
+      me().then(user => {
+        if (active && epoch === currentAuthEpoch()) {
+          const next = toSession(user)
+          setSession(previous => previous && (sameSessionAccess(previous, next) ? previous : next))
+        }
+      }).catch(err => {
+        if (active && epoch === currentAuthEpoch() && err.status === 401) {
+          setSession(null)
+          setError("")
+          setSessionNotice("Your session ended. Please sign in again.")
+        }
+      })
+    }
     window.addEventListener("thimadu:unauthorized", expired)
     me().then(user => {
       if (active) setSession(toSession(user))
     }).catch(() => {}).finally(() => { if (active) setLoading(false) })
+    return () => {
+      active = false
+      window.removeEventListener("thimadu:unauthorized", expired)
+    }
+  }, [])
+
+  const hasSession = Boolean(session)
+  useEffect(() => {
+    if (!hasSession) return
+    let active = true
     // Pick up permission changes the owner made while this tab was in the background.
     const refresh = () => {
       if (document.visibilityState !== "visible") return
@@ -42,17 +70,21 @@ function App() {
         if (!active) return
         const next = toSession(user)
         setSession(previous => previous && (sameSessionAccess(previous, next) ? previous : next))
-      }).catch(() => {})
+      }).catch(err => {
+        if (active && err.status === 401) {
+          window.dispatchEvent(new CustomEvent("thimadu:unauthorized"))
+        }
+      })
     }
+    refresh()
     document.addEventListener("visibilitychange", refresh)
     const accessRefresh = window.setInterval(refresh, 15000)
     return () => {
       active = false
-      window.removeEventListener("thimadu:unauthorized", expired)
       document.removeEventListener("visibilitychange", refresh)
       window.clearInterval(accessRefresh)
     }
-  }, [])
+  }, [hasSession])
 
   async function handleLogout() {
     if (!(await confirmLogout())) return
@@ -60,13 +92,14 @@ function App() {
       await logout()
       setSession(null)
       setError("")
+      setSessionNotice("")
     } catch (err) {
       setError(`Could not sign out: ${err.message}`)
     }
   }
 
   if (loading) return <p role="status">Loading your account...</p>
-  if (!session) return <Login onLogin={(user) => setSession(toSession(user))} />
+  if (!session) return <Login notice={sessionNotice} onLogin={(user) => { setSessionNotice(""); setSession(toSession(user)) }} />
   const ActivePanel = panels[session.role] ?? StaffPanel
   return <>
     {error && <div role="alert">{error}</div>}

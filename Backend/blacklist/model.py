@@ -18,6 +18,7 @@ class VehicleBlacklist(Base):
     vehicle_number: Mapped[str | None] = mapped_column(String(60), nullable=True)
     chassis_number: Mapped[str | None] = mapped_column(String(120), nullable=True)  # legacy, no longer used
     mileage: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(120), nullable=True)
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     images: Mapped[list["VehicleBlacklistImage"]] = relationship(

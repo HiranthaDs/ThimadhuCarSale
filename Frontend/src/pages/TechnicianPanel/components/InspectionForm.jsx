@@ -260,9 +260,14 @@ function DiagramField({ field, marksValue, onChange }) {
   const last = useRef(null)
   const lastMarks = useRef("")
   const history = useRef([])
+  const highlightBase = useRef(null)
+  const highlightPoints = useRef([])
+  const highlighting = useRef(false)
   const [color, setColor] = useState(DIAGRAM_COLORS[0].color)
   const [size, setSize] = useState(10)
   const [erasing, setErasing] = useState(false)
+  const [highlighter, setHighlighter] = useState(false)
+  const [highlightOpacity, setHighlightOpacity] = useState(30)
   const [, setReady] = useState(0)
 
   useEffect(() => {
@@ -292,6 +297,7 @@ function DiagramField({ field, marksValue, onChange }) {
 
   function stroke(from, to) {
     const ctx = marksRef.current.getContext("2d")
+    ctx.save()
     ctx.globalCompositeOperation = erasing ? "destination-out" : "source-over"
     ctx.strokeStyle = color
     ctx.lineWidth = erasing ? size * 2 : size
@@ -300,6 +306,32 @@ function DiagramField({ field, marksValue, onChange }) {
     ctx.moveTo(from.x, from.y)
     ctx.lineTo(to.x + 0.01, to.y)
     ctx.stroke()
+    ctx.restore()
+  }
+
+  function drawHighlight() {
+    const ctx = marksRef.current.getContext("2d")
+    const points = highlightPoints.current
+    if (!highlightBase.current || !points.length) return
+    ctx.save()
+    ctx.globalCompositeOperation = "source-over"
+    ctx.globalAlpha = 1
+    ctx.clearRect(0, 0, DIAGRAM_W, DIAGRAM_H)
+    ctx.drawImage(highlightBase.current, 0, 0)
+    ctx.globalAlpha = highlightOpacity / 100
+    ctx.strokeStyle = color
+    ctx.lineWidth = Math.max(18, size * 3)
+    ctx.lineCap = "round"
+    ctx.lineJoin = "round"
+    ctx.beginPath()
+    ctx.moveTo(points[0].x, points[0].y)
+    if (points.length === 1) {
+      ctx.lineTo(points[0].x + 0.01, points[0].y)
+    } else {
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y)
+    }
+    ctx.stroke()
+    ctx.restore()
   }
 
   function start(e) {
@@ -309,13 +341,26 @@ function DiagramField({ field, marksValue, onChange }) {
     if (history.current.length > 20) history.current.shift()
     drawing.current = true
     last.current = point(e)
-    stroke(last.current, last.current)
+    highlighting.current = highlighter && !erasing
+    if (highlighting.current) {
+      const snapshot = document.createElement("canvas")
+      snapshot.width = DIAGRAM_W
+      snapshot.height = DIAGRAM_H
+      snapshot.getContext("2d").drawImage(marksRef.current, 0, 0)
+      highlightBase.current = snapshot
+      highlightPoints.current = [last.current]
+      drawHighlight()
+    } else stroke(last.current, last.current)
   }
 
   function move(e) {
     if (!drawing.current) return
     const p = point(e)
-    stroke(last.current, p)
+    if (highlighting.current) {
+      if (Math.hypot(p.x - last.current.x, p.y - last.current.y) < 2) return
+      highlightPoints.current.push(p)
+      drawHighlight()
+    } else stroke(last.current, p)
     last.current = p
   }
 
@@ -346,6 +391,9 @@ function DiagramField({ field, marksValue, onChange }) {
   function end() {
     if (!drawing.current) return
     drawing.current = false
+    highlighting.current = false
+    highlightBase.current = null
+    highlightPoints.current = []
     save()
   }
 
@@ -359,6 +407,9 @@ function DiagramField({ field, marksValue, onChange }) {
   }
 
   function clearAll() {
+    highlighting.current = false
+    highlightBase.current = null
+    highlightPoints.current = []
     history.current.push(marksRef.current.toDataURL())
     marksRef.current.getContext("2d").clearRect(0, 0, DIAGRAM_W, DIAGRAM_H)
     lastMarks.current = ""
@@ -383,7 +434,12 @@ function DiagramField({ field, marksValue, onChange }) {
         <label className="tp-diagram-swatch" title="Custom color">
           <input type="color" value={color} onChange={(e) => { setColor(e.target.value); setErasing(false) }} />Custom
         </label>
-        <button type="button" className={`tp-diagram-swatch${erasing ? " is-active" : ""}`} onClick={() => setErasing(true)}>Eraser</button>
+        <button type="button" className={`tp-diagram-swatch${highlighter ? " is-active" : ""}`} aria-pressed={highlighter} onClick={() => { setHighlighter((active) => !active); setErasing(false) }}><i className="tp-diagram-highlight-icon" style={{ background: color, opacity: highlightOpacity / 100 }} />Highlighter</button>
+        {highlighter && <label className="tp-diagram-size" htmlFor={`${key}-highlight-opacity`}>
+          Opacity {highlightOpacity}%
+          <input id={`${key}-highlight-opacity`} type="range" min="5" max="100" step="5" value={highlightOpacity} onChange={(e) => setHighlightOpacity(Number(e.target.value))} />
+        </label>}
+        <button type="button" className={`tp-diagram-swatch${erasing ? " is-active" : ""}`} onClick={() => { setErasing(true); setHighlighter(false) }}>Eraser</button>
         <label className="tp-diagram-size">
           Size
           <input type="range" min="3" max="30" value={size} onChange={(e) => setSize(Number(e.target.value))} />
@@ -570,6 +626,7 @@ function Field({ field, value, onChange, reasonValue, onReasonChange, marksValue
       <input
         type={type === "number" ? "number" : "text"}
         value={value}
+        placeholder={key === "registrationNumber" ? "Leave blank to use VIN" : undefined}
         onChange={(e) => onChange(key, e.target.value)}
       />
     </label>

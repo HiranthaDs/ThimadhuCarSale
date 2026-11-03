@@ -153,48 +153,68 @@ function makePages(pdf, profile, logoDataUrl) {
   pdf.text("FINAL APPROVAL COMPLETE", 21, y + 8)
   y += 19
 
+  const overrides = new Set((profile.custom_field_schema || []).map((field) => field.key))
+  const original = (tab, label, value, instance) => overrides.has(`${tab}:${label}${instance ? `:${instance}` : ""}`) ? undefined : value
   if (profile.has_local_client) section("Local client", [
-    ["Name", profile.local_client_name], ["Phone", profile.local_client_phone],
+    ["Name", original("client_details", "Client Name", profile.local_client_name, "local")],
+    ["Phone", original("client_details", "Phone Number", profile.local_client_phone, "local")],
     ["Documents", profile.local_client_document_types?.replaceAll(",", ", ")],
-    ["NIC number", profile.local_client_nic_number], ["Passport number", profile.local_client_passport_number],
-    ["Other document number", profile.local_client_other_number],
-  ])
+    ["NIC number", original("client_details", "NIC Number", profile.local_client_nic_number, "local")],
+    ["Passport number", original("client_details", "Passport Number", profile.local_client_passport_number, "local")],
+    ["Other document number", original("client_details", "Other document Number", profile.local_client_other_number, "local")],
+  ].filter(([, value]) => value !== undefined))
   if (profile.has_foreign_client) section("Foreign client", [
-    ["Name", profile.foreign_client_name], ["Country", profile.foreign_client_country],
-    ["Phone", profile.foreign_client_phone], ["Documents", profile.foreign_client_document_types?.replaceAll(",", ", ")],
-    ["NIC number", profile.foreign_client_nic_number], ["Passport number", profile.foreign_client_passport_number],
-    ["Other document number", profile.foreign_client_other_number],
-  ])
+    ["Name", original("client_details", "Client Name", profile.foreign_client_name, "foreign")],
+    ["Country", original("client_details", "Country", profile.foreign_client_country)],
+    ["Phone", original("client_details", "Phone Number", profile.foreign_client_phone, "foreign")],
+    ["Documents", profile.foreign_client_document_types?.replaceAll(",", ", ")],
+    ["NIC number", original("client_details", "NIC Number", profile.foreign_client_nic_number, "foreign")],
+    ["Passport number", original("client_details", "Passport Number", profile.foreign_client_passport_number, "foreign")],
+    ["Other document number", original("client_details", "Other document Number", profile.foreign_client_other_number, "foreign")],
+  ].filter(([, value]) => value !== undefined))
   section("Vehicle and documents", [
-    ["Vehicle type", profile.vehicle_type], ["Vehicle number", profile.vehicle_number],
-    ["Chassis number", profile.chassis_number],
-  ])
+    ["Vehicle type", original("document", "Type", profile.vehicle_type)],
+    ["Vehicle number", original("document", "Vehicle Number", profile.vehicle_number)],
+    ["Chassis number", original("document", "Chassis Number", profile.chassis_number)],
+  ].filter(([, value]) => value !== undefined))
   section("Previous owner", [
-    ["Name", profile.previous_owner_name], ["NIC", profile.previous_owner_nic],
-    ["Phone", profile.previous_owner_phone],
-    ["Registration", profile.registration_type === "open_book" ? "Open book" : profile.registration_type],
-    ["Third person involved", profile.third_person_involved], ["Notes", profile.other_notes],
-    ["Inspection report 1", profile.scan_report_1_image ? "Linked in client profile" : null],
-    ["Inspection report 2", profile.scan_report_2_image ? "Linked in client profile" : null],
-  ])
+    ["Name", original("previous_owner", "Previous Owner Name", profile.previous_owner_name)],
+    ["NIC", original("previous_owner", "NIC", profile.previous_owner_nic)],
+    ["Phone", original("previous_owner", "Phone Number", profile.previous_owner_phone)],
+    ["Registration", original("previous_owner", "Registration Status", profile.registration_type === "open_book" ? "Open book" : profile.registration_type)],
+    ["Third person involved", profile.third_person_involved],
+    ["Notes", original("previous_owner", "Others", profile.other_notes)],
+    ["Inspection report 1", original("previous_owner", "Inspection Report 1", profile.scan_report_1_image ? "Linked in client profile" : null)],
+    ["Inspection report 2", original("previous_owner", "Inspection Report 2", profile.scan_report_2_image ? "Linked in client profile" : null)],
+  ].filter(([, value]) => value !== undefined))
   section("Department", [
-    ["Marketing", profile.marketing_person_name], ["Technical", profile.technical_person_name],
-    ["Purchasing", profile.purchasing_person_name],
+    ["Marketing", original("department", "Marketing", profile.marketing_person_name)],
+    ["Technical", original("department", "Technical", profile.technical_person_name)],
+    ["Purchasing", original("department", "Purchasing", profile.purchasing_person_name)],
     ...(profile.extra_departments || []).map((item) => [item.department || "Other department", item.person_name]),
-  ])
+  ].filter(([, value]) => value !== undefined))
   section("Payment", [
-    ["Leasing company", profile.leasing_company], ["Bank officer", profile.bank_officer_name],
-    ["File signed", dateText(profile.file_signed_date)], ["Payment date", dateText(profile.payment_date)],
-    ["DO date", dateText(profile.do_date)], ["Customer advance", dateText(profile.customer_advanced_date)],
-    ["Vehicle handover", dateText(profile.vehicle_handover_date)], ["Purchasing date", dateText(profile.purchasing_date)],
-    ["Selling price", money(profile.selling_price)], ["Loan amount", money(profile.loan_amount)],
-    ["Customer down payment", money(profile.customer_down_payment)],
-  ])
+    ["Leasing company", original("payment", "Leasing Company", profile.leasing_company)],
+    ["Bank officer", original("payment", "Bank Officer Name", profile.bank_officer_name)],
+    ["File signed", original("payment", "File Signed Date", dateText(profile.file_signed_date))],
+    ["Payment date", original("payment", "Payment Date", dateText(profile.payment_date))],
+    ["DO date", original("payment", "DO Date", dateText(profile.do_date))],
+    ["Customer advance", original("payment", "Customer Advanced Date", dateText(profile.customer_advanced_date))],
+    ["Vehicle handover", original("payment", "Vehicle Handover Date", dateText(profile.vehicle_handover_date))],
+    ["Purchasing date", original("payment", "Purchasing Date", dateText(profile.purchasing_date))],
+    ["Selling price", original("payment", "Selling Price", money(profile.selling_price))],
+    ["Loan amount", original("payment", "Loan Amount", money(profile.loan_amount))],
+    ["Customer down payment", original("payment", "Customer Down Payment", money(profile.customer_down_payment))],
+  ].filter(([, value]) => value !== undefined))
 
   const tabNames = { client_details: "Client details", document: "Documents", previous_owner: "Previous owner", department: "Department", payment: "Payment" }
   for (const [tab, title] of Object.entries(tabNames)) {
     const fields = (profile.custom_field_schema || []).filter((field) => field.tab === tab && !["image", "multi_image", "file"].includes(field.type))
-    if (fields.length) section(`${title} — additional fields`, fields.map((field) => [field.label, profile.custom_fields?.[field.key]]))
+    if (fields.length) section(`${title} — additional fields`, fields.map((field) => [
+      field.key.startsWith("client_details:") && /:(local|foreign)$/.test(field.key)
+        ? `${field.key.endsWith(":local") ? "Local" : "Foreign"} · ${field.label}` : field.label,
+      profile.custom_fields?.[field.key],
+    ]))
   }
 
   const approvals = profile.role_approvals || []
@@ -218,7 +238,26 @@ const PHOTO_FIELDS = [
 ]
 
 function photoEntries(profile) {
-  const fields = [...PHOTO_FIELDS, ...(profile.custom_field_schema || [])
+  const replacedPhotos = {
+    local_client_nic_image: "client_details:NIC Photo:local",
+    local_client_passport_image: "client_details:Passport Photo:local",
+    local_client_other_image: "client_details:Other document Photo:local",
+    local_client_handover_selfie_image: "client_details:Handover Selfie:local",
+    foreign_client_nic_image: "client_details:NIC Photo:foreign",
+    foreign_client_passport_image: "client_details:Passport Photo:foreign",
+    foreign_client_other_image: "client_details:Other document Photo:foreign",
+    foreign_client_handover_selfie_image: "client_details:Handover Selfie:foreign",
+    cr_document_image: "document:CR Document", revenue_license_image: "document:Revenue License",
+    previous_owner_selfie_image: "previous_owner:Detailed Selfie Photo",
+    in_writing_letter_image: "previous_owner:In-Writing Letter",
+    scan_report_1_upload: "previous_owner:Scan Report 1 (Upload)",
+    scan_report_2_upload: "previous_owner:Scan Report 2 (Upload)",
+    garage_bill_image: "previous_owner:Garage Bill", modification_image: "previous_owner:Modification",
+    third_person_image: "previous_owner:Third Person Document",
+    handover_selfie_image: "previous_owner:Handover Selfie",
+  }
+  const overrides = new Set((profile.custom_field_schema || []).map((field) => field.key))
+  const fields = [...PHOTO_FIELDS.filter(([field]) => !overrides.has(replacedPhotos[field])), ...(profile.custom_field_schema || [])
     .filter((field) => ["image", "multi_image", "file"].includes(field.type))
     .map((field) => [field.key, field.label])]
   return fields.flatMap(([field, label]) => splitImages(profile[field] ?? profile.custom_fields?.[field])

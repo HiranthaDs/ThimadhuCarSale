@@ -18,6 +18,7 @@ class ClientDocumentType(str, enum.Enum):
 
 class RegistrationType(str, enum.Enum):
     registered = "registered"
+    unregistered = "unregistered"
     open_book = "open_book"
 
 

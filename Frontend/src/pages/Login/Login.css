@@ -67,9 +67,40 @@
 @keyframes lg-spin { to { transform: rotate(360deg); } }
 @media (min-width: 901px) and (max-height: 850px) { .lg-screen { padding-block: 24px; } .lg-card { margin: 25px auto; } .lg-welcome-sub { margin-bottom: 22px; } .lg-role-fieldset { margin-top: 24px; padding-top: 18px; } .lg-secure { margin-top: 22px; } }
 @media (min-width: 901px) and (max-width: 1150px) { .lg-panel-wrap { padding-inline: 26px; } .lg-role-group { gap: 5px; } .lg-role-btn { font-size: 8px; } .lg-form-eyebrow { font-size: 10px; } }
-@media (max-width: 900px) { .lg-screen { padding: 24px; } .lg-shell { max-width: 600px; min-height: auto; grid-template-columns: 1fr; border-radius: 28px; } .lg-panel-wrap { padding: 22px 40px; } .lg-card { margin: 30px auto; } .lg-card h2 { font-size: 40px; } }
-@media (max-width: 480px) { .lg-screen { padding: 12px; } .lg-shell { border-radius: 22px; } .lg-panel-wrap { padding: 20px; } .lg-card { margin: 26px auto; } .lg-card h2 { font-size: 35px; letter-spacing: -1.2px; } .lg-welcome-sub { font-size: 12px; } .lg-input-wrap input { font-size: 16px; } .lg-role-group { gap: 5px; } .lg-role-btn { min-height: 73px; font-size: 8px; } .lg-role-btn > svg { width: 19px; height: 19px; } .lg-panel-footer { font-size: 8px; } .lg-form-eyebrow { font-size: 10px; letter-spacing: 3px; } }
-@media (max-width: 360px) { .lg-screen { padding: 8px; } .lg-panel-wrap { padding-inline: 14px; } .lg-role-group { grid-template-columns: repeat(3, minmax(0, 1fr)); } .lg-secure { font-size: 9px; } }
+@media (max-width: 900px), (max-device-width: 600px), (pointer: coarse) and (max-width: 1100px) and (orientation: portrait) {
+  .lg-screen { display: block; min-height: 100svh; padding: 20px; }
+  .lg-shell { max-width: 600px; min-height: calc(100svh - 40px); margin-inline: auto; grid-template-columns: minmax(0, 1fr); border-radius: 26px; }
+  .lg-panel-wrap { min-width: 0; padding: 22px clamp(20px, 6vw, 40px) 24px; justify-content: flex-start; }
+  .lg-card { max-width: 480px; margin: 28px auto 34px; }
+  .lg-card h2 { font-size: clamp(31px, 7vw, 40px); }
+  .lg-input-wrap input { font-size: 16px; }
+  .lg-reset-card .password-reset input { font-size: 16px; }
+  .lg-panel-footer { margin-top: auto; }
+}
+@media (max-width: 600px), (max-device-width: 600px) {
+  .lg-screen { padding: 0; background: #f8fbff; }
+  .lg-shell { width: 100%; max-width: none; min-height: 100svh; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+  .lg-panel-wrap { padding: 17px max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); overflow: visible; }
+  .lg-card { width: 100%; margin: 25px auto 28px; }
+  .lg-card h2 { font-size: clamp(30px, 8vw, 36px); line-height: 1.12; letter-spacing: -1.2px; }
+  .lg-welcome-sub { max-width: 34ch; margin: 12px 0 24px; font-size: 13px; line-height: 1.55; }
+  .lg-form-eyebrow { margin-bottom: 10px; font-size: 10px; letter-spacing: 2.5px; }
+  .lg-input-group { margin-bottom: 17px; }
+  .lg-input-wrap { height: 54px; }
+  .lg-login-btn { min-height: 56px; }
+  .lg-role-fieldset { margin-top: 24px; padding-top: 18px; }
+  .lg-role-group { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .lg-role-btn { min-width: 0; min-height: 70px; gap: 7px; padding: 9px 4px; font-size: 11px; line-height: 1.2; text-align: center; overflow-wrap: anywhere; }
+  .lg-role-btn > svg { width: 21px; height: 21px; flex: none; }
+  .lg-secure { margin-top: 22px; font-size: 11px; }
+  .lg-panel-footer { flex-wrap: wrap; gap: 4px 12px; font-size: 10px; }
+}
+@media (max-width: 350px) {
+  .lg-panel-wrap { padding-inline: 16px; }
+  .lg-role-group { gap: 6px; }
+  .lg-role-btn { font-size: 10px; }
+  .lg-forgot { font-size: 10px !important; }
+}
 @media (prefers-reduced-motion: reduce) { .lg-screen *, .lg-screen *::before, .lg-screen *::after { animation: none !important; transition: none !important; } }
 @media (min-width: 901px) and (max-height: 850px) {
   .lg-panel-wrap { padding-block: 18px; }
