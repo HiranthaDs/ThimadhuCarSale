@@ -1,5 +1,6 @@
 import { getFinalizedClientImage } from "../../../api/clients"
 import brandLogo from "../../../assets/logo.png"
+import { formatNumber } from "../../../utils/numberFormat"
 
 const NAVY = [11, 27, 56]
 const BLUE = [22, 119, 255]
@@ -38,7 +39,7 @@ function dateText(value) {
 
 function money(value) {
   return value === null || value === undefined || value === ""
-    ? "—" : `LKR ${Number(value).toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    ? "—" : `LKR ${formatNumber(value, 2)}`
 }
 
 async function loadPdfLogo() {
@@ -213,7 +214,7 @@ function makePages(pdf, profile, logoDataUrl) {
     if (fields.length) section(`${title} — additional fields`, fields.map((field) => [
       field.key.startsWith("client_details:") && /:(local|foreign)$/.test(field.key)
         ? `${field.key.endsWith(":local") ? "Local" : "Foreign"} · ${field.label}` : field.label,
-      profile.custom_fields?.[field.key],
+      field.type === "number" ? formatNumber(profile.custom_fields?.[field.key]) : profile.custom_fields?.[field.key],
     ]))
   }
 

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react"
 import DatePicker from "../../../components/DatePicker"
+import GroupedNumberInput from "../../../components/GroupedNumberInput"
 import CameraButton from "../../../components/CameraCapture"
 import { confirmCloseForm, confirmDiscard, useUnsavedChanges } from "../../../components/unsavedChanges"
 import { compressImage, fileToDataUrl, prepareUpload } from "../../../utils/image"
@@ -619,6 +620,20 @@ function Field({ field, value, onChange, reasonValue, onReasonChange, marksValue
       </div>
     )
   }
+
+  if (key === "marketPriceValuation" && (value === "" || value === null || value === undefined || /^\d+(?:\.\d*)?$/.test(String(value).replaceAll(",", "")))) return (
+    <label className="tp-form-group">
+      <span>{label}</span>
+      <GroupedNumberInput value={value} fractionDigits={2} onChange={(next) => onChange(key, next)} />
+    </label>
+  )
+
+  if (type === "number" && key !== "year") return (
+    <label className="tp-form-group">
+      <span>{label}</span>
+      <GroupedNumberInput value={value} onChange={(next) => onChange(key, next)} />
+    </label>
+  )
 
   return (
     <label className="tp-form-group">

@@ -3,6 +3,7 @@ import { SECTIONS, isFieldVisible, toPhotoList } from "./inspectionSchema"
 import { replaceReportPdf, reportViewUrl, uploadReportPdf } from "../../../api/reports"
 import { renderReportPdf } from "./renderReportPdf"
 import reportLogo from "../../../assets/logo-light.png"
+import { formatNumber } from "../../../utils/numberFormat"
 
 function FieldValue({ field, value }) {
   if (field.type === "signature") {
@@ -34,12 +35,13 @@ function FieldValue({ field, value }) {
       </div>
     )
   }
-  if (!value) return <span className="ir-empty">—</span>
+  if (value === null || value === undefined || value === "") return <span className="ir-empty">—</span>
   if (field.type === "datetime") {
     const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/.exec(value)
     return <span>{m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}` : value}</span>
   }
-  return <span className="ir-text-value">{value}</span>
+  const grouped = field.type === "number" && field.key !== "year" || ["marketPriceValuation", "engineCapacity"].includes(field.key)
+  return <span className="ir-text-value">{grouped ? formatNumber(value, field.key === "marketPriceValuation" && /^\d+(?:\.\d+)?$/.test(String(value).replaceAll(",", "")) ? 2 : null) : value}</span>
 }
 
 export default function InspectionReport({ data, vehicleTitle, token, reportId, onClose, onPrint, onSaved }) {

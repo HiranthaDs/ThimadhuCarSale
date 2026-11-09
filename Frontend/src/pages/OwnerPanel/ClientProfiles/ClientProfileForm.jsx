@@ -7,6 +7,7 @@ import { COUNTRIES } from "./countries"
 import { isSafeMediaUrl } from "../../../utils/safeUrl"
 import { compressImage, prepareUpload } from "../../../utils/image"
 import DatePicker from "../../../components/DatePicker"
+import GroupedNumberInput from "../../../components/GroupedNumberInput"
 import { builtinKey, builtinType, builtinOptions, defaultBuiltinType, BUILTIN_FIELDS } from "./clientProfileBuiltins"
 
 const BuiltinLabelsContext = createContext({ tab: "", labels: {}, hidden: [], fieldTypes: {} })
@@ -21,7 +22,7 @@ function useBuiltinSettings(label, defaultType) {
   }
 }
 
-function TextField({ label, value, onChange, type = "text", required, placeholder }) {
+function TextField({ label, value, onChange, type = "text", required, placeholder, fractionDigits }) {
   const { displayLabel, visible, inputType } = useBuiltinSettings(label, type)
   if (!visible) return null
   if (inputType === "date") {
@@ -33,6 +34,7 @@ function TextField({ label, value, onChange, type = "text", required, placeholde
     )
   }
   if (inputType === "textarea") return <label className="tp-form-group tp-form-group-full"><span>{displayLabel}</span><textarea rows={3} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} /></label>
+  if (inputType === "number") return <label className="tp-form-group"><span>{displayLabel}</span><GroupedNumberInput value={value} onChange={onChange} fractionDigits={fractionDigits} required={required} placeholder={placeholder} /></label>
   return (
     <label className="tp-form-group">
       <span>{displayLabel}</span>
@@ -988,11 +990,12 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
               {builtinField("Purchasing Date", <TextField type="date" label="Purchasing Date" value={form.purchasing_date} onChange={(v) => set("purchasing_date", v)} />)}
             </div>
             <div className="tp-form-row">
-              {builtinField("Selling Price", <TextField type="number" label="Selling Price" value={form.selling_price} onChange={(v) => set("selling_price", v)} />)}
-              {builtinField("Loan Amount", <TextField type="number" label="Loan Amount" value={form.loan_amount} onChange={(v) => set("loan_amount", v)} />)}
+              {builtinField("Selling Price", <TextField type="number" fractionDigits={2} label="Selling Price" value={form.selling_price} onChange={(v) => set("selling_price", v)} />)}
+              {builtinField("Loan Amount", <TextField type="number" fractionDigits={2} label="Loan Amount" value={form.loan_amount} onChange={(v) => set("loan_amount", v)} />)}
               {builtinField("Customer Down Payment", <TextField
                 type="number"
                 label="Customer Down Payment"
+                fractionDigits={2}
                 value={form.customer_down_payment}
                 onChange={(v) => set("customer_down_payment", v)}
               />)}
