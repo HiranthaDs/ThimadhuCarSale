@@ -894,18 +894,33 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
               ]}
             />)}
             {form.third_person_involved && (
-              <div className="tp-form-row">
-                {builtinField("Third Person Document", <ImageField
-                  label="Third Person Document"
-                  value={form.third_person_image}
-                  onChange={(v) => set("third_person_image", v)}
-                />)}
-                {builtinField("Handover Selfie", <ImageField
-                  label="Handover Selfie"
-                  value={form.handover_selfie_image}
-                  onChange={(v) => set("handover_selfie_image", v)}
-                />)}
-              </div>
+              <>
+                <div className="tp-form-row">
+                  {builtinField("Third Person Name", <TextField
+                    label="Third Person Name"
+                    value={form.third_person_name}
+                    onChange={(v) => set("third_person_name", v)}
+                  />)}
+                  {builtinField("Third Person Phone Number", <TextField
+                    label="Third Person Phone Number"
+                    type="tel"
+                    value={form.third_person_phone}
+                    onChange={(v) => set("third_person_phone", v)}
+                  />)}
+                </div>
+                <div className="tp-form-row">
+                  {builtinField("Third Person Document", <ImageField
+                    label="Third Person Document"
+                    value={form.third_person_image}
+                    onChange={(v) => set("third_person_image", v)}
+                  />)}
+                  {builtinField("Handover Selfie", <ImageField
+                    label="Handover Selfie"
+                    value={form.handover_selfie_image}
+                    onChange={(v) => set("handover_selfie_image", v)}
+                  />)}
+                </div>
+              </>
             )}
           </div>
         )}

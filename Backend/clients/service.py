@@ -29,7 +29,8 @@ PREVIOUS_OWNER_DEFAULT_TYPES = {
     "Inspection Report 1": "searchable", "Inspection Report 2": "searchable",
     "Scan Report 1 (Upload)": "file", "Scan Report 2 (Upload)": "file",
     "Garage Bill": "multi_image", "Modification": "multi_image", "Others": "textarea",
-    "Third Person Involved?": "radio", "Third Person Document": "image", "Handover Selfie": "image",
+    "Third Person Involved?": "radio", "Third Person Name": "text", "Third Person Phone Number": "tel",
+    "Third Person Document": "image", "Handover Selfie": "image",
 }
 
 BUILTIN_ANSWER_TYPES = {

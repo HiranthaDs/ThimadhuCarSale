@@ -113,6 +113,8 @@ class ClientProfile(Base):
     modification_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     other_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     third_person_involved: Mapped[bool] = mapped_column(default=False, nullable=False)
+    third_person_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    third_person_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     third_person_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     handover_selfie_image: Mapped[str | None] = mapped_column(Text, nullable=True)
 

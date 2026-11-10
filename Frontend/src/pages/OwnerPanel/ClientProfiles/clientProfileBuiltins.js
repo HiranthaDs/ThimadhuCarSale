@@ -22,7 +22,9 @@ export const BUILTIN_FIELDS = {
     ["Inspection Report 2", "Searchable selection"], ["Scan Report 1 (Upload)", "PDF or image upload"],
     ["Scan Report 2 (Upload)", "PDF or image upload"], ["Garage Bill", "Multiple images"],
     ["Modification", "Multiple images"], ["Others", "Multiline text"],
-    ["Third Person Involved?", "Radio buttons"], ["Third Person Document", "Image upload"],
+    ["Third Person Involved?", "Radio buttons"], ["Third Person Name", "Text"],
+    ["Third Person Phone Number", "Text"],
+    ["Third Person Document", "Image upload"],
     ["Handover Selfie", "Image upload"],
   ],
   department: [

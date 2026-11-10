@@ -93,6 +93,8 @@ class ClientProfileCreate(BaseModel):
     modification_image: str | None = None
     other_notes: str | None = None
     third_person_involved: bool = False
+    third_person_name: str | None = Field(default=None, max_length=255)
+    third_person_phone: str | None = Field(default=None, max_length=50)
     third_person_image: str | None = None
     handover_selfie_image: str | None = None
 
@@ -149,6 +151,9 @@ class ClientProfileCreate(BaseModel):
             self.foreign_client_name = _na_if_blank(self.foreign_client_name)
             self.foreign_client_country = _na_if_blank(self.foreign_client_country)
             self.foreign_client_phone = _na_if_blank(self.foreign_client_phone)
+        for field in ("third_person_name", "third_person_phone"):
+            value = (getattr(self, field) or "").strip() or None
+            setattr(self, field, value if self.third_person_involved else None)
 
         for field in (
             "vehicle_type",
@@ -229,6 +234,8 @@ class ClientProfileOut(PrivateMediaResponse):
     modification_image: str | None
     other_notes: str | None
     third_person_involved: bool
+    third_person_name: str | None
+    third_person_phone: str | None
     third_person_image: str | None
     handover_selfie_image: str | None
 

@@ -184,6 +184,12 @@ function makePages(pdf, profile, logoDataUrl) {
     ["Phone", original("previous_owner", "Phone Number", profile.previous_owner_phone)],
     ["Registration", original("previous_owner", "Registration Status", profile.registration_type === "open_book" ? "Open book" : profile.registration_type)],
     ["Third person involved", profile.third_person_involved],
+    ...(profile.third_person_involved
+      ? [
+          ["Third person name", original("previous_owner", "Third Person Name", profile.third_person_name)],
+          ["Third person phone", original("previous_owner", "Third Person Phone Number", profile.third_person_phone)],
+        ]
+      : []),
     ["Notes", original("previous_owner", "Others", profile.other_notes)],
     ["Inspection report 1", original("previous_owner", "Inspection Report 1", profile.scan_report_1_image ? "Linked in client profile" : null)],
     ["Inspection report 2", original("previous_owner", "Inspection Report 2", profile.scan_report_2_image ? "Linked in client profile" : null)],
