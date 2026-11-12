@@ -14,6 +14,7 @@ import InspectionReports from "./InspectionReports"
 import InspectionReports2 from "./InspectionReports/InspectionReports2"
 import InspectionForm from "../TechnicianPanel/components/InspectionForm"
 import InspectionReport from "../TechnicianPanel/components/InspectionReport"
+import UploadInspectionReport from "../TechnicianPanel/components/UploadInspectionReport"
 import Settings from "../TechnicianPanel/components/Settings"
 import "../TechnicianPanel/TechnicianPanel.css"
 import "./ClientProfiles/ClientProfiles.css"
@@ -84,6 +85,7 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
 
   const [showReportForm, setShowReportForm] = useState(false)
   const [reportData, setReportData] = useState(null)
+  const [uploadRevision, setUploadRevision] = useState(0)
 
   function handleReportSubmit(data) {
     setReportData(data)
@@ -216,6 +218,7 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
           />
         </div>}
         {visitedViews.has("reports") && <div key={`reports:${view === "reports" ? refreshRevision : 0}`} hidden={view !== "reports"}>
+          <div className="tp-inspection-actions">
           {can("reports.create") && (
             <button
               type="button"
@@ -228,8 +231,10 @@ export default function OwnerPanel({ role: userRole = "owner", permissions = [],
               {showReportForm ? "Close Inspection Report" : "+ Inspection Report"}
             </button>
           )}
+          {userRole !== "ceo" && (can("reports.upload") || can("reports.create")) && <UploadInspectionReport token={token} onUploaded={() => setUploadRevision(value => value + 1)} />}
+          </div>
           {showReportForm && <InspectionForm active={view === "reports"} onClose={closeReportForm} onSubmit={handleReportSubmit} />}
-          {!showReportForm && !reportData && <InspectionReports token={token} canReview={can("reports.review")} canCheck={userRole === "owner"} />}
+          {!showReportForm && !reportData && <InspectionReports key={uploadRevision} token={token} canReview={can("reports.review")} canCheck={userRole === "owner"} />}
         </div>}
         {visitedViews.has("reports2") && <div key={`reports2:${view === "reports2" ? refreshRevision : 0}`} hidden={view !== "reports2"}>
           <InspectionReports2 token={token} canCreate={can("reports2.create")} />

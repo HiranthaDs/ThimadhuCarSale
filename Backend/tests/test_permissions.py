@@ -58,7 +58,17 @@ class PermissionTests(unittest.TestCase):
         for role, keys in DEFAULT_PERMISSIONS.items():
             self.assertEqual(self.service.for_user(self.add_user(role)), keys)
         self.assertEqual(self.service.for_user(self.owner), set(PERMISSION_KEYS))
-        self.assertEqual(self.service.for_user(self.add_user(UserRole.ceo)), set(PERMISSION_KEYS))
+        self.assertEqual(self.service.for_user(self.add_user(UserRole.ceo)), set(PERMISSION_KEYS) - {"reports.upload"})
+
+    def test_admin_can_view_and_upload_reports_without_creation_access(self):
+        admin = self.add_user(UserRole.admin)
+        self.assertTrue(self.allowed(admin, "reports.view"))
+        self.assertTrue(self.allowed(admin, "reports.upload"))
+        self.assertFalse(self.allowed(admin, "reports.create"))
+        self.service.update(admin.id, ["clients.view"], self.owner)
+        self.assertTrue(self.allowed(admin, "reports.view"))
+        self.assertTrue(self.allowed(admin, "reports.upload"))
+        self.assertFalse(self.allowed(admin, "reports.create"))
 
     def test_access_is_per_person_and_adds_required_view(self):
         first = self.add_user(UserRole.accountant, "First")
@@ -196,6 +206,11 @@ class PermissionTests(unittest.TestCase):
         ceo = self.add_user(UserRole.ceo)
         self.assertTrue(self.allowed(ceo, "accounts.manage"))
         self.assertTrue(self.allowed(ceo, "clients.delete"))
+        self.assertTrue(self.allowed(ceo, "reports.create"))
+        self.assertFalse(self.allowed(ceo, "reports.upload"))
+        self.service.update(ceo.id, ["reports.view", "reports.create", "reports.upload"], self.owner)
+        self.assertTrue(self.allowed(ceo, "reports.create"))
+        self.assertFalse(self.allowed(ceo, "reports.upload"))
         self.service.update(ceo.id, ["clients.view"], self.owner)
         self.assertFalse(self.allowed(ceo, "accounts.manage"))
         self.assertFalse(self.allowed(ceo, "clients.delete"))
@@ -204,7 +219,7 @@ class PermissionTests(unittest.TestCase):
     def test_ceo_only_permissions_are_not_given_to_staff(self):
         admin = self.add_user(UserRole.admin)
         result = self.service.update(admin.id, ["accounts.manage", "reports.review", "clients.view"], self.owner)
-        self.assertEqual(result["permissions"], ["clients.view"])
+        self.assertEqual(result["permissions"], ["clients.view", "reports.upload", "reports.view"])
 
     def test_overview_lists_every_employee(self):
         self.add_user(UserRole.technician, "Kasun")

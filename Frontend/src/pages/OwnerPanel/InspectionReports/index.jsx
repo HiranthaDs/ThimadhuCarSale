@@ -141,7 +141,7 @@ export default function InspectionReports({ token, canReview = true, canCheck = 
     setDownloadingId(report.id)
     try {
       const blob = await downloadReportPdf(token, report.id)
-      const fileName = `${report.registration_number || report.vehicle_title || "inspection-report"}.pdf`
+      const fileName = `${report.file_name || report.registration_number || report.vehicle_title || "inspection-report"}.pdf`
       const objectUrl = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = objectUrl
@@ -208,7 +208,7 @@ export default function InspectionReports({ token, canReview = true, canCheck = 
               <div className="tp-reports-item-top">
                 <div className="tp-reports-item-main">
                   <span className="tp-inspections-name">
-                    {report.registration_number || report.vehicle_title || "Untitled Report"}
+                    {report.file_name || report.registration_number || report.vehicle_title || "Untitled Report"}
                   </span>
                   <span className="tp-inspections-meta">
                     {report.vehicle_title}

@@ -203,7 +203,7 @@ def list_all_scan_reports(
     current_user: User = Depends(require_permission("clients.create", "clients.edit")),
 ):
     reports = ReportRepository(db).list_all(q, limit=limit, offset=offset)
-    return [{"public_id": str(r.id), "filename": (r.registration_number or str(r.id)) + ".pdf", "secure_url": r.url} for r in reports]
+    return [{"public_id": str(r.id), "filename": (r.file_name or r.registration_number or str(r.id)) + ".pdf", "secure_url": r.url} for r in reports]
 
 
 @router.get("/{profile_id}", response_model=ClientProfileOut)

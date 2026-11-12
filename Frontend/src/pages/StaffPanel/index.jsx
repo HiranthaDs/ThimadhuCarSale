@@ -5,6 +5,7 @@ import InspectionForm from "../TechnicianPanel/components/InspectionForm"
 import { ReportFormEditor } from "../OwnerPanel/Customize"
 import InspectionReport from "../TechnicianPanel/components/InspectionReport"
 import Inspections from "../TechnicianPanel/components/Inspections"
+import UploadInspectionReport from "../TechnicianPanel/components/UploadInspectionReport"
 import Settings from "../TechnicianPanel/components/Settings"
 import ActivityLog from "../OwnerPanel/ActivityLog"
 import ClientProfiles from "../OwnerPanel/ClientProfiles"
@@ -24,15 +25,16 @@ import "../OwnerPanel/Dashboard/Greeting.css"
 // The panel for admins, accountants and technicians. Which sections and
 // actions appear comes from the permissions the owner set in Customize.
 export default function StaffPanel({ role, permissions = [], username, token, onLogout, onNameChanged }) {
-  const can = (key) => permissions.includes(key)
-  const navItems = navItemsFor(role, permissions)
+  const effectivePermissions = role === "admin" ? [...new Set([...permissions, "reports.view", "reports.upload"])] : permissions
+  const can = (key) => effectivePermissions.includes(key)
+  const navItems = navItemsFor(role, effectivePermissions)
   const allowedViews = navItems.map((item) => item.view)
   const [selectedView, setSelectedView] = useState(null)
   const [visitedViews, setVisitedViews] = useState(() => new Set(["dashboard"]))
   const [refreshRevision, setRefreshRevision] = useState(0)
   // Fall back to the first allowed section if the owner has since removed this one.
   const view = allowedViews.includes(selectedView) ? selectedView : allowedViews[0]
-  const accessKey = `${role}:${permissions.join(",")}`
+  const accessKey = `${role}:${effectivePermissions.join(",")}`
   useEffect(() => {
     setVisitedViews((previous) => {
       const next = new Set([...previous].filter((visited) => allowedViews.includes(visited)))
@@ -40,13 +42,14 @@ export default function StaffPanel({ role, permissions = [], username, token, on
       return next.size === previous.size && [...previous].every((visited) => next.has(visited)) ? previous : next
     })
   }, [view, accessKey])
-  const overview = useOverview({ token, role, permissions })
+  const overview = useOverview({ token, role, permissions: effectivePermissions })
 
   const [mobileOpen, setMobileOpen] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [reportData, setReportData] = useState(null)
   const [editingReportId, setEditingReportId] = useState(null)
   const [editError, setEditError] = useState("")
+  const [uploadRevision, setUploadRevision] = useState(0)
 
   function handleSubmit(data) {
     setReportData(data)
@@ -100,7 +103,7 @@ export default function StaffPanel({ role, permissions = [], username, token, on
     <div className="tp-app od-app">
       <Sidebar
         role={role}
-        permissions={permissions}
+        permissions={effectivePermissions}
         username={username}
         onLogout={onLogout}
         activeView={view}
@@ -133,13 +136,14 @@ export default function StaffPanel({ role, permissions = [], username, token, on
               onNavigate={navigate}
               reportsView="inspections"
               userRole={role}
-              permissions={permissions}
+              permissions={effectivePermissions}
             />
         </div>}
 
         {visitedViews.has("inspections") && <div key={`inspections:${view === "inspections" ? refreshRevision : 0}`} hidden={view !== "inspections"}>
             {editError && <div className="tp-form-error">{editError}</div>}
-            {can("reports.create") && <button
+            <div className="tp-inspection-actions">
+            {role !== "admin" && can("reports.create") && <button
               type="button"
               className="tp-inspection-btn"
               onClick={() => {
@@ -153,6 +157,8 @@ export default function StaffPanel({ role, permissions = [], username, token, on
             >
               {showForm ? "Close Inspection Report" : "+ Inspection Report"}
             </button>}
+            {(role === "admin" || can("reports.upload") || can("reports.create")) && <UploadInspectionReport token={token} onUploaded={() => setUploadRevision(value => value + 1)} />}
+            </div>
             {showForm ? (
               <InspectionForm
                 active={view === "inspections"}
@@ -161,7 +167,7 @@ export default function StaffPanel({ role, permissions = [], username, token, on
                 initialData={editingReportId ? reportData : null}
               />
             ) : (
-              <Inspections token={token} canEdit={can("reports.create")} onEdit={handleEditReport} />
+              <Inspections key={uploadRevision} token={token} canEdit={role !== "admin" && can("reports.create")} onEdit={handleEditReport} />
             )}
         </div>}
 

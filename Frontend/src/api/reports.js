@@ -129,6 +129,7 @@ function buildReportFormData(file, meta = {}) {
   const formData = new FormData()
   formData.append("file", file)
   if (meta.registrationNumber) formData.append("registration_number", meta.registrationNumber)
+  if (meta.fileName) formData.append("file_name", meta.fileName)
   if (meta.vehicleTitle) formData.append("vehicle_title", meta.vehicleTitle)
   if (meta.buyerName) formData.append("buyer_name", meta.buyerName)
   // Sent as a file part: plain text fields are capped at 1MB by the server, and

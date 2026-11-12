@@ -15,6 +15,7 @@ class InspectionReportOut(PrivateMediaResponse):
     id: uuid.UUID
     created_at: datetime
     registration_number: str | None
+    file_name: str | None
     vehicle_title: str | None
     buyer_name: str | None
     technician_name: str | None

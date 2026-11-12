@@ -19,10 +19,12 @@ class PermissionService:
     def for_user(self, user) -> set[str]:
         if user.role == UserRole.owner:
             return set(PERMISSION_KEYS)
+        # Admins always have the report list and PDF upload requested for their panel.
+        admin_reports = {"reports.view", "reports.upload"} if user.role == UserRole.admin else set()
         row = self.db.get(UserPermission, user.id)
         if row is None:
-            return set(DEFAULT_PERMISSIONS.get(user.role, ()))
-        return self._allowed(user, row.permissions)
+            return set(DEFAULT_PERMISSIONS.get(user.role, ())) | admin_reports
+        return self._allowed(user, row.permissions) | admin_reports
 
     def approver_roles(self, permission: str = "clients.approve") -> list[str]:
         """Roles that must approve before the owner (client profiles, or with
@@ -35,7 +37,9 @@ class PermissionService:
     @staticmethod
     def _allowed(user, keys) -> set[str]:
         keys = set(keys) & PERMISSION_KEYS
-        return keys if user.role == UserRole.ceo else keys - CEO_ONLY_KEYS
+        if user.role == UserRole.ceo:
+            return keys - {"reports.upload"}
+        return keys - CEO_ONLY_KEYS
 
     def _employee(self, user: User) -> dict:
         return {

@@ -9,6 +9,7 @@ from reports.model import InspectionReport
 
 SEARCHABLE_COLUMNS = [
     "registration_number",
+    "file_name",
     "vehicle_title",
     "buyer_name",
     "technician_name",
@@ -26,7 +27,7 @@ class ReportRepository:
             self.db.add(ActivityLog(
                 actor_id=actor.id, actor_name=actor.full_name, actor_role=actor.role.value,
                 action=action, entity_type="inspection_report", entity_id=report.id,
-                description=f"{action}: {report.registration_number or report.id}",
+                description=f"{action}: {report.file_name or report.registration_number or report.id}",
             ))
 
     def create(self, *, created_by: uuid.UUID | None, **fields) -> InspectionReport:

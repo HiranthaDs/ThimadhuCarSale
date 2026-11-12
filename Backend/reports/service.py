@@ -167,6 +167,7 @@ class ReportService:
         content: bytes,
         *,
         registration_number: str | None = None,
+        file_name: str | None = None,
         vehicle_title: str | None = None,
         buyer_name: str | None = None,
         created_by: uuid.UUID | None = None,
@@ -174,6 +175,14 @@ class ReportService:
         form_data: dict[str, Any] | None = None,
     ):
         registration_number = report_identifier(registration_number, form_data)
+        if file_name is not None:
+            file_name = file_name.strip()
+            if not file_name or len(file_name) > 200 or any(ord(c) < 32 or c in '\\/:*?"<>|' for c in file_name):
+                raise HTTPException(400, "Choose a file name of up to 200 characters without path or control characters.")
+            if file_name.lower().endswith(".pdf"):
+                file_name = file_name[:-4].rstrip()
+            if not file_name:
+                raise HTTPException(400, "Choose a file name before uploading.")
         content = validate_file(content, "application/pdf", get_settings().max_report_pdf_bytes)
         public_id = str(uuid.uuid4())
         url = upload_report_pdf(content, public_id)
@@ -182,6 +191,7 @@ class ReportService:
         report = self.repository.create(
             created_by=created_by,
             registration_number=registration_number,
+            file_name=file_name,
             vehicle_title=vehicle_title,
             buyer_name=buyer_name,
             technician_name=technician_name,

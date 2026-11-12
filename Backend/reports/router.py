@@ -1,5 +1,6 @@
 import json
 import uuid
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy.orm import Session
@@ -109,16 +110,21 @@ async def upload_report_pdf(
     request: Request,
     file: UploadFile = File(...),
     registration_number: str | None = Form(default=None, max_length=60),
+    file_name: str | None = Form(default=None, max_length=200),
     vehicle_title: str | None = Form(default=None, max_length=255),
     buyer_name: str | None = Form(default=None, max_length=255),
     form_data: UploadFile | None = File(default=None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("reports.create")),
+    current_user: User = Depends(require_permission("reports.create", "reports.upload")),
 ):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are accepted.")
 
     parsed_form_data = await _parse_form_data(form_data)
+    if current_user.role.value == "ceo" and parsed_form_data is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CEO access does not include PDF uploads.")
+    if current_user.role.value == "admin" and (parsed_form_data is not None or not file_name):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admins must choose a name for a PDF upload.")
 
     content = await file.read(get_settings().max_report_pdf_bytes + 1)
     if len(content) > get_settings().max_report_pdf_bytes:
@@ -127,6 +133,7 @@ async def upload_report_pdf(
     report = await run_in_threadpool(service.upload_pdf,
         content,
         registration_number=registration_number,
+        file_name=file_name,
         vehicle_title=vehicle_title,
         buyer_name=buyer_name,
         created_by=current_user.id,
@@ -243,13 +250,13 @@ def _pdf_response(report_id: uuid.UUID, db: Session, current_user: User, disposi
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report PDF not found.")
 
-    filename = f"{report.registration_number or report.vehicle_title or 'inspection-report'}.pdf"
-    safe_filename = "".join(c for c in filename if c.isalnum() or c in " ._-") or "inspection-report.pdf"
+    filename = f"{report.file_name or report.registration_number or report.vehicle_title or 'inspection-report'}.pdf"
+    safe_filename = "".join(c for c in filename if c.isascii() and (c.isalnum() or c in " ._-")) or "inspection-report.pdf"
     return Response(
         content=content,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'{disposition}; filename="{safe_filename}"',
+            "Content-Disposition": f'{disposition}; filename="{safe_filename}"; filename*=UTF-8\'\'{quote(filename, safe="")}',
             # The blanket default-src 'none' policy stops browsers' built-in PDF viewer.
             "Content-Security-Policy": "frame-ancestors 'none'",
         },

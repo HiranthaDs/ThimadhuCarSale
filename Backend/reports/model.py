@@ -22,6 +22,7 @@ class InspectionReport(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     registration_number: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    file_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     vehicle_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     buyer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     technician_name: Mapped[str | None] = mapped_column(String(255), nullable=True)

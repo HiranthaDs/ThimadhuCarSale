@@ -33,7 +33,7 @@ const ownerNav = [
 // their role in Customize; `permission` is the key that unlocks each item.
 const staffNav = [
   { label: "Dashboard", icon: DashboardIcon, view: "dashboard" },
-  { label: "Inspections", icon: ClipboardIcon, view: "inspections", permission: "reports.view" },
+  { label: "Inspection Reports", icon: ClipboardIcon, view: "inspections", permission: "reports.view" },
   { label: "Edit Inspection Report", icon: SlidersIcon, view: "report-form", permission: "reports.form.edit" },
   { label: "Inspection Report 2", icon: ReportsIcon, view: "reports2", permission: "reports2.view" },
   { label: "Client Profiles", icon: ClipboardIcon, view: "clients", permission: "clients.view" },
@@ -47,7 +47,7 @@ const staffNav = [
 export function navItemsFor(role, permissions = []) {
   if (role === "owner") return ownerNav.filter((item) => !item.delegateOnly)
   const items = role === "ceo" ? ownerNav.filter((item) => !item.ownerOnly) : staffNav
-  return items.filter((item) => !item.permission || permissions.includes(item.permission))
+  return items.filter((item) => (role === "admin" && item.view === "inspections") || !item.permission || permissions.includes(item.permission))
 }
 
 export default function Sidebar({ role = "technician", permissions, username, onLogout, activeView, onNavigate, mobileOpen: mobileOpenProp, onMobileOpenChange, approvalCount }) {

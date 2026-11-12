@@ -23,6 +23,7 @@ PERMISSIONS = (
     _perm("blacklist.edit", "Vehicle Blacklist", "Edit", "blacklist.view"),
     _perm("blacklist.delete", "Vehicle Blacklist", "Delete", "blacklist.view"),
     _perm("reports.create", "Inspection Reports", "Create (and edit own until checked)"),
+    _perm("reports.upload", "Inspection Reports", "Upload PDF reports", "reports.view"),
     _perm("reports.view", "Inspection Reports", "View all reports"),
     _perm("reports.form.edit", "Inspection Reports", "Edit inspection report form"),
     _perm("reports.approve", "Inspection Reports", "Approve (required before the owner)", "reports.view"),
@@ -42,10 +43,11 @@ REQUIRES = {p["key"]: p["requires"] for p in PERMISSIONS if p["requires"]}
 # access. The CEO starts with everything; the owner always has everything and
 # can't be restricted.
 DEFAULT_PERMISSIONS = {
-    UserRole.ceo: set(PERMISSION_KEYS),
+    UserRole.ceo: set(PERMISSION_KEYS) - {"reports.upload"},
     UserRole.admin: {
         "clients.view", "clients.create", "clients.edit", "clients.approve",
         "blacklist.view", "blacklist.create", "blacklist.edit",
+        "reports.view", "reports.upload",
     },
     UserRole.accountant: {
         "clients.view", "clients.create", "clients.edit",

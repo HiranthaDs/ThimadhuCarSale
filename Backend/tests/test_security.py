@@ -43,8 +43,8 @@ from blacklist.service import VehicleBlacklistService
 from activity.model import ActivityLog
 import main  # Register all application models, without running migrations.
 
-async def request(app, path, body=None, method="POST", cookie=None, origin="http://localhost:5173", chunks=None):
-    headers=[(b"content-type",b"application/json"),(b"host",b"localhost")]
+async def request(app, path, body=None, method="POST", cookie=None, origin="http://localhost:5173", chunks=None, content_type="application/json"):
+    headers=[(b"content-type",content_type.encode()),(b"host",b"localhost")]
     if cookie: headers.append((b"cookie",cookie.encode()))
     if origin: headers.append((b"origin",origin.encode()))
     scope={"type":"http","asgi":{"version":"3.0"},"http_version":"1.1","method":method,
@@ -145,6 +145,69 @@ class SecurityTests(unittest.TestCase):
         status,body,_=self.request(f"/reports/{report.id}",method="GET",cookie=cookie)
         self.assertEqual(status,200);self.assertTrue(body["editable"])
         self.assertTrue(body["url"].startswith("https://"));self.assertIn("X-Amz-Signature",body["url"])
+
+    def test_uploaded_report_keeps_chosen_file_name(self):
+        service = ReportService(self.db, self.user)
+        with patch("reports.service.upload_report_pdf", return_value="r2://reports/named.pdf"):
+            report = service.upload_pdf(pdf(), created_by=self.user.id, file_name=" Customer inspection.pdf ")
+        self.assertEqual(report.file_name, "Customer inspection")
+        self.assertIsNone(report.registration_number)
+        self.assertEqual([item.id for item in service.list_all("Customer inspection")], [report.id])
+        with patch("reports.service.upload_report_pdf") as upload:
+            with self.assertRaises(HTTPException):
+                service.upload_pdf(pdf(), created_by=self.user.id, file_name="../invalid")
+            upload.assert_not_called()
+
+    def test_admin_can_upload_named_pdf_without_report_creation_permission(self):
+        admin = User(email="admin@example.com", full_name="Admin", role=UserRole.admin,
+                     is_active=True, hashed_password=self.password_hash)
+        self.db.add(admin)
+        self.db.commit()
+        status, data, headers = self.request("/auth/login", {"email": admin.email, "password": "Original123!"})
+        self.assertEqual(status, 200)
+        self.assertIn("reports.upload", data["user"]["permissions"])
+        self.assertNotIn("reports.create", data["user"]["permissions"])
+        cookie = headers[b"set-cookie"].decode().split(";", 1)[0]
+        boundary = b"test-boundary"
+        file_part = (b"--" + boundary + b"\r\nContent-Disposition: form-data; name=\"file\"; filename=\"report.pdf\"\r\n"
+                     b"Content-Type: application/pdf\r\n\r\n" + pdf() + b"\r\n")
+        name_part = (b"--" + boundary + b"\r\nContent-Disposition: form-data; name=\"file_name\"\r\n\r\n"
+                     b"Admin inspection\r\n")
+        content_type = "multipart/form-data; boundary=test-boundary"
+        with patch("reports.service.upload_report_pdf", return_value="r2://reports/admin.pdf"):
+            status, _, _ = self.request("/reports/pdf", cookie=cookie, chunks=[file_part + b"--" + boundary + b"--\r\n"], content_type=content_type)
+            self.assertEqual(status, 400)
+            status, data, _ = self.request("/reports/pdf", cookie=cookie,
+                                           chunks=[file_part + name_part + b"--" + boundary + b"--\r\n"], content_type=content_type)
+            self.assertEqual(status, 201)
+            self.assertEqual(data["file_name"], "Admin inspection")
+
+    def test_ceo_cannot_use_manual_upload_but_can_create_from_form(self):
+        ceo = User(email="ceo@example.com", full_name="CEO", role=UserRole.ceo,
+                   is_active=True, hashed_password=self.password_hash)
+        self.db.add(ceo)
+        self.db.commit()
+        status, data, headers = self.request("/auth/login", {"email": ceo.email, "password": "Original123!"})
+        self.assertEqual(status, 200)
+        self.assertNotIn("reports.upload", data["user"]["permissions"])
+        self.assertIn("reports.create", data["user"]["permissions"])
+        cookie = headers[b"set-cookie"].decode().split(";", 1)[0]
+        boundary = b"test-boundary"
+        file_part = (b"--" + boundary + b"\r\nContent-Disposition: form-data; name=\"file\"; filename=\"report.pdf\"\r\n"
+                     b"Content-Type: application/pdf\r\n\r\n" + pdf() + b"\r\n")
+        name_part = (b"--" + boundary + b"\r\nContent-Disposition: form-data; name=\"file_name\"\r\n\r\n"
+                     b"CEO upload\r\n")
+        form_part = (b"--" + boundary + b"\r\nContent-Disposition: form-data; name=\"form_data\"; filename=\"form_data.json\"\r\n"
+                     b"Content-Type: application/json\r\n\r\n{}\r\n")
+        content_type = "multipart/form-data; boundary=test-boundary"
+        with patch("reports.service.upload_report_pdf", return_value="r2://reports/ceo.pdf") as store:
+            status, _, _ = self.request("/reports/pdf", cookie=cookie,
+                                        chunks=[file_part + name_part + b"--" + boundary + b"--\r\n"], content_type=content_type)
+            self.assertEqual(status, 403)
+            store.assert_not_called()
+            status, _, _ = self.request("/reports/pdf", cookie=cookie,
+                                        chunks=[file_part + form_part + b"--" + boundary + b"--\r\n"], content_type=content_type)
+            self.assertEqual(status, 201)
 
     def test_unregistered_vehicle_uses_vin_as_saved_identifier(self):
         vin = "JH4KA4650MC012345"

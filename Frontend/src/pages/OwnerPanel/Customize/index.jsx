@@ -351,7 +351,7 @@ function EmployeeAccess({ unlockToken, onLocked, employee, catalog, onBack, onSa
   const sections = useMemo(() => {
     const grouped = new Map()
     // Some actions only exist in the owner panel, which only the CEO shares.
-    for (const perm of catalog.filter((p) => employee.role === "ceo" || !p.ceo_only)) {
+    for (const perm of catalog.filter((p) => (employee.role === "ceo" || !p.ceo_only) && !(employee.role === "ceo" && p.key === "reports.upload"))) {
       if (!grouped.has(perm.section)) grouped.set(perm.section, [])
       grouped.get(perm.section).push(perm)
     }
@@ -430,6 +430,8 @@ function EmployeeAccess({ unlockToken, onLocked, employee, catalog, onBack, onSa
                     type="checkbox"
                     aria-label={`${section} – ${perm.label}`}
                     checked={draft.has(perm.key)}
+                    disabled={employee.role === "admin" && (perm.key === "reports.view" || perm.key === "reports.upload")}
+                    title={employee.role === "admin" && (perm.key === "reports.view" || perm.key === "reports.upload") ? "Included with admin access" : undefined}
                     onChange={() => toggle(perm)}
                   />
                 </td>
