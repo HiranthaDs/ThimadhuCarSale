@@ -24,7 +24,7 @@ export const BUILTIN_FIELDS = {
     ["Modification", "Multiple images"], ["Others", "Multiline text"],
     ["Third Person Involved?", "Radio buttons"], ["Third Person Name", "Text"],
     ["Third Person Phone Number", "Text"],
-    ["Handover Selfie", "Multiple images"],
+    ["Third Person Document", "Image upload"],
   ],
   department: [
     ["Marketing", "Text"], ["Technical", "Text"], ["Purchasing", "Text"],

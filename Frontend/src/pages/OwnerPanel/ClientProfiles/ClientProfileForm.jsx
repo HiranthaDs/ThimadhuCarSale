@@ -919,11 +919,10 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
                   />)}
                 </div>
                 <div className="tp-form-row">
-                  {builtinField("Handover Selfie", <MultiImageField
-                    label="Handover Selfie"
-                    max={4}
-                    value={form.handover_selfie_image}
-                    onChange={(v) => set("handover_selfie_image", v)}
+                  {builtinField("Third Person Document", <ImageField
+                    label="Third Person Document"
+                    value={form.third_person_image}
+                    onChange={(v) => set("third_person_image", v)}
                   />)}
                 </div>
               </>
