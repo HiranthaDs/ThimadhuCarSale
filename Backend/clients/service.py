@@ -30,7 +30,7 @@ PREVIOUS_OWNER_DEFAULT_TYPES = {
     "Scan Report 1 (Upload)": "file", "Scan Report 2 (Upload)": "file",
     "Garage Bill": "multi_image", "Modification": "multi_image", "Others": "textarea",
     "Third Person Involved?": "radio", "Third Person Name": "text", "Third Person Phone Number": "tel",
-    "Third Person Document": "image", "Handover Selfie": "image",
+    "Third Person Document": "image", "Handover Selfie": "multi_image",
 }
 
 BUILTIN_ANSWER_TYPES = {

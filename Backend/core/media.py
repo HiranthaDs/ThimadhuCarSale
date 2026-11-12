@@ -112,6 +112,7 @@ MULTI_IMAGE_LIMITS = {
     "revenue_license_image": 2,
     "garage_bill_image": 10,
     "modification_image": 10,
+    "handover_selfie_image": 4,
 }
 
 
