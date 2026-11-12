@@ -822,8 +822,17 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
           <div className="tp-form-section">
             <div className="tp-form-row">
               {builtinField("Previous Owner Name", <TextField label="Previous Owner Name" value={form.previous_owner_name} onChange={(v) => set("previous_owner_name", v)} />)}
-              {builtinField("NIC", <TextField label="NIC" value={form.previous_owner_nic} onChange={(v) => set("previous_owner_nic", v)} />)}
               {builtinField("Phone Number", <TextField label="Phone Number" value={form.previous_owner_phone} onChange={(v) => set("previous_owner_phone", v)} />)}
+            </div>
+            <div className="tp-form-row">
+              {builtinField("NIC", <TextField label="NIC" value={form.previous_owner_nic} onChange={(v) => set("previous_owner_nic", v)} />)}
+              {builtinField("Previous Owner NIC Photo", <ImageField
+                label="Previous Owner NIC Photo"
+                value={form.previous_owner_nic_image}
+                onChange={(v) => set("previous_owner_nic_image", v)}
+              />)}
+            </div>
+            <div className="tp-form-row">
               {builtinField("Registration Status", <RadioField
                 label="Registration Status"
                 value={form.registration_type}
@@ -915,11 +924,6 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
                   />)}
                 </div>
                 <div className="tp-form-row">
-                  {builtinField("Third Person Document", <ImageField
-                    label="Third Person Document"
-                    value={form.third_person_image}
-                    onChange={(v) => set("third_person_image", v)}
-                  />)}
                   {builtinField("Handover Selfie", <MultiImageField
                     label="Handover Selfie"
                     max={4}

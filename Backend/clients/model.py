@@ -99,6 +99,7 @@ class ClientProfile(Base):
     # ---- Previous owner details ----
     previous_owner_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     previous_owner_nic: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    previous_owner_nic_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     previous_owner_selfie_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     in_writing_letter_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     registration_type: Mapped[RegistrationType | None] = mapped_column(
@@ -116,7 +117,6 @@ class ClientProfile(Base):
     third_person_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     third_person_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     third_person_nic_image: Mapped[str | None] = mapped_column(Text, nullable=True)
-    third_person_image: Mapped[str | None] = mapped_column(Text, nullable=True)
     handover_selfie_image: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # ---- Department details ----

@@ -54,9 +54,16 @@ def migrate_schema():
         conn.execute(text("ALTER TABLE vehicle_blacklist ADD COLUMN IF NOT EXISTS mileage varchar(60)"))
         conn.execute(text("ALTER TABLE vehicle_blacklist ADD COLUMN IF NOT EXISTS location varchar(120)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS previous_owner_name varchar(255)"))
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS previous_owner_nic_image text"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS third_person_name varchar(255)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS third_person_phone varchar(50)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS third_person_nic_image text"))
+        # Existing profiles used this column for the upload now shown as previous owner NIC.
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS third_person_image text"))
+        conn.execute(text(
+            "UPDATE client_profiles SET previous_owner_nic_image = COALESCE(previous_owner_nic_image, third_person_image), "
+            "third_person_image = NULL WHERE third_person_image IS NOT NULL"
+        ))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS scan_report_1_upload text"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS scan_report_2_upload text"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS marketing_person_name varchar(255)"))

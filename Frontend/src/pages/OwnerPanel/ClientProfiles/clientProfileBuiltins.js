@@ -16,7 +16,7 @@ export const BUILTIN_FIELDS = {
     ["Type", "Text"], ["Chassis Number", "Text"], ["Vehicle Number", "Text"],
   ],
   previous_owner: [
-    ["Previous Owner Name", "Text"], ["NIC", "Text"], ["Phone Number", "Text"],
+    ["Previous Owner Name", "Text"], ["NIC", "Text"], ["Previous Owner NIC Photo", "Image upload"], ["Phone Number", "Text"],
     ["Registration Status", "Radio buttons"], ["Detailed Selfie Photo", "Image upload"],
     ["In-Writing Letter", "Image upload"], ["Inspection Report 1", "Searchable selection"],
     ["Inspection Report 2", "Searchable selection"], ["Scan Report 1 (Upload)", "PDF or image upload"],
@@ -25,7 +25,6 @@ export const BUILTIN_FIELDS = {
     ["Third Person Involved?", "Radio buttons"], ["Third Person Name", "Text"],
     ["Third Person Phone Number", "Text"],
     ["Third Person NIC Photos", "Multiple images"],
-    ["Third Person Document", "Image upload"],
     ["Handover Selfie", "Multiple images"],
   ],
   department: [

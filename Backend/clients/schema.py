@@ -20,6 +20,7 @@ IMAGE_FIELDS = (
     "foreign_client_handover_selfie_image",
     "cr_document_image",
     "revenue_license_image",
+    "previous_owner_nic_image",
     "previous_owner_selfie_image",
     "in_writing_letter_image",
     "scan_report_1_image",
@@ -29,7 +30,6 @@ IMAGE_FIELDS = (
     "garage_bill_image",
     "modification_image",
     "third_person_nic_image",
-    "third_person_image",
     "handover_selfie_image",
 )
 
@@ -82,6 +82,7 @@ class ClientProfileCreate(BaseModel):
     # Previous owner details
     previous_owner_name: str | None = None
     previous_owner_nic: str | None = None
+    previous_owner_nic_image: str | None = None
     previous_owner_selfie_image: str | None = None
     in_writing_letter_image: str | None = None
     registration_type: RegistrationType | None = None
@@ -97,7 +98,6 @@ class ClientProfileCreate(BaseModel):
     third_person_name: str | None = Field(default=None, max_length=255)
     third_person_phone: str | None = Field(default=None, max_length=50)
     third_person_nic_image: str | None = None
-    third_person_image: str | None = None
     handover_selfie_image: str | None = None
 
     # Department details
@@ -224,6 +224,7 @@ class ClientProfileOut(PrivateMediaResponse):
 
     previous_owner_name: str | None
     previous_owner_nic: str | None
+    previous_owner_nic_image: str | None
     previous_owner_selfie_image: str | None
     in_writing_letter_image: str | None
     registration_type: RegistrationType | None
@@ -239,7 +240,6 @@ class ClientProfileOut(PrivateMediaResponse):
     third_person_name: str | None
     third_person_phone: str | None
     third_person_nic_image: str | None
-    third_person_image: str | None
     handover_selfie_image: str | None
 
     marketing_person_name: str | None

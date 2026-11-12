@@ -33,6 +33,7 @@ export const initialFormState = {
 
   previous_owner_name: "",
   previous_owner_nic: "",
+  previous_owner_nic_image: "",
   previous_owner_selfie_image: "",
   in_writing_letter_image: "",
   registration_type: "registered",
@@ -48,7 +49,6 @@ export const initialFormState = {
   third_person_name: "",
   third_person_phone: "",
   third_person_nic_image: "",
-  third_person_image: "",
   handover_selfie_image: "",
 
   marketing_person_name: "",
@@ -117,6 +117,7 @@ export function mapProfileToForm(profile) {
 
     previous_owner_name: toInputValue(profile.previous_owner_name),
     previous_owner_nic: toInputValue(profile.previous_owner_nic),
+    previous_owner_nic_image: toInputValue(profile.previous_owner_nic_image),
     previous_owner_selfie_image: toInputValue(profile.previous_owner_selfie_image),
     in_writing_letter_image: toInputValue(profile.in_writing_letter_image),
     registration_type: profile.registration_type || "registered",
@@ -132,7 +133,6 @@ export function mapProfileToForm(profile) {
     third_person_name: toInputValue(profile.third_person_name),
     third_person_phone: toInputValue(profile.third_person_phone),
     third_person_nic_image: toInputValue(profile.third_person_nic_image),
-    third_person_image: toInputValue(profile.third_person_image),
     handover_selfie_image: toInputValue(profile.handover_selfie_image),
 
     marketing_person_name: toInputValue(profile.marketing_person_name),
@@ -197,6 +197,7 @@ export function buildSubmitPayload(form) {
 
     previous_owner_name: toTextOrNull(form.previous_owner_name),
     previous_owner_nic: toTextOrNull(form.previous_owner_nic),
+    previous_owner_nic_image: toTextOrNull(form.previous_owner_nic_image),
     previous_owner_selfie_image: toTextOrNull(form.previous_owner_selfie_image),
     in_writing_letter_image: toTextOrNull(form.in_writing_letter_image),
     previous_owner_phone: toTextOrNull(form.previous_owner_phone),
@@ -210,7 +211,6 @@ export function buildSubmitPayload(form) {
     third_person_name: form.third_person_involved ? toTextOrNull(form.third_person_name) : null,
     third_person_phone: form.third_person_involved ? toTextOrNull(form.third_person_phone) : null,
     third_person_nic_image: form.third_person_involved ? toTextOrNull(form.third_person_nic_image) : null,
-    third_person_image: form.third_person_involved ? toTextOrNull(form.third_person_image) : null,
     handover_selfie_image: form.third_person_involved ? toTextOrNull(form.handover_selfie_image) : null,
 
     marketing_person_name: toTextOrNull(form.marketing_person_name),

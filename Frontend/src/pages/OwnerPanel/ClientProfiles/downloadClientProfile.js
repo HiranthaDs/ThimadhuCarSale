@@ -238,10 +238,10 @@ const PHOTO_FIELDS = [
   ["foreign_client_nic_image", "Foreign client · NIC"], ["foreign_client_passport_image", "Foreign client · passport"],
   ["foreign_client_other_image", "Foreign client · other document"], ["foreign_client_handover_selfie_image", "Foreign client · handover selfie"],
   ["cr_document_image", "CR document"], ["revenue_license_image", "Revenue license"],
-  ["previous_owner_selfie_image", "Previous owner · selfie"], ["in_writing_letter_image", "In-writing letter"],
+  ["previous_owner_nic_image", "Previous owner · NIC"], ["previous_owner_selfie_image", "Previous owner · selfie"], ["in_writing_letter_image", "In-writing letter"],
   ["scan_report_1_upload", "Scan report 1 upload"], ["scan_report_2_upload", "Scan report 2 upload"],
   ["garage_bill_image", "Garage bill"], ["modification_image", "Modification"],
-  ["third_person_nic_image", "Third person NIC"], ["third_person_image", "Third person document"], ["handover_selfie_image", "Handover selfie"],
+  ["third_person_nic_image", "Third person NIC"], ["handover_selfie_image", "Handover selfie"],
 ]
 
 function photoEntries(profile) {
@@ -255,12 +255,12 @@ function photoEntries(profile) {
     foreign_client_other_image: "client_details:Other document Photo:foreign",
     foreign_client_handover_selfie_image: "client_details:Handover Selfie:foreign",
     cr_document_image: "document:CR Document", revenue_license_image: "document:Revenue License",
+    previous_owner_nic_image: "previous_owner:Previous Owner NIC Photo",
     previous_owner_selfie_image: "previous_owner:Detailed Selfie Photo",
     in_writing_letter_image: "previous_owner:In-Writing Letter",
     scan_report_1_upload: "previous_owner:Scan Report 1 (Upload)",
     scan_report_2_upload: "previous_owner:Scan Report 2 (Upload)",
     garage_bill_image: "previous_owner:Garage Bill", modification_image: "previous_owner:Modification",
-    third_person_image: "previous_owner:Third Person Document",
     third_person_nic_image: "previous_owner:Third Person NIC Photos",
     handover_selfie_image: "previous_owner:Handover Selfie",
   }
