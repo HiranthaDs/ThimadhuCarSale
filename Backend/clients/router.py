@@ -38,7 +38,7 @@ BUILTIN_FIELD_LABELS = {
     "previous_owner": ("Previous Owner Name", "NIC", "Phone Number", "Registration Status", "Detailed Selfie Photo",
                        "In-Writing Letter", "Inspection Report 1", "Inspection Report 2", "Scan Report 1 (Upload)",
                        "Scan Report 2 (Upload)", "Garage Bill", "Modification", "Others", "Third Person Involved?",
-                       "Third Person Name", "Third Person Phone Number", "Third Person Document", "Handover Selfie"),
+                       "Third Person Name", "Third Person Phone Number", "Third Person NIC Photos", "Third Person Document", "Handover Selfie"),
     "department": ("Marketing", "Technical", "Purchasing", "Department", "Person's Name"),
     "payment": ("Leasing Company", "Bank Officer Name", "File Signed Date", "Payment Date", "DO Date",
                 "Customer Advanced Date", "Vehicle Handover Date", "Purchasing Date", "Selling Price", "Loan Amount",

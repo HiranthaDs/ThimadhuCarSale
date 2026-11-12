@@ -47,6 +47,7 @@ export const initialFormState = {
   third_person_involved: false,
   third_person_name: "",
   third_person_phone: "",
+  third_person_nic_image: "",
   third_person_image: "",
   handover_selfie_image: "",
 
@@ -130,6 +131,7 @@ export function mapProfileToForm(profile) {
     third_person_involved: Boolean(profile.third_person_involved),
     third_person_name: toInputValue(profile.third_person_name),
     third_person_phone: toInputValue(profile.third_person_phone),
+    third_person_nic_image: toInputValue(profile.third_person_nic_image),
     third_person_image: toInputValue(profile.third_person_image),
     handover_selfie_image: toInputValue(profile.handover_selfie_image),
 
@@ -207,6 +209,7 @@ export function buildSubmitPayload(form) {
     other_notes: toTextOrNull(form.other_notes),
     third_person_name: form.third_person_involved ? toTextOrNull(form.third_person_name) : null,
     third_person_phone: form.third_person_involved ? toTextOrNull(form.third_person_phone) : null,
+    third_person_nic_image: form.third_person_involved ? toTextOrNull(form.third_person_nic_image) : null,
     third_person_image: form.third_person_involved ? toTextOrNull(form.third_person_image) : null,
     handover_selfie_image: form.third_person_involved ? toTextOrNull(form.handover_selfie_image) : null,
 

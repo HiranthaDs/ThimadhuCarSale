@@ -895,7 +895,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
             />)}
             {form.third_person_involved && (
               <>
-                <div className="tp-form-row">
+                <div className="tp-form-row cp-third-person-contact-row">
                   {builtinField("Third Person Name", <TextField
                     label="Third Person Name"
                     value={form.third_person_name}
@@ -906,6 +906,12 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
                     type="tel"
                     value={form.third_person_phone}
                     onChange={(v) => set("third_person_phone", v)}
+                  />)}
+                  {builtinField("Third Person NIC Photos", <MultiImageField
+                    label="Third Person NIC Photos"
+                    max={2}
+                    value={form.third_person_nic_image}
+                    onChange={(v) => set("third_person_nic_image", v)}
                   />)}
                 </div>
                 <div className="tp-form-row">

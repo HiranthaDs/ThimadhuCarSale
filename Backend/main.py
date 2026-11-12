@@ -56,6 +56,7 @@ def migrate_schema():
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS previous_owner_name varchar(255)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS third_person_name varchar(255)"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS third_person_phone varchar(50)"))
+        conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS third_person_nic_image text"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS scan_report_1_upload text"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS scan_report_2_upload text"))
         conn.execute(text("ALTER TABLE client_profiles ADD COLUMN IF NOT EXISTS marketing_person_name varchar(255)"))

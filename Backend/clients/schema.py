@@ -28,6 +28,7 @@ IMAGE_FIELDS = (
     "scan_report_2_upload",
     "garage_bill_image",
     "modification_image",
+    "third_person_nic_image",
     "third_person_image",
     "handover_selfie_image",
 )
@@ -95,6 +96,7 @@ class ClientProfileCreate(BaseModel):
     third_person_involved: bool = False
     third_person_name: str | None = Field(default=None, max_length=255)
     third_person_phone: str | None = Field(default=None, max_length=50)
+    third_person_nic_image: str | None = None
     third_person_image: str | None = None
     handover_selfie_image: str | None = None
 
@@ -236,6 +238,7 @@ class ClientProfileOut(PrivateMediaResponse):
     third_person_involved: bool
     third_person_name: str | None
     third_person_phone: str | None
+    third_person_nic_image: str | None
     third_person_image: str | None
     handover_selfie_image: str | None
 
