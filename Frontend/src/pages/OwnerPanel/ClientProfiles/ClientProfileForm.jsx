@@ -924,6 +924,12 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
                     value={form.third_person_image}
                     onChange={(v) => set("third_person_image", v)}
                   />)}
+                  {builtinField("Handover Selfie", <MultiImageField
+                    label="Handover Selfie"
+                    max={4}
+                    value={form.handover_selfie_image}
+                    onChange={(v) => set("handover_selfie_image", v)}
+                  />)}
                 </div>
               </>
             )}
