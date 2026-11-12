@@ -24,13 +24,13 @@ CLIENT_DOCUMENT_FIELDS = tuple(
 )
 
 PREVIOUS_OWNER_DEFAULT_TYPES = {
-    "Previous Owner Name": "text", "NIC": "text", "Previous Owner NIC Photo": "image", "Phone Number": "text",
+    "Previous Owner Name": "text", "NIC": "text", "Previous Owner NIC Photo": "multi_image", "Phone Number": "text",
     "Registration Status": "radio", "Detailed Selfie Photo": "image", "In-Writing Letter": "image",
     "Inspection Report 1": "searchable", "Inspection Report 2": "searchable",
     "Scan Report 1 (Upload)": "file", "Scan Report 2 (Upload)": "file",
     "Garage Bill": "multi_image", "Modification": "multi_image", "Others": "textarea",
     "Third Person Involved?": "radio", "Third Person Name": "text", "Third Person Phone Number": "tel",
-    "Third Person NIC Photos": "multi_image", "Handover Selfie": "multi_image",
+    "Handover Selfie": "multi_image",
 }
 
 BUILTIN_ANSWER_TYPES = {

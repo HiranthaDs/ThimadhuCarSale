@@ -826,8 +826,9 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
             </div>
             <div className="tp-form-row">
               {builtinField("NIC", <TextField label="NIC" value={form.previous_owner_nic} onChange={(v) => set("previous_owner_nic", v)} />)}
-              {builtinField("Previous Owner NIC Photo", <ImageField
+              {builtinField("Previous Owner NIC Photo", <MultiImageField
                 label="Previous Owner NIC Photo"
+                max={2}
                 value={form.previous_owner_nic_image}
                 onChange={(v) => set("previous_owner_nic_image", v)}
               />)}
@@ -904,7 +905,7 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
             />)}
             {form.third_person_involved && (
               <>
-                <div className="tp-form-row cp-third-person-contact-row">
+                <div className="tp-form-row">
                   {builtinField("Third Person Name", <TextField
                     label="Third Person Name"
                     value={form.third_person_name}
@@ -915,12 +916,6 @@ export default function ClientProfileForm({ token, profile, readOnly = false, on
                     type="tel"
                     value={form.third_person_phone}
                     onChange={(v) => set("third_person_phone", v)}
-                  />)}
-                  {builtinField("Third Person NIC Photos", <MultiImageField
-                    label="Third Person NIC Photos"
-                    max={2}
-                    value={form.third_person_nic_image}
-                    onChange={(v) => set("third_person_nic_image", v)}
                   />)}
                 </div>
                 <div className="tp-form-row">

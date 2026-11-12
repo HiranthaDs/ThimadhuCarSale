@@ -35,12 +35,6 @@
   max-width: none;
 }
 .cp-fieldset { border: none; padding: 0; margin: 0; min-width: 0; }
-.cp-third-person-contact-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.cp-third-person-contact-row .tp-form-group { min-width: 0; }
-.cp-third-person-contact-row input { max-width: 100%; }
-@media (max-width: 700px) {
-  .cp-third-person-contact-row { grid-template-columns: 1fr; }
-}
 .cp-fieldset:disabled .tp-form-group input,
 .cp-fieldset:disabled .tp-form-group select,
 .cp-fieldset:disabled .tp-form-group textarea,

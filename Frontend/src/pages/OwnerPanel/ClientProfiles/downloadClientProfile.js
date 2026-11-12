@@ -241,7 +241,7 @@ const PHOTO_FIELDS = [
   ["previous_owner_nic_image", "Previous owner · NIC"], ["previous_owner_selfie_image", "Previous owner · selfie"], ["in_writing_letter_image", "In-writing letter"],
   ["scan_report_1_upload", "Scan report 1 upload"], ["scan_report_2_upload", "Scan report 2 upload"],
   ["garage_bill_image", "Garage bill"], ["modification_image", "Modification"],
-  ["third_person_nic_image", "Third person NIC"], ["handover_selfie_image", "Handover selfie"],
+  ["handover_selfie_image", "Handover selfie"],
 ]
 
 function photoEntries(profile) {
@@ -261,7 +261,6 @@ function photoEntries(profile) {
     scan_report_1_upload: "previous_owner:Scan Report 1 (Upload)",
     scan_report_2_upload: "previous_owner:Scan Report 2 (Upload)",
     garage_bill_image: "previous_owner:Garage Bill", modification_image: "previous_owner:Modification",
-    third_person_nic_image: "previous_owner:Third Person NIC Photos",
     handover_selfie_image: "previous_owner:Handover Selfie",
   }
   const overrides = new Set((profile.custom_field_schema || []).map((field) => field.key))
